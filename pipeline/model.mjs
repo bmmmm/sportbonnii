@@ -48,6 +48,31 @@ function hasWhole(hay, needle) {
   return false;
 }
 
+const LOCATION_NOISE = /^(deutschland|germany|nordrhein-westfalen|nrw|stadtbezirk .+|regierungsbezirk .+)$/i;
+
+/**
+ * Readable place text: geocoder tails (country, state, "Stadtbezirk …") and
+ * repeated parts dropped, a bare postcode merged into the following city
+ * ("53113, Bonn" → "53113 Bonn") or dropped, at most five parts.
+ */
+export function tidyLocation(text) {
+  const parts = String(text ?? '').replace(/\s+/g, ' ').split(/\s*,\s*/).map((p) => p.trim()).filter(Boolean);
+  const out = [];
+  for (const p of parts) {
+    if (LOCATION_NOISE.test(p)) continue;
+    if (out.some((q) => fold(q) === fold(p) || fold(q).includes(fold(p)))) continue;
+    out.push(p);
+  }
+  for (let i = 0; i < out.length - 1; i++) {
+    if (/^\d{5}$/.test(out[i]) && !/\d/.test(out[i + 1])) out.splice(i, 2, `${out[i]} ${out[i + 1]}`);
+  }
+  // A postcode that found no city to join says nothing a reader needs.
+  const kept = out.filter((p, i) => !/^\d{5}$/.test(p) || out.length === 1 || i === 0);
+  out.length = 0;
+  out.push(...kept);
+  return out.slice(0, 5).join(', ') || null;
+}
+
 /**
  * Lookup tables for one registry: sports keywords, club aliases. Built once
  * per run and passed to normalizeEvent.
@@ -130,7 +155,7 @@ export function normalizeEvent(raw, { owner, kind, source, ctx, window }) {
   if (!sports.length) sports = ['sonstiges'];
 
   const description = clip(String(raw.description ?? '').replace(/\s+\n/g, '\n').trim(), MAX_DESCRIPTION) || null;
-  const location = String(raw.location ?? '').replace(/\s+/g, ' ').trim() || null;
+  const location = tidyLocation(raw.location);
   return {
     id: eventId(sourceKey, String(raw.uid), raw.recurrenceId ?? ''),
     club: club ? club.id : null,
