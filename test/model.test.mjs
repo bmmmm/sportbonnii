@@ -49,6 +49,7 @@ test('caps: title 200, description 400, both with an ellipsis', () => {
   assert.ok(e.title.length <= 200 && e.title.endsWith('…'));
   assert.ok(e.description.length <= 400 && e.description.endsWith('…'));
   assert.equal(asClub({ description: '   ' }).description, null);
+  assert.equal(asClub({ description: 'Absatz eins  \n\n\n\nAbsatz zwei' }).description, 'Absatz eins\n\nAbsatz zwei', 'paragraphs stay, runs collapse');
   assert.equal(asClub({ title: '   ' }), null);
   assert.equal(clip('kurz', 10), 'kurz');
 });

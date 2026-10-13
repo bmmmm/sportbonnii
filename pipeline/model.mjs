@@ -154,7 +154,7 @@ export function normalizeEvent(raw, { owner, kind, source, ctx, window }) {
   sports = uniqueInOrder(sports.filter((s) => ctx.sportIds.has(s)), ctx.order);
   if (!sports.length) sports = ['sonstiges'];
 
-  const description = clip(String(raw.description ?? '').replace(/\s+\n/g, '\n').trim(), MAX_DESCRIPTION) || null;
+  const description = clip(String(raw.description ?? '').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim(), MAX_DESCRIPTION) || null;
   const location = tidyLocation(raw.location);
   return {
     id: eventId(sourceKey, String(raw.uid), raw.recurrenceId ?? ''),

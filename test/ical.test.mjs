@@ -94,3 +94,13 @@ test('fetchEvents refuses a body that is not iCalendar', async () => {
   const ok = { window: WINDOW, get: async (url, opts) => { assert.equal(opts.robots, false, 'subscription feeds skip robots'); return { body: fixture('vtimezone.ics') }; } };
   assert.equal((await fetchEvents({ url: 'https://example.org/x.ics' }, ok)).events.length, 3);
 });
+
+test('the captured Rugby Club Google feed: a VTIMEZONE feed, weekly trainings keep 19:00 across the DST end', () => {
+  const r = parse('rcbrs-google.ics');
+  assert.equal(r.partial, undefined);
+  assert.ok(r.events.length > 150, `${r.events.length} instances`);
+  const touch = r.events.filter((e) => e.title === 'Touch Rugby Training').map(at);
+  assert.ok(touch.includes('2026-10-19T19:00:00+02:00') && touch.includes('2026-10-26T19:00:00+01:00'), touch.join());
+  const hours = r.events.filter((e) => !e.allDay).map((e) => Number(at(e).slice(11, 13)));
+  assert.ok(hours.every((h) => h >= 6 && h <= 23), 'every timed start between 06 and 23 h');
+});
