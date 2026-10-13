@@ -1,0 +1,29 @@
+sportbonnii — sports clubs in Bonn and their published dates
+Copyright (C) 2026 bmmmm
+
+Licensed under GPL-3.0-or-later; see LICENSE.
+
+Ported code (same author)
+-------------------------
+Parts of pipeline/ are ports of modules from scalendarii (a calendar
+aggregator by the same author, AGPL-3.0-or-later): the HTML-to-text
+helpers, the fetcher's capped read and encoding sniff, the private-address
+guard, the iCal / WordPress The Events Calendar / Gancio / JSON-LD / RSS
+adapters and the source detection ladder. Parts of site/ and scripts/ are
+ports of calqrii (GPL-3.0-or-later, same author): the iCalendar escaping and
+line folding, the zoned wall-clock conversion, the month grid, the web-smoke
+gate and the browser-gate CDP client. The author relicenses these ports
+under GPL-3.0-or-later for this project.
+
+Third-party runtime dependency (pipeline only, never shipped to the browser)
+---------------------------------------------------------------------------
+ical.js (https://github.com/kewisch/ical.js), used unmodified as an npm
+dependency under the Mozilla Public License 2.0
+(https://mozilla.org/MPL/2.0/). Its source is available from the npm
+registry and the repository above.
+
+Data
+----
+Event data under site/data/ is collected from the clubs' own published
+calendars and from bonn.jetzt; every event links back to its source. The
+listed clubs and platforms keep all rights to their content.

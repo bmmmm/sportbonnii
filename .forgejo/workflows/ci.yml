@@ -1,0 +1,26 @@
+name: ci
+
+# Forgejo-side gate, the twin of .github/workflows/tests.yml (Forgejo ignores
+# .github/workflows once this directory exists). The runner registers one
+# label, `docker`; the image is pinned here. Node 22 is the lowest version
+# engines allows, GitHub runs 24 — the two gates together cover the range.
+# Fixtures only, no network beyond the package registry.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: docker
+    container:
+      image: data.forgejo.org/oci/node:22-bookworm
+    steps:
+      # Dependabot does not scan .forgejo/; bump by hand
+      # (https://data.forgejo.org/actions/checkout).
+      - uses: https://data.forgejo.org/actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: pnpm via corepack (version pinned by packageManager)
+        run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test

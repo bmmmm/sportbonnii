@@ -1,0 +1,26 @@
+{
+  "name": "sportbonnii",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "All sports clubs in Bonn and their published dates in one filterable table and calendar",
+  "license": "GPL-3.0-or-later",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "preinstall": "node -e \"const ua=process.env.npm_config_user_agent||'';if(!ua.startsWith('pnpm/')){console.error('\\n  sportbonnii is pnpm-only (supply-chain policy). Use: pnpm install - npm/yarn are blocked.\\n');process.exit(1)}\"",
+    "fetch": "node pipeline/run.mjs",
+    "detect": "node pipeline/detect.mjs",
+    "test": "node --test \"test/**/*.test.mjs\"",
+    "test:live": "RUN_LIVE=1 node --test test/live.test.mjs",
+    "smoke": "node scripts/web-smoke.mjs",
+    "serve": "python3 scripts/serve.py 8765 site",
+    "gate:browser": "node scripts/browser-gate/run.mjs",
+    "registry:fmt": "node pipeline/registry.mjs --fmt"
+  },
+  "packageManager": "pnpm@11.17.0+sha512.cca3cea332ad254bb84145f966d19f4879615210346fc92c79a047f23a0d7b3cca3c3792f0076ba1f1831d277efbcf0a9119b31a9a60eca7fb3d6231f331ef72",
+  "dependencies": {
+    "ical.js": "^2.2.1"
+  }
+}

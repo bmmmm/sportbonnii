@@ -1,0 +1,3 @@
+* text=auto eol=lf
+# captured upstream payloads and pinned outputs stay byte-exact (CRLF in .ics)
+test/fixtures/** -text
