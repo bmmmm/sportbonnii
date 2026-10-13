@@ -69,6 +69,7 @@
   <div class="view-bar">
     <div class="tabs" role="tablist" aria-label="Ansicht">
       <button type="button" role="tab" id="tab-tabelle" data-view="tabelle" aria-controls="view-tabelle" aria-selected="true">Tabelle</button>
+      <button type="button" role="tab" id="tab-kalender" data-view="kalender" aria-controls="view-kalender" aria-selected="false" tabindex="-1">Kalender</button>
     </div>
     <p class="result" id="result" aria-live="polite"></p>
     <button type="button" class="link-button" id="reset" hidden>Filter zurücksetzen</button>
@@ -76,6 +77,9 @@
 
   <section class="view" id="view-tabelle" role="tabpanel" aria-labelledby="tab-tabelle">
     <div id="table"></div>
+  </section>
+  <section class="view" id="view-kalender" role="tabpanel" aria-labelledby="tab-kalender" hidden>
+    <div id="calendar" class="calendar"></div>
   </section>
 </main>
 

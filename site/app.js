@@ -3,8 +3,9 @@
 // textContent only.
 import { loadData } from './data.js';
 import { parseHash, formatHash, writeAddress, applyFilters, chipCounts, defaultState } from './state.js';
-import { berlinToday, formatCheckedAt } from './dates.js';
+import { berlinToday, formatCheckedAt, monthOf, addDays, formatMonth } from './dates.js';
 import { renderTable, el, PAGE } from './table.js';
+import { renderCalendar, eventsInMonth } from './calendar.js';
 
 const STALE_HOURS = 48;
 const $ = (id) => document.getElementById(id);
@@ -12,7 +13,8 @@ const $ = (id) => document.getElementById(id);
 let data = null;
 let ctx = null;
 let state = defaultState();
-const ui = { sort: { key: 'datum', dir: 1 }, limit: PAGE, allChips: false };
+const ui = { sort: { key: 'datum', dir: 1 }, limit: PAGE, allChips: false, day: null, focusDay: null };
+const VIEW_IDS = ['tabelle', 'kalender'];
 
 function known() {
   return { sportIds: new Set(data.sports.map((s) => s.id)), clubIds: new Set(data.clubs.map((c) => c.id)) };
@@ -22,6 +24,7 @@ function known() {
 function update(patch) {
   const next = { ...state, ...patch };
   if (patch.sport || patch.verein !== undefined || patch.q !== undefined || patch.zeit) ui.limit = PAGE;
+  if (patch.monat !== undefined && patch.monat !== state.monat) ui.day = null;
   state = next;
   writeAddress(state);
   render();
@@ -124,18 +127,43 @@ function emptyState(message) {
   return box;
 }
 
-function renderResult(n) {
+function renderResult(n, suffix = '') {
   const box = $('result');
-  box.replaceChildren(el('b', null, n.toLocaleString('de-DE')), document.createTextNode(n === 1 ? ' Termin' : ' Termine'));
+  box.replaceChildren(el('b', null, n.toLocaleString('de-DE')), document.createTextNode(`${n === 1 ? ' Termin' : ' Termine'}${suffix}`));
+}
+
+/** The calendar month on screen: the hash's, else this month, clamped to the data window. */
+function shownMonth() {
+  const min = monthOf(data.window.from);
+  const max = monthOf(addDays(data.window.to, -1));
+  const ym = state.monat || monthOf(ctx.today);
+  return ym < min ? min : ym > max ? max : ym;
+}
+
+function renderTabs() {
+  for (const tab of document.querySelectorAll('[role="tab"]')) {
+    const on = tab.dataset.view === state.ansicht;
+    tab.setAttribute('aria-selected', String(on));
+    tab.tabIndex = on ? 0 : -1;
+    $(`view-${tab.dataset.view}`).hidden = !on;
+  }
+  // The quick ranges belong to the list; the calendar brings its own month.
+  $('zeit-field').hidden = state.ansicht !== 'tabelle';
 }
 
 function render() {
-  const visible = applyFilters(data.events, state, ctx);
-  renderChips(chipCounts(data.events, state, ctx));
+  renderTabs();
   renderClubField();
   renderZeit();
-  renderResult(visible.length);
   $('reset').hidden = !isFiltered();
+  if (state.ansicht === 'kalender') renderCalendarView();
+  else renderTableView();
+}
+
+function renderTableView() {
+  const visible = applyFilters(data.events, state, ctx);
+  renderChips(chipCounts(data.events, state, ctx));
+  renderResult(visible.length);
   renderTable($('table'), visible, {
     ctx,
     sort: ui.sort,
@@ -149,6 +177,35 @@ function render() {
     },
     onClub(id) { update({ verein: id }); },
     onMore() { ui.limit += PAGE; render(); },
+  });
+}
+
+function renderCalendarView() {
+  const ym = shownMonth();
+  const filtered = applyFilters(data.events, state, ctx, { skipTime: true });
+  const inMonth = eventsInMonth(data.events, ym);
+  renderChips(chipCounts(inMonth, state, ctx, { skipTime: true }));
+  renderResult(eventsInMonth(filtered, ym).length, ` im ${formatMonth(ym).split(' ')[0]}`);
+  const focus = ui.focusDay;
+  ui.focusDay = null;
+  renderCalendar($('calendar'), {
+    ym,
+    events: filtered,
+    ctx,
+    selected: ui.day,
+    focus,
+    minMonth: monthOf(data.window.from),
+    maxMonth: monthOf(addDays(data.window.to, -1)),
+    onNavigate(next, focusDate) {
+      ui.focusDay = focusDate ?? null;
+      update({ monat: next === monthOf(ctx.today) ? '' : next });
+    },
+    onSelect(date) {
+      ui.day = date === ui.day ? null : date;
+      ui.focusDay = date;
+      render();
+    },
+    onClub(id) { update({ verein: id }); },
   });
 }
 
@@ -194,6 +251,21 @@ function bind() {
     if (b) update({ zeit: b.dataset.zeit });
   });
   $('reset').addEventListener('click', resetFilters);
+
+  const tabs = document.querySelector('[role="tablist"]');
+  tabs.addEventListener('click', (e) => {
+    const tab = e.target.closest('[role="tab"]');
+    if (tab && tab.dataset.view !== state.ansicht) update({ ansicht: tab.dataset.view });
+  });
+  tabs.addEventListener('keydown', (e) => {
+    const step = { ArrowRight: 1, ArrowLeft: -1, Home: -Infinity, End: Infinity }[e.key];
+    if (step === undefined) return;
+    e.preventDefault();
+    const i = VIEW_IDS.indexOf(state.ansicht);
+    const next = VIEW_IDS[Math.max(0, Math.min(VIEW_IDS.length - 1, Number.isFinite(step) ? (i + step + VIEW_IDS.length) % VIEW_IDS.length : step < 0 ? 0 : VIEW_IDS.length - 1))];
+    update({ ansicht: next });
+    $(`tab-${next}`).focus();
+  });
 
   window.addEventListener('hashchange', () => {
     const next = parseHash(location.hash, known());

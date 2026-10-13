@@ -24,7 +24,7 @@ const site = join(root, 'site');
 const PAGES = { 'index.html': 'app.js' };
 // Each page's exact module set. A new import is a one-line change here.
 const PAGE_GRAPH = {
-  'index.html': ['app.js', 'data.js', 'state.js', 'dates.js', 'table.js'],
+  'index.html': ['app.js', 'data.js', 'state.js', 'dates.js', 'table.js', 'calendar.js'],
 };
 const MODULES = [...new Set(Object.values(PAGE_GRAPH).flat())];
 // Shipped but not part of a page's module graph yet: ics.js is the pipeline's feed writer.

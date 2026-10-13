@@ -158,7 +158,7 @@ function tableRow(e, ctx, { showDate, refYear, withPlace }) {
   return tr;
 }
 
-function card(e, ctx, refYear) {
+export function card(e, ctx, refYear) {
   const li = el('li', 'card');
   if (e.status === 'cancelled') li.classList.add('is-cancelled');
   li.style.setProperty('--sport', ctx.sportsById.get(e.sports[0])?.colour ?? '#787878');
