@@ -1,0 +1,27 @@
+{
+  "bonn-jetzt/sport": {
+    "count": 6,
+    "since": "2026-10-01",
+    "state": "ok"
+  },
+  "bonner-sc/spieltage": {
+    "count": 0,
+    "since": "2026-10-01",
+    "state": "disabled"
+  },
+  "bsv-roleber/tec": {
+    "count": 5,
+    "since": "2026-10-01",
+    "state": "ok"
+  },
+  "rc-bonn-rhein-sieg/kalender": {
+    "count": 11,
+    "since": "2026-10-01",
+    "state": "ok"
+  },
+  "telekom-baskets-bonn/spielplan": {
+    "count": 0,
+    "since": "2026-10-01",
+    "state": "disabled"
+  }
+}

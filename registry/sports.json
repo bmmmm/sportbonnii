@@ -1,0 +1,204 @@
+{
+  "sports": [
+    {
+      "colour": "#208a44",
+      "emoji": "⚽",
+      "id": "fussball",
+      "keywords": [
+        "fußball",
+        "fussball"
+      ],
+      "label": "Fußball"
+    },
+    {
+      "colour": "#c55810",
+      "emoji": "🏀",
+      "id": "basketball",
+      "keywords": [
+        "basketball"
+      ],
+      "label": "Basketball"
+    },
+    {
+      "colour": "#dc3b49",
+      "emoji": "🤾",
+      "id": "handball",
+      "keywords": [
+        "handball"
+      ],
+      "label": "Handball"
+    },
+    {
+      "colour": "#9c710d",
+      "emoji": "🏐",
+      "id": "volleyball",
+      "keywords": [
+        "volleyball",
+        "beachvolleyball"
+      ],
+      "label": "Volleyball"
+    },
+    {
+      "colour": "#0c858e",
+      "emoji": "🏑",
+      "id": "hockey",
+      "keywords": [
+        "hockey"
+      ],
+      "label": "Hockey"
+    },
+    {
+      "colour": "#9b7046",
+      "emoji": "🏈",
+      "id": "american-football",
+      "keywords": [
+        "american football",
+        "flag football"
+      ],
+      "label": "American Football"
+    },
+    {
+      "colour": "#d04189",
+      "emoji": "🏉",
+      "id": "rugby",
+      "keywords": [
+        "rugby"
+      ],
+      "label": "Rugby"
+    },
+    {
+      "colour": "#64821c",
+      "emoji": "🎾",
+      "id": "tennis",
+      "keywords": [
+        "tennis",
+        "padel"
+      ],
+      "label": "Tennis"
+    },
+    {
+      "colour": "#237cc9",
+      "emoji": "🏓",
+      "id": "tischtennis",
+      "keywords": [
+        "tischtennis"
+      ],
+      "label": "Tischtennis"
+    },
+    {
+      "colour": "#8b62d2",
+      "emoji": "🏸",
+      "id": "badminton",
+      "keywords": [
+        "badminton"
+      ],
+      "label": "Badminton"
+    },
+    {
+      "colour": "#1282a5",
+      "emoji": "🏊",
+      "id": "schwimmen",
+      "keywords": [
+        "schwimm",
+        "freiwasser"
+      ],
+      "label": "Schwimmen"
+    },
+    {
+      "colour": "#ae51c5",
+      "emoji": "🏅",
+      "id": "triathlon",
+      "keywords": [
+        "triathlon",
+        "duathlon"
+      ],
+      "label": "Triathlon"
+    },
+    {
+      "colour": "#138871",
+      "emoji": "🛶",
+      "id": "kanu",
+      "keywords": [
+        "kanu",
+        "kajak",
+        "paddel",
+        "stand-up-paddling"
+      ],
+      "label": "Kanu"
+    },
+    {
+      "colour": "#5873ce",
+      "emoji": "🚣",
+      "id": "rudern",
+      "keywords": [
+        "ruder"
+      ],
+      "label": "Rudern"
+    },
+    {
+      "colour": "#df3b22",
+      "emoji": "🏃",
+      "id": "leichtathletik",
+      "keywords": [
+        "leichtathletik",
+        "lauf",
+        "stadtlauf",
+        "volkslauf",
+        "marathon",
+        "halbmarathon",
+        "walking",
+        "joggen"
+      ],
+      "label": "Leichtathletik & Laufen"
+    },
+    {
+      "colour": "#c840ad",
+      "emoji": "🤸",
+      "id": "turnen",
+      "keywords": [
+        "turnen",
+        "turnfest",
+        "gymnastik",
+        "yoga",
+        "pilates"
+      ],
+      "label": "Turnen & Gymnastik"
+    },
+    {
+      "colour": "#89780f",
+      "emoji": "🚴",
+      "id": "radsport",
+      "keywords": [
+        "radsport",
+        "radtour",
+        "radrennen",
+        "fahrrad",
+        "mountainbike",
+        "critical mass"
+      ],
+      "label": "Radsport"
+    },
+    {
+      "colour": "#677a95",
+      "emoji": "🥋",
+      "id": "kampfsport",
+      "keywords": [
+        "kampfsport",
+        "judo",
+        "karate",
+        "taekwondo",
+        "boxen",
+        "kickbox",
+        "selbstverteidigung"
+      ],
+      "label": "Kampfsport"
+    },
+    {
+      "colour": "#787878",
+      "emoji": "🎽",
+      "id": "sonstiges",
+      "keywords": [],
+      "label": "Sonstiges"
+    }
+  ]
+}

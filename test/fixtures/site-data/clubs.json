@@ -1,0 +1,188 @@
+{
+  "clubs": [
+    {
+      "active": true,
+      "aliases": [
+        "Bonn Gamecocks",
+        "Gamecocks"
+      ],
+      "id": "bonn-gamecocks",
+      "name": "Bonn Gamecocks",
+      "sources": [],
+      "sports": [
+        "american-football"
+      ],
+      "website": "https://gamecocks.de/"
+    },
+    {
+      "active": true,
+      "aliases": [
+        "Bonner SC",
+        "Bonner Sport-Club"
+      ],
+      "district": "Bonn",
+      "id": "bonner-sc",
+      "name": "Bonner SC",
+      "sources": [
+        {
+          "enabled": false,
+          "id": "spieltage",
+          "type": "ical",
+          "url": "https://calovo.de/f/bonner-sc/spieltage"
+        }
+      ],
+      "sports": [
+        "fussball"
+      ],
+      "website": "https://www.bonner-sc.de/"
+    },
+    {
+      "active": true,
+      "aliases": [
+        "Bonner THV",
+        "BTHV",
+        "Rugby Bonn"
+      ],
+      "id": "bonner-thv",
+      "name": "Bonner THV",
+      "sources": [],
+      "sports": [
+        "rugby",
+        "hockey",
+        "tennis"
+      ],
+      "website": "https://www.bthv.de/"
+    },
+    {
+      "active": true,
+      "aliases": [
+        "BSV Roleber",
+        "Roleber"
+      ],
+      "district": "Beuel",
+      "id": "bsv-roleber",
+      "name": "BSV Roleber",
+      "sources": [
+        {
+          "id": "tec",
+          "type": "tec",
+          "url": "https://bsvroleber.de/wp-json/tribe/events/v1/events"
+        }
+      ],
+      "sports": [
+        "fussball"
+      ],
+      "website": "https://bsvroleber.de/"
+    },
+    {
+      "active": true,
+      "aliases": [
+        "Blau-Weiss Bonn",
+        "BWB Kanu"
+      ],
+      "district": "Bonn",
+      "id": "bwb-kanu",
+      "name": "Blau-Weiss Bonn Kanu",
+      "sources": [],
+      "sports": [
+        "kanu"
+      ],
+      "website": "https://bwb-kanu.de/"
+    },
+    {
+      "active": true,
+      "aliases": [
+        "PSV Bonn"
+      ],
+      "id": "psv-bonn-tischtennis",
+      "name": "PSV Bonn Tischtennis",
+      "sources": [],
+      "sports": [
+        "tischtennis"
+      ],
+      "website": "http://www.psvtt.de/"
+    },
+    {
+      "active": true,
+      "aliases": [
+        "Rugby Club Bonn-Rhein-Sieg",
+        "RC Bonn-Rhein-Sieg",
+        "RCBRS"
+      ],
+      "district": "Bad Godesberg",
+      "id": "rc-bonn-rhein-sieg",
+      "name": "Rugby Club Bonn-Rhein-Sieg",
+      "sources": [
+        {
+          "id": "kalender",
+          "type": "ical",
+          "url": "https://calendar.google.com/calendar/ical/qo6kqa6o5e7l2hm5r92fn16ne4%40group.calendar.google.com/public/basic.ics"
+        }
+      ],
+      "sports": [
+        "rugby"
+      ],
+      "website": "https://rcbrs.de/"
+    },
+    {
+      "active": true,
+      "aliases": [
+        "SSF Bonn",
+        "Schwimm- und Sportfreunde Bonn"
+      ],
+      "district": "Bonn",
+      "id": "ssf-bonn",
+      "name": "SSF Bonn",
+      "sources": [],
+      "sports": [
+        "schwimmen",
+        "triathlon",
+        "leichtathletik"
+      ],
+      "website": "https://ssfbonn.de/"
+    },
+    {
+      "active": true,
+      "aliases": [
+        "Telekom Baskets",
+        "Baskets Bonn"
+      ],
+      "district": "Hardtberg",
+      "id": "telekom-baskets-bonn",
+      "name": "Telekom Baskets Bonn",
+      "sources": [
+        {
+          "enabled": false,
+          "id": "spielplan",
+          "type": "ical",
+          "url": "https://calovo.de/f/telekom-baskets-bonn/spielplan"
+        }
+      ],
+      "sports": [
+        "basketball"
+      ],
+      "website": "https://www.telekom-baskets-bonn.de/"
+    }
+  ],
+  "platforms": [
+    {
+      "id": "bonn-jetzt",
+      "name": "bonn.jetzt",
+      "sources": [
+        {
+          "exclude": [
+            "Demonstration"
+          ],
+          "id": "sport",
+          "tagMap": {
+            "Fahrrad": "radsport",
+            "Laufen": "leichtathletik"
+          },
+          "type": "gancio",
+          "url": "https://bonn.jetzt/api/events?tags=Sport"
+        }
+      ],
+      "website": "https://bonn.jetzt/"
+    }
+  ]
+}
