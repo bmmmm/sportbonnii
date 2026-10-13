@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f6f5f1" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)">
+<meta name="description" content="Alle Termine der Bonner Sportvereine an einem Ort: Spiele, Training, Camps und Vereinsfeste – als Tabelle, Kalender und Vereinsverzeichnis, filterbar nach Sportart.">
+<link rel="icon" href="favicon.ico">
+<link rel="stylesheet" href="style.css">
+<script type="module" src="app.js"></script>
+<title>Sport in Bonn – Termine der Bonner Sportvereine · sportbonnii</title>
+</head>
+<body>
+<a class="skip" href="#main">Zum Inhalt springen</a>
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a class="brand" href="./" aria-label="sportbonnii – Startseite">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span class="brand-name">sport<b>bonnii</b></span>
+    </a>
+    <p class="tagline">Alle Termine der Bonner Sportvereine – an einem Ort.</p>
+    <p class="checked" id="checked" aria-live="polite">Termine werden geladen …</p>
+  </div>
+</header>
+
+<div class="wrap">
+  <p class="banner warn" id="stale" role="status" hidden></p>
+  <p class="banner error" id="load-error" role="alert" hidden></p>
+</div>
+
+<main id="main" class="wrap" tabindex="-1">
+  <section class="filters" aria-label="Filter">
+    <div class="chip-head">
+      <h2 class="filter-title" id="sport-title">Sportarten</h2>
+      <button type="button" class="link-button" id="sport-clear" hidden>Alle Sportarten</button>
+    </div>
+    <div class="chips" id="sport-chips" role="group" aria-labelledby="sport-title"></div>
+
+    <div class="filter-row">
+      <div class="field field-club">
+        <label for="f-club">Verein</label>
+        <div class="input-wrap">
+          <input id="f-club" type="text" list="club-list" autocomplete="off" spellcheck="false" placeholder="Alle Vereine">
+          <button type="button" class="clear" id="f-club-clear" aria-label="Vereinsfilter entfernen" hidden>×</button>
+        </div>
+        <datalist id="club-list"></datalist>
+      </div>
+      <div class="field field-search">
+        <label for="f-q">Suche</label>
+        <div class="input-wrap">
+          <input id="f-q" type="search" autocomplete="off" placeholder="z. B. Camp, Turnier, Heimspiel">
+        </div>
+      </div>
+      <div class="field field-zeit" id="zeit-field">
+        <span class="field-label" id="zeit-label">Zeitraum</span>
+        <div class="segmented" id="f-zeit" role="group" aria-labelledby="zeit-label">
+          <button type="button" data-zeit="heute" aria-pressed="false">Heute</button>
+          <button type="button" data-zeit="woche" aria-pressed="false">Diese Woche</button>
+          <button type="button" data-zeit="monat" aria-pressed="false">Dieser Monat</button>
+          <button type="button" data-zeit="alle" aria-pressed="true">Alle</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="view-bar">
+    <div class="tabs" role="tablist" aria-label="Ansicht">
+      <button type="button" role="tab" id="tab-tabelle" data-view="tabelle" aria-controls="view-tabelle" aria-selected="true">Tabelle</button>
+    </div>
+    <p class="result" id="result" aria-live="polite"></p>
+    <button type="button" class="link-button" id="reset" hidden>Filter zurücksetzen</button>
+  </div>
+
+  <section class="view" id="view-tabelle" role="tabpanel" aria-labelledby="tab-tabelle">
+    <div id="table"></div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap footer-inner">
+    <p>
+      Die Termine stammen aus den öffentlichen Kalendern der Vereine und von
+      <a href="https://bonn.jetzt/">bonn.jetzt</a>; jeder Termin verlinkt auf seine Quelle.
+      Angaben ohne Gewähr – maßgeblich ist der Verein.
+    </p>
+    <ul class="footer-links">
+      <li><a href="https://github.com/bmmmm/sportbonnii/issues/new?template=verein-hinzufuegen.yml">Verein vorschlagen</a></li>
+      <li><a href="https://github.com/bmmmm/sportbonnii">Quellcode</a></li>
+      <li><a href="https://github.com/bmmmm/sportbonnii/blob/main/LICENSE">Lizenz: GPL-3.0-or-later</a></li>
+    </ul>
+  </div>
+</footer>
+</body>
+</html>

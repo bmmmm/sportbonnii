@@ -7,17 +7,9 @@ import { escapeText, foldLine, formatUtcDateTime, serializeFeed } from '../site/
 import { parseIcal } from '../pipeline/adapters/ical.mjs';
 import { windowMs } from '../pipeline/model.mjs';
 import { toBerlinIso } from '../pipeline/tz.mjs';
+import { FEED_OPTS } from './helpers/feed-opts.mjs';
 
-const EVENTS = readFileSync(new URL('./fixtures/site-data/events.json', import.meta.url), 'utf8');
-const doc = JSON.parse(EVENTS);
-const sports = JSON.parse(readFileSync(new URL('./fixtures/site-data/sports.json', import.meta.url), 'utf8')).sports;
-const clubs = JSON.parse(readFileSync(new URL('./fixtures/site-data/clubs.json', import.meta.url), 'utf8')).clubs;
-export const FEED_OPTS = {
-  name: 'Sport in Bonn – alle Termine',
-  windowFrom: doc.window.from,
-  labels: Object.fromEntries(sports.map((s) => [s.id, s.label])),
-  clubNames: Object.fromEntries(clubs.map((c) => [c.id, c.name])),
-};
+const doc = JSON.parse(readFileSync(new URL('./fixtures/site-data/events.json', import.meta.url), 'utf8'));
 
 test('escapeText: backslash first, then ; , and newlines; control characters dropped', () => {
   assert.equal(escapeText('a\\b;c,d\ne\r\nf\x07'), 'a\\\\b\\;c\\,d\\ne\\nf');
