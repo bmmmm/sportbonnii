@@ -281,7 +281,7 @@ function ymd(date) {
 export async function fetchEvents(source, ctx) {
   // A subscription feed: fetched the way a calendar client does (see net.mjs).
   const res = await ctx.get(source.url, { accept: 'text/calendar, text/plain;q=0.8, */*;q=0.5', robots: false });
-  const body = res.body.replace(/^﻿/, '');
+  const body = res.body.replace(/^\uFEFF/, '');
   if (!/^\s*BEGIN:VCALENDAR/i.test(body)) throw new Error('response is not an iCalendar document (no BEGIN:VCALENDAR)');
   return parseIcal(body, windowMs(ctx.window));
 }

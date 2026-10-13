@@ -88,6 +88,14 @@ test('aliases match whole words, longest first, diacritics folded', () => {
   assert.equal(fold('Fußball Übungsleiter'), 'fussball ubungsleiter');
 });
 
+test('a description that is only a link becomes the event link', () => {
+  const e = asClub({ description: 'https://rcbrs.de/en/teams/youth/' });
+  assert.equal(e.url, 'https://rcbrs.de/en/teams/youth/');
+  assert.equal(e.description, null);
+  const own = asClub({ description: 'https://a.example/x', url: 'https://b.example/y' });
+  assert.equal(own.url, 'https://b.example/y', 'an explicit url wins');
+});
+
 test('urls: only http(s) survive', () => {
   assert.equal(asClub({ url: 'javascript:alert(1)' }).url, null);
   assert.equal(asClub({ url: 'https://club.example/e/1' }).url, 'https://club.example/e/1');

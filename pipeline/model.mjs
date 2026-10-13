@@ -154,7 +154,13 @@ export function normalizeEvent(raw, { owner, kind, source, ctx, window }) {
   sports = uniqueInOrder(sports.filter((s) => ctx.sportIds.has(s)), ctx.order);
   if (!sports.length) sports = ['sonstiges'];
 
-  const description = clip(String(raw.description ?? '').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim(), MAX_DESCRIPTION) || null;
+  let description = clip(String(raw.description ?? '').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim(), MAX_DESCRIPTION) || null;
+  let url = safeHttpUrl(raw.url) ?? null;
+  // A description that is nothing but a link (Google calendars do this) is the event's link.
+  if (description && /^https?:\/\/\S+$/.test(description)) {
+    url ??= safeHttpUrl(description);
+    description = null;
+  }
   const location = tidyLocation(raw.location);
   return {
     id: eventId(sourceKey, String(raw.uid), raw.recurrenceId ?? ''),
@@ -165,7 +171,7 @@ export function normalizeEvent(raw, { owner, kind, source, ctx, window }) {
     end,
     allDay: Boolean(raw.allDay),
     location,
-    url: safeHttpUrl(raw.url) ?? null,
+    url,
     description,
     source: sourceKey,
     status: raw.status === 'cancelled' ? 'cancelled' : 'confirmed',

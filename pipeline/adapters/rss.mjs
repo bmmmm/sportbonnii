@@ -25,7 +25,7 @@ function attr(tag, name) {
 
 /** [{ link, title, publishedMs }] from an RSS 2.0 or Atom body. */
 export function feedItems(xml) {
-  const body = xml.replace(/^﻿/, '');
+  const body = xml.replace(/^\uFEFF/, '');
   const dateMs = (s) => { const t = s ? Date.parse(s) : NaN; return Number.isNaN(t) ? null : t; };
   if (/<rss\b/i.test(body) || /<channel\b/i.test(body)) {
     return blocks(body, 'item').map((item) => {
