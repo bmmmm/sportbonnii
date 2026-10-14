@@ -105,3 +105,30 @@ test('title tokens: folded, stop words and short tokens out', () => {
   assert.equal(tokenOverlap('Training', 'Kuchenverkauf'), 0);
   assert.equal(tokenOverlap('', 'x'), 0);
 });
+
+test('switching between error and blocked keeps the outage start', () => {
+  const prev = { events: [ev(A, 'x')], status: { [A]: { state: 'error', since: '2026-10-07', count: 1, error: 'HTTP 500' } } };
+  const r = run([[A, { state: 'blocked', events: [], error: 'robots.txt' }], [B, { state: 'ok', events: [] }]], prev, '2026-10-15');
+  assert.equal(r.status[A].since, '2026-10-07');
+  assert.equal(r.events.length, 0, 'retention counts from the first failure: 8 days, dropped');
+});
+
+test('previous events are fitted to the current registry', () => {
+  const known = { sportIds: new Set(['rugby', 'sonstiges']), clubIds: new Set(['rc-bonn-rhein-sieg']) };
+  const prev = {
+    events: [ev(A, 'kept'), ev(A, 'renamed', { sports: ['rugby-union'], start: '2026-10-18T15:00:00+02:00' }), ev('gone-club/feed', 'orphan', { start: '2026-10-19T15:00:00+02:00' })],
+    status: { [A]: { state: 'ok', since: '2026-10-01', count: 2 } },
+  };
+  const r = mergeRun({ results: new Map([[A, { state: 'error', events: [], error: 'down' }], [B, { state: 'ok', events: [] }]]), previous: prev, order, window: WINDOW, today: '2026-10-14', known });
+  assert.deepEqual(r.events.map((e) => [e.id, e.sports.join()]), [[eventId(A, 'kept'), 'rugby'], [eventId(A, 'renamed'), 'sonstiges']]);
+  const outage = mergeRun({ results: new Map([[A, { state: 'error', events: [], error: 'down' }]]), previous: prev, order, window: WINDOW, today: '2026-10-14', known });
+  assert.equal(outage.allFailed, true);
+  assert.ok(!outage.events.some((e) => e.source === 'gone-club/feed'), 'a removed source never comes back, not even in an outage');
+});
+
+test('a retained multi-day event that began before the window stays while it lasts into it', () => {
+  const camp = ev(A, 'camp', { start: '2026-08-30T10:00:00+02:00', end: '2026-09-03T16:00:00+02:00' });
+  const prev = { events: [camp], status: { [A]: { state: 'ok', since: '2026-08-01', count: 1 } } };
+  const r = run([[A, { state: 'error', events: [], error: 'down' }], [B, { state: 'ok', events: [] }]], prev);
+  assert.deepEqual(r.events.map((e) => e.id), [camp.id]);
+});

@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { parseIcal, fetchEvents } from '../pipeline/adapters/ical.mjs';
+import { parseIcal, fetchEvents, descriptionText } from '../pipeline/adapters/ical.mjs';
 import { windowMs } from '../pipeline/model.mjs';
 import { toBerlinIso } from '../pipeline/tz.mjs';
 
@@ -103,4 +103,17 @@ test('the captured Rugby Club Google feed: a VTIMEZONE feed, weekly trainings ke
   assert.ok(touch.includes('2026-10-19T19:00:00+02:00') && touch.includes('2026-10-26T19:00:00+01:00'), touch.join());
   const hours = r.events.filter((e) => !e.allDay).map((e) => Number(at(e).slice(11, 13)));
   assert.ok(hours.every((h) => h >= 6 && h <= 23), 'every timed start between 06 and 23 h');
+  // Google stores DESCRIPTION as HTML; no markup may survive into the plain-text field.
+  assert.ok(r.events.some((e) => e.description === 'https://rcbrs.de/en/teams/touch/'), 'an <a> description becomes its bare URL');
+  assert.ok(r.events.every((e) => !/<[a-z][^>]*>/i.test(e.description)), 'no HTML left in any description');
+});
+
+test('descriptions: real HTML is converted, plain text with angle brackets is kept', () => {
+  assert.equal(descriptionText('Anmeldung bei Max Muster <max@verein.de>'), 'Anmeldung bei Max Muster <max@verein.de>');
+  assert.equal(descriptionText('Treffpunkt <Halle 3>, danach Grillen'), 'Treffpunkt <Halle 3>, danach Grillen');
+  assert.equal(descriptionText('Bitte <b>pünktlich</b>.<br>Danke &amp; bis dann'), 'Bitte pünktlich.\nDanke & bis dann');
+  const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:x', 'BEGIN:VEVENT', 'UID:l@t', 'DTSTART:20261020T160000Z',
+    'SUMMARY:Sichtung', 'DESCRIPTION:<a href="https://club.example/anmeldung">Hier anmelden</a>', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
+  const [e] = parseIcal(ics, windowMs(WINDOW)).events;
+  assert.deepEqual([e.description, e.url], ['Hier anmelden', 'https://club.example/anmeldung'], 'the link survives as the url');
 });

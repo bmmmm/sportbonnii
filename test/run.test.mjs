@@ -7,7 +7,9 @@ import { mkdtemp, mkdir, readFile, readdir, writeFile, copyFile } from 'node:fs/
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { run } from '../pipeline/run.mjs';
+import { run, normalizeAll } from '../pipeline/run.mjs';
+import { loadRegistry } from '../pipeline/registry.mjs';
+import { buildContext } from '../pipeline/model.mjs';
 import { canonicalJson, canonicalClubs } from '../pipeline/registry.mjs';
 import { checkSiteData } from '../pipeline/contract.mjs';
 
@@ -129,4 +131,30 @@ test('an invalid registry stops the run', async () => {
   await writeFile(join(dir, 'clubs.json'), (await readFile(join(dir, 'clubs.json'), 'utf8')).replace('"rc-test"', '"off-test"'));
   await mkdir(join(dir, 'x'), { recursive: true });
   await assert.rejects(run(opts(await mkdtemp(join(tmpdir(), 'sb-bad-')), dir, servingFetch({}))), /invalid registry/);
+});
+
+test('one hostile item in a feed costs that item, not the run', async () => {
+  const reg = await tempRegistry({
+    clubs: [{ id: 'g-club', name: 'G Club', sports: ['radsport'], website: 'https://g.example/', sources: [{ id: 'termine', type: 'gancio', url: 'https://g.example/api/events' }] }],
+    platforms: [],
+  });
+  const items = [
+    { id: 1, title: 'Kaputt', slug: 'kaputt', start_datetime: 1e16 },
+    { id: 2, title: 'Ausfahrt', slug: 'ausfahrt', start_datetime: Date.parse('2026-10-20T16:00:00Z') / 1000 },
+  ];
+  const fetchImpl = async (url) => (String(url).endsWith('/robots.txt') ? new Response('', { status: 404 }) : new Response(JSON.stringify(items)));
+  const r = await run(opts(await mkdtemp(join(tmpdir(), 'sb-hostile-')), reg, fetchImpl));
+  assert.equal(r.status['g-club/termine'].state, 'ok');
+  assert.deepEqual(r.events.map((e) => e.title), ['Ausfahrt']);
+});
+
+test('normalizeAll: an item that throws is skipped with a warning, duplicates collapse', async () => {
+  const registry = await loadRegistry();
+  const owner = registry.clubs.find((c) => c.id === 'bsv-roleber');
+  const good = { uid: 'g', recurrenceId: '', title: 'Training', allDay: false, startMs: Date.parse('2026-10-20T17:00:00Z'), endMs: null, tags: [] };
+  const broken = { ...good, uid: 'b', tags: 'not-a-list' }; // .map on a string throws inside normalizeEvent
+  const r = normalizeAll({ events: [good, broken, good], warnings: ['w0'] }, { owner, kind: 'club', source: owner.sources[0], ctx: buildContext(registry), window: { from: '2026-09-01', to: '2027-11-01' } });
+  assert.deepEqual(r.events.map((e) => e.title), ['Training']);
+  assert.equal(r.warnings[0], 'w0');
+  assert.match(r.warnings[1], /skipped an event \(b\)/);
 });

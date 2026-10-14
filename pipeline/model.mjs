@@ -12,6 +12,8 @@ import { MAX_TITLE, MAX_DESCRIPTION } from './contract.mjs';
 import { toBerlinIso, berlinDate, addDays, berlinMidnight } from './tz.mjs';
 import { safeHttpUrl } from './text.mjs';
 
+const validMs = (ms) => Number.isFinite(ms) && Math.abs(ms) <= 8.64e15;
+
 /** sha256(source, uid, recurrenceId), first 16 hex digits. */
 export function eventId(sourceKey, uid, recurrenceId = '') {
   return createHash('sha256').update(`${sourceKey}\0${uid}\0${recurrenceId}`).digest('hex').slice(0, 16);
@@ -130,9 +132,10 @@ export function normalizeEvent(raw, { owner, kind, source, ctx, window }) {
     start = raw.startDate;
     end = /^\d{4}-\d{2}-\d{2}$/.test(raw.endDate ?? '') && raw.endDate > start ? raw.endDate : addDays(start, 1);
   } else {
-    if (!Number.isFinite(raw.startMs)) return null;
+    // ±8.64e15 ms is the Date range; beyond it every formatter throws.
+    if (!validMs(raw.startMs)) return null;
     start = toBerlinIso(raw.startMs);
-    end = Number.isFinite(raw.endMs) && raw.endMs > raw.startMs ? toBerlinIso(raw.endMs) : null;
+    end = validMs(raw.endMs) && raw.endMs > raw.startMs ? toBerlinIso(raw.endMs) : null;
   }
   const firstDay = raw.allDay ? start : berlinDate(raw.startMs);
   const lastDay = raw.allDay ? addDays(end, -1) : end ? berlinDate(raw.endMs - 1) : firstDay;

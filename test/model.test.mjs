@@ -31,6 +31,11 @@ test('timed events: Berlin offset, end before start becomes null', () => {
   assert.notEqual(asClub({ recurrenceId: 'x' }).id, e.id);
 });
 
+test('instants outside the Date range are dropped, not thrown', () => {
+  assert.equal(asClub({ startMs: 1e19 }), null);
+  assert.equal(asClub({ startMs: ms('2026-10-20T17:00:00Z'), endMs: 1e19 }).end, null);
+});
+
 test('all-day: exclusive end, missing or broken end means one day', () => {
   const two = asClub({ allDay: true, startDate: '2026-11-21', endDate: '2026-11-23' });
   assert.deepEqual([two.start, two.end, two.allDay], ['2026-11-21', '2026-11-23', true]);
@@ -86,6 +91,13 @@ test('aliases match whole words, longest first, diacritics folded', () => {
   assert.equal(clubByAlias(ctx, 'Basketsbonner'), null);
   assert.equal(clubByAlias(ctx, 'Treffen', 'Halle des PSV Bonn')?.id, 'psv-bonn-tischtennis');
   assert.equal(fold('Fußball Übungsleiter'), 'fussball ubungsleiter');
+  assert.equal(clubByAlias(ctx, 'Rugby Bonn-Rhein-Sieg gegen Köln')?.id, 'rc-bonn-rhein-sieg', 'the longer alias outranks Bonner THV\'s "Rugby Bonn"');
+  for (const [text, id] of [['Gamecocks-Heimspiel gegen Köln', 'bonn-gamecocks'], ['BTHV-Sommerfest', 'bonner-thv'], ['SSF Bonn-Schwimmfest', 'ssf-bonn']]) {
+    assert.equal(clubByAlias(ctx, text)?.id, id, `German compounds keep their club: ${text}`);
+  }
+  assert.equal(clubByAlias(ctx, 'Heimspiel des RC Bonn-Rhein-Sieg')?.id, 'rc-bonn-rhein-sieg');
+  assert.equal(clubByAlias(ctx, 'Rugby Bonn lädt ein')?.id, 'bonner-thv');
+  assert.equal(clubByAlias(ctx, 'Lauftreff', 'Sportplatz Bonn-Roleber'), null, 'a place name is not a club');
 });
 
 test('a description that is only a link becomes the event link', () => {
@@ -114,6 +126,9 @@ test('tz: Berlin offsets across DST, gaps, window boundaries', () => {
   assert.equal(toBerlinIso(ms('2026-10-25T00:30:00Z')), '2026-10-25T02:30:00+02:00');
   assert.equal(toBerlinIso(ms('2026-10-25T01:30:00Z')), '2026-10-25T02:30:00+01:00');
   assert.equal(toBerlinIso(zonedToUtc({ year: 2026, month: 3, day: 29, hour: 2, minute: 30 })), '2026-03-29T03:30:00+02:00', 'DST gap → one hour later');
+  assert.equal(toBerlinIso(zonedToUtc({ year: 2026, month: 10, day: 25, hour: 2, minute: 30 })), '2026-10-25T02:30:00+02:00', 'DST overlap → the first occurrence (RFC 5545)');
+  assert.equal(toBerlinIso(zonedToUtc({ year: 2026, month: 10, day: 25, hour: 3, minute: 0 })), '2026-10-25T03:00:00+01:00');
+  assert.equal(toBerlinIso(zonedToUtc({ year: 2026, month: 7, day: 1, hour: 12 }, 'America/New_York')), '2026-07-01T18:00:00+02:00');
   assert.equal(berlinDate(ms('2026-10-13T22:30:00Z')), '2026-10-14');
   assert.deepEqual(windowFor('2026-10-14'), { from: '2026-09-01', to: '2027-11-01' });
   assert.deepEqual(windowFor('2027-01-31'), { from: '2026-12-01', to: '2028-02-01' });

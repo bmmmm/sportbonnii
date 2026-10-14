@@ -142,20 +142,13 @@ export async function run(opts = {}) {
       log(`${key}: ${blocked ? 'blocked' : 'error'} — ${e.message}`);
       return;
     }
-    const seen = new Set();
-    const events = [];
-    for (const raw of r.events) {
-      const e = normalizeEvent(raw, { owner, kind, source, ctx, window });
-      if (!e) continue;
-      if (seen.has(e.id)) continue;
-      seen.add(e.id);
-      events.push(e);
-    }
-    for (const w of r.warnings ?? []) warnings.push(`${key}: ${w}`);
+    const { events, warnings: sink } = normalizeAll(r, { owner, kind, source, ctx, window });
+    for (const w of sink) warnings.push(`${key}: ${w}`);
     results.set(key, { state: r.partial ? 'partial' : 'ok', events, ...(r.partial ? { error: r.partial.reason } : {}) });
   });
 
-  const merged = mergeRun({ results, previous, order, window, today });
+  const known = { sportIds: new Set(registry.sports.map((s) => s.id)), clubIds: new Set(registry.clubs.map((c) => c.id)) };
+  const merged = mergeRun({ results, previous, order, window, today, known });
   warnings.push(...merged.warnings);
   if (merged.events.length > WARN_ABOVE) warnings.push(`${merged.events.length} events — above ${WARN_ABOVE}, the table starts to get heavy`);
 
@@ -163,6 +156,29 @@ export async function run(opts = {}) {
   const summary = summarize({ results, merged, previous, order });
   for (const w of warnings) log(`warning: ${w}`);
   return { events: merged.events, status: merged.status, summary, warnings, window };
+}
+
+/**
+ * An adapter result → unique events.json entries plus warnings. One broken
+ * item costs that item, never the source or the run.
+ */
+export function normalizeAll(result, opts) {
+  const seen = new Set();
+  const events = [];
+  const warnings = [...(result.warnings ?? [])];
+  for (const raw of result.events) {
+    let e;
+    try {
+      e = normalizeEvent(raw, opts);
+    } catch (err) {
+      warnings.push(`skipped an event (${String(raw?.uid ?? '?').slice(0, 60)}): ${err.message}`);
+      continue;
+    }
+    if (!e || seen.has(e.id)) continue;
+    seen.add(e.id);
+    events.push(e);
+  }
+  return { events, warnings };
 }
 
 /** Registry copy for the page: notes stripped. */
@@ -209,7 +225,9 @@ function summarize({ results, merged, previous, order }) {
     const before = prevCount.get(key) ?? 0;
     const delta = s.count - before;
     const sign = delta > 0 ? `+${delta}` : delta < 0 ? `−${-delta}` : '±0';
-    return `| ${key} | ${s.state} | ${s.count} | ${previous ? sign : 'new'} | ${(s.error ?? results.get(key)?.error ?? '').replace(/\|/g, '/')} |`;
+    // Foreign error text goes into the CI job summary: code-quote it so it cannot become markup.
+    const note = String(s.error ?? results.get(key)?.error ?? '').replace(/[`|\r\n]/g, ' ').slice(0, 200);
+    return `| ${key} | ${s.state} | ${s.count} | ${previous ? sign : 'new'} | ${note ? `\`${note}\`` : ''} |`;
   });
   const total = merged.events.length;
   const before = previous?.events.length ?? 0;

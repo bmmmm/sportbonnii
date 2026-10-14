@@ -21,9 +21,10 @@ test('private and internal targets are recognised', () => {
   const priv = ['http://127.0.0.1/', 'http://10.1.2.3/', 'http://172.16.0.1/', 'http://192.168.1.1/', 'http://169.254.169.254/',
     'http://100.64.0.1/', 'http://0.0.0.0/', 'http://224.0.0.1/', 'http://localhost/', 'http://localhost./', 'http://x.localhost/',
     'http://nas.local/', 'http://db.internal/', 'http://router.lan/', 'http://[::1]/', 'http://[::ffff:10.0.0.1]/',
-    'http://[fe80::1]/', 'http://[fc00::1]/', 'http://[64:ff9b::a9fe:a9fe]/', 'http://[2002:a00:1::]/', 'not a url'];
+    'http://[fe80::1]/', 'http://[fc00::1]/', 'http://[64:ff9b::a9fe:a9fe]/', 'http://[2002:a00:1::]/', 'not a url',
+    'http://192.0.2.10/', 'http://198.18.0.1/', 'http://198.51.100.7/', 'http://203.0.113.9/', 'http://192.0.0.8/', 'http://[2001:db8::1]/', 'http://[2001:0:4136::1]/'];
   for (const u of priv) assert.equal(hostLooksPrivate(u), true, u);
-  for (const u of ['https://bonn.jetzt/', 'https://93.184.216.34/', 'https://[2606:4700::1111]/', 'https://calendar.google.com/']) {
+  for (const u of ['https://bonn.jetzt/', 'https://93.184.216.34/', 'https://[2606:4700::1111]/', 'https://calendar.google.com/', 'https://192.0.32.10/', 'https://198.51.7.1/', 'https://203.0.1.1/']) {
     assert.equal(hostLooksPrivate(u), false, u);
   }
   assert.equal(ipLooksPrivate('10.0.0.5', 4), true);
@@ -79,6 +80,12 @@ test('robots.txt: own group beats *, longest match wins, Allow wins ties, $ anch
   assert.equal(robotsAllows(rules, '/events'), true);
   assert.equal(robotsAllows(rules, '/private/x'), false);
   assert.equal(robotsAllows(rules, '/private/public/x'), true);
+  const versioned = parseRobots('User-agent: Sportbonnii/1.0\nDisallow: /x\n\nUser-agent: *\nDisallow: /\n');
+  assert.equal(robotsAllows(versioned, '/events'), true, 'a versioned product token names us');
+  for (const other of ['port', 'sport', 'bonnii', '']) {
+    const rules = parseRobots(`User-agent: ${other}\nDisallow: /\n\nUser-agent: *\nAllow: /\n`);
+    assert.equal(robotsAllows(rules, '/events'), true, `"${other}" is not our token`);
+  }
   const google = parseRobots('User-agent: *\nAllow: /$\nDisallow: /\n');
   assert.equal(robotsAllows(google, '/'), true);
   assert.equal(robotsAllows(google, '/calendar/ical/x/public/basic.ics'), false);
@@ -127,4 +134,48 @@ test('encoding: header charset, then meta sniff', async () => {
   const routes = { 'https://old.example/': new Response(latin1, { headers: { 'content-type': 'text/html' } }) };
   const net = createNet(quiet({ fetchImpl: fakeFetch(routes) }));
   assert.match((await net.get('https://old.example/', { robots: false })).body, /Füß$/);
+});
+
+test('robots.txt that answers 5xx means do not crawl; 4xx means no rules', async () => {
+  const down = createNet(quiet({ fetchImpl: fakeFetch({ 'https://down.example/robots.txt': new Response('', { status: 503 }), 'https://down.example/x': new Response('ok') }) }));
+  await assert.rejects(down.get('https://down.example/x'), (e) => e.kind === 'error' && /robots\.txt of down\.example unavailable/.test(e.message));
+  assert.equal((await down.get('https://down.example/x', { robots: false })).body, 'ok');
+  const gone = createNet(quiet({ fetchImpl: fakeFetch({ 'https://gone.example/robots.txt': new Response('', { status: 410 }), 'https://gone.example/x': new Response('ok') }) }));
+  assert.equal((await gone.get('https://gone.example/x')).body, 'ok');
+});
+
+test('a robots.txt over 512 KiB is cut and parsed, not refused', async () => {
+  const big = 'User-agent: *\nDisallow: /private\n' + '# filler\n'.repeat(80_000);
+  const routes = { 'https://big.example/robots.txt': new Response(big), 'https://big.example/events': new Response('ok') };
+  const net = createNet(quiet({ fetchImpl: fakeFetch(routes) }));
+  assert.equal((await net.get('https://big.example/events')).body, 'ok');
+  await assert.rejects(net.get('https://big.example/private/x'), /robots\.txt/);
+});
+
+test('the timeout starts when the request holds its host slot, not while it queues', async () => {
+  let clock = 0;
+  const budgets = [];
+  const real = AbortSignal.timeout;
+  AbortSignal.timeout = (ms) => { budgets.push(ms); return real.call(AbortSignal, 60_000); };
+  try {
+    const fetchImpl = async () => { clock += 15_000; return new Response('ok'); };
+    const net = createNet({ fetchImpl, lookupImpl: PUBLIC, now: () => clock, sleep: async (ms) => { clock += ms; }, minGapMs: 1000, timeoutMs: 20_000 });
+    await Promise.all([1, 2, 3].map((i) => net.get(`https://slow.example/${i}`, { robots: false })));
+  } finally {
+    AbortSignal.timeout = real;
+  }
+  assert.deepEqual(budgets, [20_000, 20_000, 20_000], 'the third request, queued 32 s behind two slow ones, still gets its own 20 s');
+});
+
+test('the request budget counts get() calls, not robots.txt or redirect hops', async () => {
+  const routes = {
+    'https://b.example/robots.txt': new Response('User-agent: *\nAllow: /\n'),
+    'https://b.example/a': new Response('', { status: 301, headers: { location: '/a/' } }),
+    'https://b.example/a/': new Response('one'),
+    'https://b.example/b': new Response('two'),
+  };
+  const net = createNet(quiet({ fetchImpl: fakeFetch(routes), maxRequests: 2 }));
+  assert.equal((await net.get('https://b.example/a')).body, 'one');
+  assert.equal((await net.get('https://b.example/b')).body, 'two');
+  await assert.rejects(net.get('https://b.example/b'), /budget of 2 exhausted/);
 });

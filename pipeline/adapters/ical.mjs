@@ -14,7 +14,7 @@
 // across DST because the iterator steps the wall clock and every instance is
 // converted on its own.
 import ICAL from 'ical.js';
-import { createWarningSink, safeHttpUrl } from '../text.mjs';
+import { createWarningSink, safeHttpUrl, htmlToText } from '../text.mjs';
 import { BERLIN, isKnownZone, zonedToUtc } from '../tz.mjs';
 import { windowMs } from '../model.mjs';
 
@@ -242,6 +242,23 @@ function fastForwardAnchor(master, hint, notAfter) {
   return null;
 }
 
+const HTML_MARK = /<\/?(?:a|p|br|div|span|b|i|u|em|strong|ul|ol|li|h[1-6])\b[^>]*>|&(?:[a-z]+|#\d+|#x[0-9a-f]+);/i;
+
+/**
+ * Plain text for DESCRIPTION. Google writes HTML there; only real markup
+ * switches to HTML mode, so "Anmeldung bei Max <max@verein.de>" survives.
+ */
+export function descriptionText(raw) {
+  const text = String(raw);
+  return HTML_MARK.test(text) ? htmlToText(text) : text.trim();
+}
+
+/** The first link of an HTML description — the event's url when the feed gives none. */
+function htmlLink(raw) {
+  const m = /<a\b[^>]*\bhref\s*=\s*["']([^"']+)["']/i.exec(String(raw));
+  return m ? safeHttpUrl(m[1].replace(/&amp;/g, '&')) : null;
+}
+
 function toRaw(ev, start, end, recurrenceId, hint) {
   const comp = ev.component;
   const status = String(comp.getFirstPropertyValue('status') ?? '').toUpperCase() === 'CANCELLED' ? 'cancelled' : 'confirmed';
@@ -250,9 +267,10 @@ function toRaw(ev, start, end, recurrenceId, hint) {
     uid: ev.uid,
     recurrenceId,
     title: (ev.summary ?? '').replace(/\s+/g, ' ').trim(),
-    description: (ev.description ?? '').trim(),
+    // Google Calendar stores DESCRIPTION as HTML (links, <br>); plain text passes untouched.
+    description: descriptionText(ev.description ?? ''),
     location: ev.location ?? null,
-    url: safeHttpUrl(comp.getFirstPropertyValue('url')),
+    url: safeHttpUrl(comp.getFirstPropertyValue('url')) ?? htmlLink(ev.description ?? ''),
     status,
     tags,
   };

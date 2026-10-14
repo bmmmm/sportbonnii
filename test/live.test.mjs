@@ -3,7 +3,8 @@
 //
 // Per source: parses, ≥ 1 event in the window unless `expectEmpty`, not
 // partial. Across all timed events: ≥ 90 % start between 06:00 and 23:00
-// Berlin — a timezone bug shifts whole feeds into the night.
+// Berlin. That catches gross shifts (a feed read in a far zone); a one- or
+// two-hour UTC slip is the fixture tests' job (ical.test, the night probe).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadRegistry } from '../pipeline/registry.mjs';

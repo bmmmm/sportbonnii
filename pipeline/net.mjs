@@ -4,9 +4,11 @@
 //
 // - Every hop is checked: redirects are followed by hand, and each target
 //   must be http(s), on a web port, and resolve to public addresses only.
-//   (Without undici there is no DNS pinning; the check-then-connect window
-//   stays open. The sources are a curated registry, so the guard is a
-//   safety net against a hostile redirect, not an anonymous-input boundary.)
+//   Residual risk: without undici there is no DNS pinning, so a name that
+//   answers public for the check and private for the connect (rebinding)
+//   gets through. The intake bot feeds anonymous URLs into detect, so it runs
+//   with https/443 only, four lookups (redirects and robots.txt not counted),
+//   10 s and 2 MB each — on a GitHub runner that leaves little worth reaching.
 // - robots.txt is honoured for crawl-type requests (→ NetError kind
 //   "blocked"). A source's own subscription feed is fetched like a calendar
 //   client would, without a robots check: calendar.google.com, for one,
@@ -35,12 +37,16 @@ export class NetError extends Error {
 const IPV4_LITERAL = /^\d{1,3}(?:\.\d{1,3}){3}$/;
 
 function ipv4LooksPrivate(dotted) {
-  const [a, b] = dotted.split('.').map(Number);
+  const [a, b, c] = dotted.split('.').map(Number);
   if (a === 0 || a === 10 || a === 127) return true; // "this net", RFC 1918, loopback
   if (a === 100 && b >= 64 && b <= 127) return true; // CGNAT
   if (a === 169 && b === 254) return true; // link-local incl. cloud metadata
   if (a === 172 && b >= 16 && b <= 31) return true;
   if (a === 192 && b === 168) return true;
+  if (a === 192 && b === 0 && (c === 0 || c === 2)) return true; // IETF assignments, TEST-NET-1
+  if (a === 198 && (b === 18 || b === 19)) return true; // benchmarking
+  if (a === 198 && b === 51 && c === 100) return true; // TEST-NET-2
+  if (a === 203 && b === 0 && c === 113) return true; // TEST-NET-3
   if (a >= 224) return true; // multicast, reserved, broadcast
   return false;
 }
@@ -96,6 +102,7 @@ function ipv6LooksPrivate(bare) {
   if (groups === null) return true;
   const v4 = embeddedIpv4(groups);
   if (v4 !== null) return ipv4LooksPrivate(v4);
+  if (groups[0] === 0x2001 && (groups[1] === 0 || groups[1] === 0xdb8)) return true; // Teredo, documentation
   return (groups[0] & 0xe000) !== 0x2000;
 }
 
@@ -172,7 +179,8 @@ export function parseRobots(text) {
       lastWasAgent = false;
     }
   }
-  const own = groups.filter((g) => g.agents.some((a) => a !== '*' && ROBOTS_TOKEN.includes(a)));
+  // RFC 9309: the product token matches case-insensitively, a version suffix aside.
+  const own = groups.filter((g) => g.agents.some((a) => a.split('/')[0].trim() === ROBOTS_TOKEN));
   const chosen = own.length ? own : groups.filter((g) => g.agents.includes('*'));
   return chosen.flatMap((g) => g.rules);
 }
@@ -226,9 +234,9 @@ function sniffEncoding(buf) {
   return null;
 }
 
-async function readCapped(res, maxBytes) {
+async function readCapped(res, maxBytes, truncate = false) {
   const declared = Number(res.headers.get('content-length') ?? 0);
-  if (declared > maxBytes) {
+  if (declared > maxBytes && !truncate) {
     void res.body?.cancel().catch(() => {});
     throw new NetError(`response too large: ${declared} bytes (limit ${maxBytes})`);
   }
@@ -239,11 +247,15 @@ async function readCapped(res, maxBytes) {
   for (;;) {
     const { done, value } = await reader.read();
     if (done) break;
-    total += value.byteLength;
-    if (total > maxBytes) {
-      await reader.cancel().catch(() => {});
-      throw new NetError(`response too large: more than ${maxBytes} bytes`);
+    if (total + value.byteLength > maxBytes) {
+      // Not awaited: cancelling must never hold the reader (a tee'd stream waits for its twin).
+      void reader.cancel().catch(() => {});
+      if (!truncate) throw new NetError(`response too large: more than ${maxBytes} bytes`);
+      chunks.push(value.subarray(0, maxBytes - total));
+      total = maxBytes;
+      break;
     }
+    total += value.byteLength;
     chunks.push(value);
   }
   const buf = new Uint8Array(total);
@@ -280,7 +292,7 @@ export function createNet(opts = {}) {
   const cfg = { ...DEFAULTS, ...Object.fromEntries(Object.entries(opts).filter(([k]) => k in DEFAULTS)) };
   const hosts = new Map(); // host → { tail: Promise, last: ms }
   const robotsCache = new Map(); // origin → Promise<rules>
-  let requests = 0;
+  let requests = 0; // get() calls; robots.txt and redirect hops ride along
 
   /** Runs `fn` when this host is free and `minGapMs` has passed since its last request. */
   function onHost(host, fn) {
@@ -303,9 +315,12 @@ export function createNet(opts = {}) {
    * One HTTP exchange (no redirect handling), body included: the host slot is
    * held until the body is read, so two requests to one host never overlap.
    */
-  async function exchange(url, { accept, deadline, maxBytes, timeoutMs }) {
-    if (++requests > maxRequests) throw new NetError(`request budget of ${maxRequests} exhausted`);
+  async function exchange(url, { accept, clock, maxBytes, timeoutMs, truncate }) {
     return onHost(new URL(url).host, async () => {
+      // The timeout runs from the first moment this request holds a slot, not
+      // from when it joined a queue behind other sources on the same host.
+      clock.deadline ??= now() + timeoutMs;
+      const deadline = clock.deadline;
       let res;
       try {
         res = await fetchImpl(url, {
@@ -326,7 +341,7 @@ export function createNet(opts = {}) {
         throw new NetError(`HTTP ${res.status}${res.statusText ? ` ${res.statusText}` : ''}`);
       }
       try {
-        return { status: res.status, body: await readCapped(res, maxBytes), contentType: res.headers.get('content-type') };
+        return { status: res.status, body: await readCapped(res, maxBytes, truncate), contentType: res.headers.get('content-type') };
       } catch (e) {
         throw e instanceof NetError ? e : new NetError(describe(e, timeoutMs));
       }
@@ -334,13 +349,13 @@ export function createNet(opts = {}) {
   }
 
   /** GET following redirects by hand, every hop vetted. */
-  async function rawGet(url, { accept, timeoutMs = cfg.timeoutMs, maxBytes = cfg.maxBytes, robots }) {
-    const deadline = now() + timeoutMs;
+  async function rawGet(url, { accept, timeoutMs = cfg.timeoutMs, maxBytes = cfg.maxBytes, robots, truncate = false }) {
+    const clock = { deadline: null };
     let current = url;
     for (let hop = 0; ; hop++) {
       await checkTarget(current, { lookupImpl, httpsOnly });
       if (robots) await assertRobots(current);
-      const res = await exchange(current, { accept, deadline, maxBytes, timeoutMs });
+      const res = await exchange(current, { accept, clock, maxBytes, timeoutMs, truncate });
       if (res.location === undefined) return { body: res.body, url: current, status: res.status, contentType: res.contentType };
       if (hop >= cfg.maxRedirects) throw new NetError(`more than ${cfg.maxRedirects} redirects from ${url}`);
       try {
@@ -354,18 +369,24 @@ export function createNet(opts = {}) {
   async function assertRobots(url) {
     const u = new URL(url);
     if (!robotsCache.has(u.origin)) {
-      robotsCache.set(u.origin, rawGet(`${u.origin}/robots.txt`, { accept: 'text/plain', robots: false, timeoutMs: 10_000, maxBytes: 512 * 1024 })
+      // RFC 9309 §2.5: parse at least the first 500 KiB; a longer file is cut, not refused.
+      robotsCache.set(u.origin, rawGet(`${u.origin}/robots.txt`, { accept: 'text/plain', robots: false, timeoutMs: 10_000, maxBytes: 512 * 1024, truncate: true })
         .then((r) => parseRobots(r.body))
-        // 4xx: no robots.txt, everything allowed. 5xx and network errors are not
-        // a verdict either; the request itself will report the outage.
-        .catch(() => []));
+        .catch((e) => {
+          // RFC 9309 §2.3.1: 4xx means there are no rules; an unreachable
+          // robots.txt (5xx, network) means assume full disallow.
+          if (/^HTTP 4\d\d/.test(e.message)) return [];
+          return { unavailable: e.message };
+        }));
     }
     const rules = await robotsCache.get(u.origin);
+    if (rules.unavailable) throw new NetError(`robots.txt of ${u.host} unavailable (${rules.unavailable}) — not crawling`);
     if (!robotsAllows(rules, u.pathname + u.search)) throw new NetError(`robots.txt of ${u.host} disallows ${u.pathname}`, 'blocked');
   }
 
   return {
     get(url, { accept = '*/*', robots = true, timeoutMs, maxBytes } = {}) {
+      if (++requests > maxRequests) return Promise.reject(new NetError(`request budget of ${maxRequests} exhausted`));
       return rawGet(url, { accept, robots, timeoutMs, maxBytes });
     },
     get requestCount() {

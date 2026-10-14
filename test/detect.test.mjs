@@ -91,3 +91,19 @@ test('the intake configuration: https only, a request budget', async () => {
   assert.equal(r.ok, false);
   assert.ok(net.requestCount <= 4);
 });
+
+test('within the intake budget (4 requests): a 301 and a meta refresh still reach the TEC API', async () => {
+  const wp = `<html><head><link rel="https://api.w.org/" href="https://www.club.example/blog/wp-json/"></head><body><p>wp-content</p></body></html>`;
+  const routes = {
+    'https://www.club.example/robots.txt': () => new Response('User-agent: *\nAllow: /\n'),
+    'https://www.club.example/': () => new Response('', { status: 301, headers: { location: 'https://www.club.example/start/' } }),
+    'https://www.club.example/start/': () => new Response('<html><head><meta http-equiv="refresh" content="0;url=https://www.club.example/blog"></head></html>'),
+    'https://www.club.example/blog': () => new Response(wp),
+    'https://www.club.example/feed/json': () => new Response('nope', { status: 404 }),
+    'https://www.club.example/blog/wp-json/tribe/events/v1/events': () => new Response(readFileSync(new URL('./fixtures/tec/bthv-page1.json', import.meta.url), 'utf8')),
+  };
+  const net = createNet({ httpsOnly: true, maxRequests: 4, minGapMs: 0, lookupImpl: async () => [{ address: '93.184.216.34', family: 4 }], fetchImpl: async (url) => (routes[String(url)] ?? (() => new Response('', { status: 404 })))() });
+  const r = await detectSource('https://www.club.example/', { net });
+  assert.deepEqual([r.ok, r.type, r.url], [true, 'tec', 'https://www.club.example/blog/wp-json/tribe/events/v1/events']);
+  assert.equal(net.requestCount, 4);
+});

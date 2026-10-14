@@ -12,7 +12,7 @@
     "preinstall": "node -e \"const ua=process.env.npm_config_user_agent||'';if(!ua.startsWith('pnpm/')){console.error('\\n  sportbonnii is pnpm-only (supply-chain policy). Use: pnpm install - npm/yarn are blocked.\\n');process.exit(1)}\"",
     "fetch": "node pipeline/run.mjs",
     "detect": "node pipeline/detect.mjs",
-    "test": "node --test \"test/**/*.test.mjs\"",
+    "test": "node --test --test-timeout=60000 \"test/**/*.test.mjs\"",
     "test:live": "RUN_LIVE=1 node --test test/live.test.mjs",
     "smoke": "node scripts/web-smoke.mjs",
     "serve": "python3 scripts/serve.py 8765 site",

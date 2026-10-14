@@ -44,16 +44,18 @@ export function tzOffsetMs(tz, utcMs) {
 }
 
 /**
- * Wall clock in `tz` → UTC ms. Two passes: the offset at the wall time read
- * as UTC, then the offset at the corrected instant. In a DST gap the result
- * is the instant one hour after the missing time; in an overlap it is the
- * later (standard-time) reading.
+ * Wall clock in `tz` → UTC ms. The two offsets around the wall time give two
+ * readings; those that map back to the same wall clock are valid. In an
+ * overlap (the DST-end night) both are, and RFC 5545 §3.3.5 takes the first
+ * occurrence — the earlier instant. In a gap neither is, and the result is
+ * the instant one hour after the missing time.
  */
 export function zonedToUtc({ year, month, day, hour = 0, minute = 0, second = 0 }, tz = BERLIN) {
   const wall = Date.UTC(year, month - 1, day, hour, minute, second);
-  let t = wall - tzOffsetMs(tz, wall);
-  t = wall - tzOffsetMs(tz, t);
-  return t;
+  const before = wall - tzOffsetMs(tz, wall - 86_400_000);
+  const after = wall - tzOffsetMs(tz, wall + 86_400_000);
+  const valid = [before, after].filter((t) => t + tzOffsetMs(tz, t) === wall);
+  return valid.length ? Math.min(...valid) : before;
 }
 
 const pad = (n, w = 2) => String(n).padStart(w, '0');

@@ -69,8 +69,7 @@
     {
       "active": true,
       "aliases": [
-        "BSV Roleber",
-        "Roleber"
+        "BSV Roleber"
       ],
       "district": "Beuel",
       "id": "bsv-roleber",
@@ -121,7 +120,8 @@
       "aliases": [
         "Rugby Club Bonn-Rhein-Sieg",
         "RC Bonn-Rhein-Sieg",
-        "RCBRS"
+        "RCBRS",
+        "Rugby Bonn-Rhein-Sieg"
       ],
       "district": "Bad Godesberg",
       "id": "rc-bonn-rhein-sieg",

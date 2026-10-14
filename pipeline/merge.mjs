@@ -17,7 +17,7 @@
 // source.
 import { compareEvents } from './contract.mjs';
 import { fold } from './model.mjs';
-import { instantOf, addDays } from './tz.mjs';
+import { instantOf, addDays, berlinDate } from './tz.mjs';
 
 export const RETENTION_DAYS = 7;
 export const DROP_TO_ZERO_FROM = 5;
@@ -52,6 +52,15 @@ function rankOf(sourceKey, club, order) {
   return own * 10_000 + (order.get(sourceKey) ?? 9_999);
 }
 
+/** A previous event fitted to today's registry: unknown sports dropped (→ sonstiges), an unknown club unset. */
+function reconcile(e, known) {
+  if (!known) return e;
+  const sports = e.sports.filter((s) => known.sportIds.has(s));
+  const club = e.club && known.clubIds.has(e.club) ? e.club : null;
+  if (sports.length === e.sports.length && club === e.club) return e;
+  return { ...e, sports: sports.length ? sports : ['sonstiges'], club };
+}
+
 /** Drops cross-source duplicates; returns { events, dropped }. */
 export function dedupe(events, order) {
   const groups = new Map();
@@ -80,16 +89,19 @@ export function dedupe(events, order) {
  * results: Map sourceKey → { state, events, error? } for every registry source
  * (state 'ok' | 'partial' | 'error' | 'blocked' | 'disabled').
  * previous: { events, status } | null. order: Map sourceKey → registry position.
- * window: { from, to }. today: 'YYYY-MM-DD' (Berlin).
+ * window: { from, to }. today: 'YYYY-MM-DD' (Berlin). known: { sportIds, clubIds }
+ * (Sets) — previous events are re-checked against today's registry.
  */
-export function mergeRun({ results, previous, order, window, today }) {
-  const prevEvents = previous?.events ?? [];
+export function mergeRun({ results, previous, order, window, today, known }) {
+  // Last run's events may name a source, sport or club the registry no longer has.
+  const prevEvents = (previous?.events ?? []).filter((e) => results.has(e.source)).map((e) => reconcile(e, known)).filter(Boolean);
   const prevStatus = previous?.status ?? {};
   const prevBySource = new Map();
   for (const e of prevEvents) (prevBySource.get(e.source) ?? prevBySource.set(e.source, []).get(e.source)).push(e);
   const inWindow = (e) => {
-    const last = e.allDay ? addDays(e.end, -1) : e.start.slice(0, 10);
-    return last >= window.from && e.start.slice(0, 10) < window.to;
+    const first = e.start.slice(0, 10);
+    const last = e.allDay ? addDays(e.end, -1) : e.end ? berlinDate(instantOf(e.end) - 1) : first;
+    return last >= window.from && first < window.to;
   };
 
   const status = {};
@@ -107,7 +119,9 @@ export function mergeRun({ results, previous, order, window, today }) {
       state = 'error';
       error = `returned 0 events after ${prev.count} — kept the previous ones`;
     }
-    const since = prev && prev.state === state ? prev.since : today;
+    // error and blocked are one outage: switching between them keeps its start.
+    const same = prev && (prev.state === state || (FAILED.has(prev.state) && FAILED.has(state)));
+    const since = same ? prev.since : today;
     if (state !== 'disabled') fetched++;
     if (FAILED.has(state)) {
       failed++;
