@@ -61,6 +61,9 @@ function hasWordEnd(hay, needle) {
   return false;
 }
 
+// A meeting place for a group is a social date, not a training ("Lauftreff" is one).
+const SOCIAL_TREFF = ['jugendtreff', 'seniorentreff'];
+
 // "1. Damen – RTHC Leverkusen": a numbered team, then an opponent after a dash.
 const TEAM_VS = /\b\d\.\s?(damen|herren|frauen|manner|mannschaft)\b.*\s[–-]\s/;
 
@@ -71,11 +74,14 @@ const TEAM_VS = /\b\d\.\s?(damen|herren|frauen|manner|mannschaft)\b.*\s[–-]\s/
  */
 export function eventKind(title, tags = [], source = null) {
   const t = fold([title, ...tags].join(' \n '));
-  if (t.includes('training') || hasWhole(t, 'gym') || hasWordEnd(t, 'treff')
+  if (t.includes('training') || t.includes('practice') || ['gym', 'activate', 'sportshall'].some((w) => hasWhole(t, w))
+    || (hasWordEnd(t, 'treff') && !SOCIAL_TREFF.some((w) => hasWordEnd(t, w)))
     || hasWordStart(t, 'tryout') || hasWordStart(t, 'try-out')) return 'training';
+  // A celebration, a trophy handover or a board game is no match, whatever else the title says.
+  if (['feier', 'ubergabe', 'brettspiel'].some((w) => t.includes(w))) return source?.kind ?? 'veranstaltung';
   if (hasWordEnd(t, 'spiel') || hasWordEnd(t, 'spiele')
-    || ['spieltag', 'turnier', 'tourney', 'meisterschaft', 'championship', 'pokal', 'wettkampf', 'regatta'].some((w) => t.includes(w))
-    || hasWordEnd(t, 'liga') || ['vs', 'derby', 'cup'].some((w) => hasWhole(t, w))
+    || ['spieltag', 'turnier', 'tourney', 'meisterschaft', 'championship', 'pokal', 'wettkampf', 'regatta', 'ligatermin'].some((w) => t.includes(w))
+    || hasWordEnd(t, 'liga') || hasWordEnd(t, 'finale') || ['vs', 'derby', 'cup', 'game', 'match', 'gegen'].some((w) => hasWhole(t, w))
     || TEAM_VS.test(t)) return 'spiel';
   return source?.kind ?? 'veranstaltung';
 }

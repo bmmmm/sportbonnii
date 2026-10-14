@@ -34,6 +34,25 @@ const TITLES = [
   ['Spielplatzfest', 'veranstaltung'],
   ['Trainerfortbildung', 'veranstaltung'],
   ['Treffen der Abteilungsleiter', 'veranstaltung'],
+  // live 2026-10-15 (RCBRS, Rheinos, bonn.jetzt)
+  ['U12-U18 Activate & Touch', 'training'],
+  ['BIS Sportshall', 'training'],
+  ['European Games', 'veranstaltung'],
+  ['Rennradeln nach Feierabend', 'veranstaltung'],
+  // the gaps: social meetings, celebrations and board games are no training or match
+  ['Jugendtreff im Clubhaus', 'veranstaltung'],
+  ['Seniorentreff', 'veranstaltung'],
+  ['Brettspiele-Abend', 'veranstaltung'],
+  ['Pokalübergabe im Rathaus', 'veranstaltung'],
+  ['Meisterschaftsfeier der 1. Herren', 'veranstaltung'],
+  ['Saisonabschlussfeier mit Spielen', 'veranstaltung'],
+  ['U14 Game Day', 'spiel'],
+  ['Match: Bonn Gamecocks – Cologne Falcons', 'spiel'],
+  ['Herren gegen TuS Pützchen', 'spiel'],
+  ['Ligatermin Damen', 'spiel'],
+  ['Halbfinale Kreispokal', 'spiel'],
+  ['Finale', 'spiel'],
+  ['Team Practice', 'training'],
 ];
 
 test('eventKind: real titles', () => {
