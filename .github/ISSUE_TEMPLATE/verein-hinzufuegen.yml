@@ -22,6 +22,14 @@ body:
     validations:
       required: true
 
+  - type: input
+    id: parent
+    attributes:
+      label: "Abteilung von"
+      description: Ist der Verein eine Abteilung eines Mehrspartenvereins? Dann hier dessen Namen (z. B. SSF Bonn).
+    validations:
+      required: false
+
   - type: dropdown
     id: sports
     attributes:

@@ -44,6 +44,40 @@ Not sure which `type` and `url` a club's calendar has? `pnpm run detect
 club without an online calendar gets `"sources": []` — it still appears in
 the directory.
 
+## One club, one entry — departments live inside their club
+
+A department of a multi-sport club ("SSF Bonn Tischtennis") is never an
+entry of its own: it is a sport in the club's `sports`, its calendar a
+source of the club with `sports` narrowed to it, its name (or a team name
+such as "SSF Dragons Bonn") an alias of the club. There is never "SSF Bonn",
+"SSF Bonn Tischtennis" and "SSF Bonn Schwimmen" as three clubs.
+
+The validator (`pnpm test`, so every commit and merge) refuses, for every
+pair of clubs and platforms:
+
+- the same name — any name or alias, compared without case, accents, a
+  trailing "e.V." or punctuation (hyphens count: "Rugby Bonn-Rhein-Sieg"
+  is no department of "Rugby Bonn");
+- a name that is another entry's name plus more words ("SSF Bonn
+  Tischtennis" next to "SSF Bonn");
+- the same website, a subdomain of it (`lacrosse.ssfbonn.de` is
+  `ssfbonn.de`), or a path below it — two clubs on a shared host with
+  different paths (`sites.google.com/view/a`, `…/view/b`) are fine.
+
+The intake bot applies the same check (`departmentConflict` in
+`pipeline/registry.mjs`) and asks for more information instead of opening
+a PR; the form's "Abteilung von" field turns a department of a club not yet
+listed into an entry for that club.
+
+Before adding a club:
+
+1. Look for it under every name it goes by: `ls registry/clubs/` and
+   `rg -i '<part of the name>' registry/`.
+2. Is it a department? Check the imprint, statutes or "Abteilung" on its
+   site; if so, find the main club and add the sport (and the calendar, as
+   a source with `sports`) there — or add the main club.
+3. Compare the website host with the listed clubs' websites.
+
 ## Club fields
 
 | field | required | meaning |
@@ -53,7 +87,7 @@ the directory.
 | `sports` | yes | one or more ids from `sports.json` |
 | `district` | no | Stadtbezirk: `Bonn`, `Bad Godesberg`, `Beuel` or `Hardtberg` |
 | `website` | yes | http(s) URL of the club's site |
-| `aliases` | no | names under which the club appears on platforms; a platform event whose title or place contains one is assigned to the club |
+| `aliases` | no | names under which the club appears on platforms, departments and teams included; a platform event whose title or place contains one is assigned to the club. Unique across clubs and platforms (see above) |
 | `active` | no | `false` hides the club from the directory (default `true`) |
 | `sources` | yes | the club's calendars, richest first (on a duplicate date the earlier source wins) |
 

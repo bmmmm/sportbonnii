@@ -5,7 +5,8 @@
 //   node .github/scripts/club-intake.mjs publish    (GH_TOKEN; reads nothing but the validate step's JSON)
 //
 // validate parses the form, derives the club id, checks it against the
-// registry (unique id and website host, https, known sports), runs the
+// registry (departmentConflict: id, name or alias, a department of a listed
+// club, website host; https, known sports), runs the
 // source detection on the calendar URL (https/443 only, private-address
 // guard per hop, four lookups — their redirects and robots.txt not counted —
 // 10 s and 2 MB each) and validates the patched
@@ -23,12 +24,15 @@ import { execFile } from 'node:child_process';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
-import { validateRegistry, readRegistry, canonicalJson, canonicalClubs, DISTRICTS, REGISTRY_DIR } from '../../pipeline/registry.mjs';
+import {
+  validateRegistry, readRegistry, canonicalJson, canonicalClubs, departmentConflict, siteOf, DISTRICTS, REGISTRY_DIR,
+} from '../../pipeline/registry.mjs';
 import { detectSource, sourceSnippet } from '../../pipeline/detect.mjs';
 import { createNet } from '../../pipeline/net.mjs';
 
 export const FIELDS = {
   name: 'Vereinsname',
+  parent: 'Abteilung von',
   sports: 'Sportart(en)',
   website: 'Website',
   calendar: 'Kalender-/Termin-URL',
@@ -67,47 +71,58 @@ export function slugify(name) {
     .replace(/-+$/, '');
 }
 
-const hostOf = (url) => {
-  try {
-    return new URL(url).hostname.toLowerCase().replace(/^www\./, '');
-  } catch {
-    return null;
-  }
-};
-const pathOf = (url) => {
-  try {
-    return new URL(url).pathname.replace(/\/+$/, '').toLowerCase();
-  } catch {
-    return '';
-  }
-};
+const oneLine = (text) => (text ?? '').replace(/\s+/g, ' ').trim();
+
+/** Adds a problem when a name from the form is too long or carries markup characters; true when it is fine. */
+function nameFits(text, subject, problems) {
+  if (text.length > MAX_NAME) problems.push(`${subject} ist länger als ${MAX_NAME} Zeichen.`);
+  else if (/[@`<>{}[\]\\|#*_~]/.test(text)) problems.push(`${subject} enthält Zeichen, die in einem Namen nicht vorkommen (@ \` < > { } [ ] \\ | # * _ ~).`);
+  else return true;
+  return false;
+}
+
+const DEPARTMENTS_LIVE_IN_THE_CLUB = 'Abteilungen stehen beim Verein – fehlt dort eine Sportart oder ein Kalender, ergänzt das Projekt sie von Hand.';
+
 /**
- * Same club site: same host, and the same path when either has one — two
- * clubs on a shared host (sites.google.com/view/a, …/view/b) are different.
+ * The problem text for a departmentConflict hit. `shown` is the suggested
+ * name, quoted, or a neutral subject when the name failed its checks.
  */
-function sameSite(a, b) {
-  if (hostOf(a) !== hostOf(b)) return false;
-  const pa = pathOf(a);
-  const pb = pathOf(b);
-  return !pa || !pb || pa === pb || pa.startsWith(`${pb}/`) || pb.startsWith(`${pa}/`);
+function conflictProblem(conflict, { shown, parent, website }) {
+  const { owner, reason, names } = conflict;
+  if (reason === 'website') {
+    const site = siteOf(website);
+    return `Ein Verein mit der Website ${site.host}${site.path} steht schon im Verzeichnis (${owner.name}). ${DEPARTMENTS_LIVE_IN_THE_CLUB}`;
+  }
+  if (reason === 'department' && conflict.parent === owner) return `„${names[0]}“ sieht nach einer Abteilung von ${owner.name} aus. ${DEPARTMENTS_LIVE_IN_THE_CLUB}`;
+  if (reason === 'department') return `${owner.name} (Kennung \`${owner.id}\`) sieht nach einer Abteilung von „${names[0]}“ aus. Abteilungen stehen beim Verein, nie als eigener Eintrag – das Projekt prüft das von Hand.`;
+  // "Abteilung von" names a club that is listed: the department belongs there.
+  if (parent) return `${shown} sieht nach einer Abteilung von ${owner.name} aus. ${DEPARTMENTS_LIVE_IN_THE_CLUB}`;
+  if (reason === 'id') return `Den Verein gibt es schon (Kennung \`${owner.id}\`).`;
+  return `Den Verein gibt es schon: ${owner.name} (Kennung \`${owner.id}\`).`;
 }
 
 /**
  * Form fields + registry → { club, problems, detection, calendarUrl }.
- * `detect(url)` resolves like detectSource (injected in tests).
+ * `detect(url)` resolves like detectSource (injected in tests). A department
+ * ("Abteilung von" filled in) becomes an entry for its club — name = the
+ * club, the department's name an alias — unless the club is listed already.
  */
 export async function buildEntry(form, { clubsDoc, sportsDoc, detect }) {
   const problems = [];
-  const name = (form[FIELDS.name] ?? '').replace(/\s+/g, ' ').trim();
+  const name = oneLine(form[FIELDS.name]);
+  let nameOk = false;
   if (!name) problems.push('Der Vereinsname fehlt.');
-  else if (name.length > MAX_NAME) problems.push(`Der Vereinsname ist länger als ${MAX_NAME} Zeichen.`);
-  else if (/[@`<>{}[\]\\|#*_~]/.test(name)) problems.push('Der Vereinsname enthält Zeichen, die in einem Namen nicht vorkommen (@ ` < > { } [ ] \\ | # * _ ~).');
+  else nameOk = nameFits(name, 'Der Vereinsname', problems);
+  const parent = oneLine(form[FIELDS.parent]);
+  const parentOk = Boolean(parent) && nameFits(parent, 'Der Name unter „Abteilung von“', problems);
 
-  const id = name ? slugify(name) : '';
+  // The entry stands for the club: the parent when there is one.
+  const clubName = parent || name;
+  const id = clubName ? slugify(clubName) : '';
   const clubs = clubsDoc.clubs ?? [];
   const owners = [...clubs, ...(clubsDoc.platforms ?? [])];
-  if (name && !id) problems.push('Aus dem Vereinsnamen lässt sich keine Kennung bilden.');
-  else if (id && owners.some((o) => o.id === id)) problems.push(`Den Verein gibt es schon (Kennung \`${id}\`).`);
+  if (clubName && !id) problems.push(parent ? 'Aus dem Namen unter „Abteilung von“ lässt sich keine Kennung bilden.' : 'Aus dem Vereinsnamen lässt sich keine Kennung bilden.');
+  const aliases = parent && name && parent !== name ? [parent, name] : [clubName];
 
   const labelToId = new Map(sportsDoc.sports.map((s) => [s.label.toLowerCase(), s.id]));
   const picked = (form[FIELDS.sports] ?? '').split(/,\s+/).map((s) => s.trim()).filter(Boolean);
@@ -127,9 +142,13 @@ export async function buildEntry(form, { clubsDoc, sportsDoc, detect }) {
     websiteOk = u.protocol === 'https:' || u.protocol === 'http:';
   } catch { /* reported below */ }
   if (!websiteOk) problems.push('Die Website muss eine vollständige Adresse sein (https://…).');
-  else {
-    const taken = owners.find((o) => sameSite(o.website, website));
-    if (taken) problems.push(`Ein Verein mit der Website ${hostOf(website)}${pathOf(website)} steht schon im Verzeichnis (${taken.name}).`);
+
+  if (id) {
+    // Only names and a website that passed their checks take part — nothing unchecked is echoed.
+    const checked = [parentOk && parent, nameOk && name].filter(Boolean);
+    const probe = { id, name: checked[0], aliases: checked, website: websiteOk ? website : undefined };
+    const conflict = departmentConflict(probe, owners);
+    if (conflict) problems.push(conflictProblem(conflict, { shown: nameOk ? `„${name}“` : 'Der Verein', parent, website }));
   }
 
   const districtRaw = (form[FIELDS.district] ?? '').trim();
@@ -148,9 +167,9 @@ export async function buildEntry(form, { clubsDoc, sportsDoc, detect }) {
   }
 
   const club = {
-    id, name, sports,
+    id, name: clubName, sports,
     ...(district ? { district } : {}),
-    website, aliases: [name], active: true, sources,
+    website, aliases, active: true, sources,
   };
   return { club, problems, detection, calendarUrl };
 }

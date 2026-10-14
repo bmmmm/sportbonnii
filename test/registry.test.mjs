@@ -8,6 +8,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   validateRegistry, loadRegistry, readRegistry, formatRegistry, canonicalJson, relativeLuminance, LUMINANCE, DISTRICTS, REGISTRY_DIR,
+  nameKey, sameSite, departmentConflict,
 } from '../pipeline/registry.mjs';
 import { checkSiteData } from '../pipeline/contract.mjs';
 
@@ -56,6 +57,10 @@ function errorsAfter(mutate) {
   return validateRegistry(d).join('\n');
 }
 
+/** A minimal club for the one-club-one-entry mutants. */
+const club = (id, name, website = `https://${id}.example/`) => ({ id, name, sports: ['tischtennis'], website, sources: [] });
+const DEPARTMENT = /clubs\[\d+\] \(ssf-tt\): "SSF Bonn Tischtennis" looks like a department of ssf-bonn \("SSF Bonn"\) — a department is a sport in ssf-bonn's sports/;
+
 test('each rule goes red on its own mutant', () => {
   const cases = [
     ['duplicate club id', (c) => { c.clubs[1].id = c.clubs[0].id; }, /duplicate id/],
@@ -77,8 +82,48 @@ test('each rule goes red on its own mutant', () => {
     ['duplicate sport id', (_, s) => { s.sports[1].id = s.sports[0].id; }, /duplicate sport id/],
     ['catch-all removed', (_, s) => { s.sports = s.sports.filter((x) => x.id !== 'sonstiges'); }, /sonstiges/],
     ['uppercase keyword', (_, s) => { s.sports[0].keywords = ['Fußball']; }, /keywords must be lowercase/],
+    ['alias of another club', (c) => { c.clubs[1].aliases.push(c.clubs[0].aliases[0]); }, /\(bonner-sc\): "Bonn Gamecocks" is also a name of bonn-gamecocks/],
+    ['same name but for case, accents and e.V.', (c) => { c.clubs.push(club('ssf-zwei', 'SSF BONN e.V.')); }, /\(ssf-zwei\): "SSF BONN e\.V\." is also a name of ssf-bonn \("SSF Bonn"\)/],
+    ['department after its club', (c) => { c.clubs.push(club('ssf-tt', 'SSF Bonn Tischtennis')); }, DEPARTMENT],
+    ['department before its club', (c) => { c.clubs.unshift(club('ssf-tt', 'SSF Bonn Tischtennis')); }, DEPARTMENT],
+    ['department of a platform', (c) => { c.clubs.push(club('bj-lauf', 'bonn.jetzt Lauftreff')); }, /\(bj-lauf\): "bonn\.jetzt Lauftreff" looks like a department of bonn-jetzt/],
+    ['website on a subdomain of a club', (c) => { c.clubs.push(club('lacrosse', 'Lacrosse Bonn', 'https://lacrosse.ssfbonn.de/')); }, /\(lacrosse\): website https:\/\/lacrosse\.ssfbonn\.de\/ is the site of ssf-bonn/],
   ];
   for (const [name, mutate, want] of cases) assert.match(errorsAfter(mutate), want, name);
+});
+
+test('one club, one entry: what stays valid', () => {
+  // A hyphen is part of the name: "Rugby Bonn-Rhein-Sieg" is no department of "Rugby Bonn" (both listed today).
+  const reg = docs().clubs;
+  const [thv, rc] = ['bonner-thv', 'rc-bonn-rhein-sieg'].map((id) => reg.clubs.find((c) => c.id === id));
+  assert.ok(thv.aliases.includes('Rugby Bonn') && rc.aliases.includes('Rugby Bonn-Rhein-Sieg'));
+  assert.equal(departmentConflict(rc, [thv]), null);
+  // Shared hosting: the same host with different paths is two clubs.
+  assert.equal(errorsAfter((c) => { c.clubs.push(club('tt-a', 'TT A', 'https://sites.google.com/view/tt-a'), club('tt-b', 'TT B', 'https://sites.google.com/view/tt-b')); }), '');
+  // A department with its own words in front is no prefix match.
+  assert.equal(errorsAfter((c) => { c.clubs.push(club('tt-ssf', 'Tischtennis SSF Bonn')); }), '');
+});
+
+test('nameKey: accents, ß, case, e.V. and punctuation do not tell names apart', () => {
+  assert.equal(nameKey('Turnverein Kessenich 1898 e.V.'), 'turnverein kessenich 1898');
+  assert.equal(nameKey('GROẞE  Straße e. V.'), 'grosse strasse');
+  assert.equal(nameKey('Bönnsche Sterntaucher'), 'bonnsche sterntaucher');
+  assert.equal(nameKey('HSG Geislar/Oberkassel'), nameKey('HSG Geislar Oberkassel'));
+  assert.equal(nameKey('bonn.jetzt'), 'bonn jetzt');
+  assert.equal(nameKey('Rugby Bonn-Rhein-Sieg'), 'rugby bonn-rhein-sieg');
+  assert.equal(nameKey(' !!! '), '');
+});
+
+test('sameSite: a subdomain is the club, a shared host is not', () => {
+  assert.equal(sameSite('https://lacrosse.ssfbonn.de/', 'https://ssfbonn.de/'), true);
+  assert.equal(sameSite('https://ssfbonn.de/', 'https://www.lacrosse.ssfbonn.de/team'), true);
+  assert.equal(sameSite('http://www.ssfbonn.de', 'https://ssfbonn.de/verein/'), true);
+  assert.equal(sameSite('https://sites.google.com/view/a', 'https://sites.google.com/view/b'), false);
+  assert.equal(sameSite('https://sites.google.com/view/a/termine', 'https://sites.google.com/view/a'), true);
+  assert.equal(sameSite('https://a.github.io/', 'https://b.github.io/'), false);
+  assert.equal(sameSite('https://notssfbonn.de/', 'https://ssfbonn.de/'), false);
+  assert.equal(sameSite('javascript:alert(1)', 'https://ssfbonn.de/'), false);
+  assert.equal(sameSite(undefined, 'https://ssfbonn.de/'), false);
 });
 
 test('files: a misnamed or non-canonical club file and unsorted sports keys are refused', () => {

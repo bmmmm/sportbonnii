@@ -88,6 +88,39 @@ test('a club already listed is refused, by id and by website host', async () => 
   assert.match((await validate({ body: host, number: 11, detect: icsFound })).problems.join(), /Website bsvroleber\.de\/verein steht schon im Verzeichnis \(BSV Roleber\)/);
 });
 
+test('a department is refused: by its name, by a listed parent, by a subdomain', async () => {
+  const body = (name, parent = '_No response_', website = 'https://www.tv-kessenich.de/') => fx('new-club.md')
+    .replace('Turnverein Kessenich 1898 e.V.', name).replace('### Abteilung von\n\n_No response_', `### Abteilung von\n\n${parent}`)
+    .replace('https://www.tv-kessenich.de/', website);
+  const department = /„SSF Dragons Bonn“ sieht nach einer Abteilung von SSF Bonn aus\. Abteilungen stehen beim Verein – fehlt dort eine Sportart oder ein Kalender, ergänzt das Projekt sie von Hand\./;
+  const cases = [
+    ['name with the club in front', body('SSF Bonn Tischtennis'), /„SSF Bonn Tischtennis“ sieht nach einer Abteilung von SSF Bonn aus/],
+    ['parent listed by name', body('SSF Dragons Bonn', 'SSF Bonn e.V.'), department],
+    ['parent listed by alias', body('SSF Dragons Bonn', 'Schwimm- und Sportfreunde Bonn'), department],
+    ['website on a subdomain', body('Lacrosse Bonn', undefined, 'https://lacrosse.ssfbonn.de/'), /Website lacrosse\.ssfbonn\.de steht schon im Verzeichnis \(SSF Bonn\)\. Abteilungen stehen beim Verein/],
+    ['a listed club reads like a department of the suggestion', body('Rugby Club'), /Rugby Club Bonn-Rhein-Sieg \(Kennung `rc-bonn-rhein-sieg`\) sieht nach einer Abteilung von „Rugby Club“ aus/],
+    ['the same club under an alias', body('Schwimm- und Sportfreunde Bonn e.V.'), /Den Verein gibt es schon: SSF Bonn \(Kennung `ssf-bonn`\)\./],
+    ['a parent with markup', body('SSF Dragons Bonn', 'SSF <b>Bonn</b>'), /Der Name unter „Abteilung von“ enthält Zeichen/],
+  ];
+  for (const [what, text, want] of cases) {
+    const r = await validate({ body: text, number: 14, detect: icsFound });
+    assert.equal(r.ok, false, what);
+    assert.equal(r.files, null, what);
+    assert.match(r.problems.join('\n'), want, what);
+  }
+});
+
+test('a department of a club not yet listed becomes the club\'s entry', async () => {
+  const body = fx('new-club.md').replace('Turnverein Kessenich 1898 e.V.', 'TV Kessenich Handball')
+    .replace('### Abteilung von\n\n_No response_', '### Abteilung von\n\nTurnverein Kessenich 1898 e.V.');
+  const r = await validate({ body, number: 15, detect: icsFound });
+  assert.equal(r.ok, true, r.problems.join('; '));
+  assert.equal(r.club.id, 'turnverein-kessenich-1898');
+  assert.equal(r.club.name, 'Turnverein Kessenich 1898 e.V.');
+  assert.deepEqual(r.club.aliases, ['Turnverein Kessenich 1898 e.V.', 'TV Kessenich Handball']);
+  assert.deepEqual(r.files.map((f) => f.path), ['registry/clubs/turnverein-kessenich-1898.json']);
+});
+
 test('websites: http is accepted, a shared host counts per path', async () => {
   const http = fx('new-club.md').replace('https://www.tv-kessenich.de/', 'http://www.tv-kessenich.de/');
   assert.equal((await validate({ body: http, number: 13, detect: icsFound })).ok, true);

@@ -2,6 +2,10 @@
 
 Turnverein Kessenich 1898 e.V.
 
+### Abteilung von
+
+_No response_
+
 ### Sportart(en)
 
 Handball, Turnen & Gymnastik

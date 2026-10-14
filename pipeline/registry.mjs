@@ -79,6 +79,85 @@ function httpUrl(value, { httpsOnly }) {
   }
 }
 
+// --- one club, one entry ----------------------------------------------------
+// A department ("SSF Bonn Tischtennis") is a sport in its club's `sports`
+// (its calendar a source with `sports`), never an entry of its own. The
+// validator and the intake bot share one test for "is this already listed".
+
+/**
+ * A name compared loosely: accents gone, ß → ss, lowercase, a trailing
+ * "e.V." dropped, every run of characters other than letters, digits and
+ * hyphens one space ("Bonn-Rhein-Sieg" keeps its hyphens).
+ */
+export function nameKey(s) {
+  return String(s ?? '')
+    .normalize('NFD').replace(/\p{M}/gu, '')
+    .toLowerCase()
+    .replace(/ß/g, 'ss')
+    .replace(/\be\.\s?v\.?\s*$/, '')
+    .replace(/[^\p{L}\p{N}-]+/gu, ' ')
+    .trim();
+}
+
+/** Host (lowercase, without www.) and path (lowercase, no trailing slash) of a URL; null when it has no host. */
+export function siteOf(url) {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.toLowerCase().replace(/^www\./, '');
+    return host ? { host, path: u.pathname.replace(/\/+$/, '').toLowerCase() } : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Same club site: the same host or a subdomain of it (lacrosse.ssfbonn.de
+ * is ssfbonn.de), and the same path when both have one — two clubs on a
+ * shared host (sites.google.com/view/a, …/view/b) are different.
+ */
+export function sameSite(a, b) {
+  const sa = siteOf(a);
+  const sb = siteOf(b);
+  if (!sa || !sb) return false;
+  if (sa.host !== sb.host && !sa.host.endsWith(`.${sb.host}`) && !sb.host.endsWith(`.${sa.host}`)) return false;
+  const [pa, pb] = [sa.path, sb.path];
+  return !pa || !pb || pa === pb || pa.startsWith(`${pb}/`) || pb.startsWith(`${pa}/`);
+}
+
+/** The non-empty name keys of an entry's name and aliases, with the text each came from. */
+function namesOf(o) {
+  const texts = [o?.name, ...(Array.isArray(o?.aliases) ? o.aliases : [])].filter((t) => typeof t === 'string');
+  return texts.map((text) => ({ text, key: nameKey(text) })).filter((n) => n.key);
+}
+
+/**
+ * Is `entry` already listed among `owners` (clubs and platforms; `entry`
+ * itself is skipped)? The first hit by priority: the same id; the same name
+ * (any name or alias, by nameKey); a department — one name is the other
+ * plus more words (`parent` is the one that names the club); the same site.
+ * → { owner, reason: 'id'|'name'|'department'|'website', parent?, names? } | null,
+ * `names` = [entry's text, owner's text] that matched.
+ */
+export function departmentConflict(entry, owners) {
+  const others = owners.filter((o) => isObject(o) && o !== entry);
+  const mine = namesOf(entry);
+  const pairs = (owner) => namesOf(owner).flatMap((theirs) => mine.map((own) => [own, theirs]));
+  const sameId = typeof entry.id === 'string' && others.find((o) => o.id === entry.id);
+  if (sameId) return { owner: sameId, reason: 'id' };
+  for (const owner of others) {
+    const hit = pairs(owner).find(([a, b]) => a.key === b.key);
+    if (hit) return { owner, reason: 'name', names: [hit[0].text, hit[1].text] };
+  }
+  for (const owner of others) {
+    for (const [a, b] of pairs(owner)) {
+      if (a.key.startsWith(`${b.key} `)) return { owner, reason: 'department', parent: owner, names: [a.text, b.text] };
+      if (b.key.startsWith(`${a.key} `)) return { owner, reason: 'department', parent: entry, names: [a.text, b.text] };
+    }
+  }
+  const site = others.find((o) => sameSite(entry.website, o.website));
+  return site ? { owner: site, reason: 'website' } : null;
+}
+
 /**
  * Every problem in the registry documents, as readable lines; [] means valid.
  * `texts` (optional, readRegistry's raw file contents: `{ sports, files }`)
@@ -129,9 +208,11 @@ export function validateRegistry({ clubs: clubsDoc, sports: sportsDoc }, { texts
   const platforms = Array.isArray(clubsDoc.platforms) ? clubsDoc.platforms : [];
 
   const ownerIds = new Set();
+  const labels = new Map();
   const checkOwner = (o, i, kind) => {
     const at = `${kind}[${i}]${o?.id ? ` (${o.id})` : ''}`;
     if (!isObject(o)) { err(`${at}: expected an object`); return; }
+    labels.set(o, at);
     const allowed = kind === 'clubs' ? CLUB_FIELDS : PLATFORM_FIELDS;
     for (const k of Object.keys(o)) if (!allowed.has(k)) err(`${at}: unknown field "${k}"`);
     if (typeof o.id !== 'string' || !SLUG.test(o.id)) err(`${at}: id must be a lowercase slug (a-z, 0-9, single hyphens)`);
@@ -189,6 +270,23 @@ export function validateRegistry({ clubs: clubsDoc, sports: sportsDoc }, { texts
   };
   clubs.forEach((c, i) => checkOwner(c, i, 'clubs'));
   platforms.forEach((p, i) => checkOwner(p, i, 'platforms'));
+
+  // --- one club, one entry: every pair of clubs and platforms
+  const owners = [...labels.keys()];
+  owners.forEach((o, i) => {
+    for (const other of owners.slice(0, i)) {
+      const c = departmentConflict(o, [other]);
+      if (!c || c.reason === 'id') continue; // a duplicate id is reported above
+      if (c.reason === 'name') {
+        err(`${labels.get(o)}: "${c.names[0]}" is also a name of ${other.id} ("${c.names[1]}") — one club, one entry`);
+      } else if (c.reason === 'website') {
+        err(`${labels.get(o)}: website ${o.website} is the site of ${other.id} — one club, one entry`);
+      } else {
+        const [child, parent, childName, parentName] = c.parent === other ? [o, other, ...c.names] : [other, o, c.names[1], c.names[0]];
+        err(`${labels.get(child)}: "${childName}" looks like a department of ${parent.id} ("${parentName}") — a department is a sport in ${parent.id}'s sports, not an entry of its own`);
+      }
+    }
+  });
 
   // --- files: canonical text, one club or platform per file named after its id
   if (texts) {
