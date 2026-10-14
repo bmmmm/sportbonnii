@@ -10,6 +10,9 @@ body:
         Aus dem Formular entsteht automatisch ein Pull Request mit dem Eintrag für
         das Vereinsverzeichnis; das Projekt prüft ihn und übernimmt ihn von Hand.
 
+        Steht der Verein schon drin? Abteilungen stehen beim Verein:
+        [Übersicht aller Vereine](https://github.com/bmmmm/sportbonnii/blob/main/docs/vereine.md).
+
         Hat der Verein einen Online-Kalender (iCal/Google-Kalender, WordPress-Veranstaltungen,
         Gancio), trag die Seite ein, auf der er zu sehen ist – die Adresse dahinter wird
         automatisch gesucht.
