@@ -298,7 +298,7 @@ export function validateRegistry({ clubs: clubsDoc, sports: sportsDoc }, { texts
           if (!sportIds.has(s)) err(`${sat}: tagMap maps "${tag}" to unknown sport "${s}"`);
         }
       }
-      if (src.exclude !== undefined && (!Array.isArray(src.exclude) || !src.exclude.every(isText))) err(`${sat}: exclude must be a list of non-empty texts`);
+      if (src.exclude !== undefined && (!Array.isArray(src.exclude) || !src.exclude.every((x) => isText(x) && x.replace(/^=/, '').trim() !== ''))) err(`${sat}: exclude must be a list of non-empty texts`);
       if (src.params !== undefined && !isObject(src.params)) err(`${sat}: params must be an object`);
       if (src.kind !== undefined && !KIND_IDS.includes(src.kind)) err(`${sat}: kind must be one of ${KIND_IDS.join(', ')}`);
     }

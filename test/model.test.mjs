@@ -164,6 +164,10 @@ test('home: the title marker, then the club venue, Bonn, another postcode, a tit
   assert.equal(spiel('Turnier in Kooperation mit dem TV Beuel'), false, 'at mit');
   assert.equal(spiel('Lauf in der Kölner Südstadt'), null, 'after an article only a Bonn place says');
   assert.equal(spiel('Spiel in der Halle'), null);
+  assert.equal(spiel('Turnier in Turnhalle der Gesamtschule Beuel'), true, 'past venue words and articles');
+  assert.equal(spiel('Spieltag in Sporthalle am Brüser Berg'), true);
+  assert.equal(spiel('Turnier in Rheinaue-Halle'), true, 'a Bonn place inside a venue word');
+  assert.equal(spiel('Turnier in Halle 2 Beuel'), null, 'a venue first is no place elsewhere');
   assert.equal(spiel('Spiel in der Halle'), null, 'no capitalised place');
   // nothing says
   assert.equal(spiel('Hockey: 1. Damen – RTHC Leverkusen'), null);

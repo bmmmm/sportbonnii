@@ -61,9 +61,11 @@ function hasWordEnd(hay, needle) {
   return false;
 }
 
-// "gegen" makes a match only before a team: a number ("den 1. FC") or a club abbreviation —
+// "gegen" makes a match only next to a team — after a team word ("Herren gegen …") or before a
+// number or a club abbreviation within two words ("gegen den 1. FC", "gegen Bonner SC");
 // "Yoga gegen Rückenschmerzen" is none.
-const GEGEN_TEAM = /(?:^|\s)gegen\s+(?:(?:den|die|das)\s+)?(?:\d|(?:tus|tsv|tv|sv|fc|vfl|vfb|vfr|sc|sg|hsg|jsg|bsv|ssv|fsv|djk|spvgg|ttc|ttv|rk|rc|thc|hc|bc|mtv)\b)/;
+const GEGEN_TEAM = /(?:^|\s)gegen\s+(?:\S+\s+)?(?:\d|(?:tus|tsv|tv|sv|fc|vfl|vfb|vfr|sc|sg|hsg|jsg|bsv|btv|esv|ssv|fsv|djk|spvgg|ttc|ttv|rk|rc|thc|hc|bc|mtv)\b)/;
+const TEAM_GEGEN = /(?:^|\s)(?:herren|damen|frauen|manner|jugend|mannschaft|team|senioren|u\d{1,2}[mwx]?)\s+gegen\s/;
 
 // A meeting place for a group is a social date, not a training ("Lauftreff" is one).
 const SOCIAL_TREFF = ['jugendtreff', 'seniorentreff'];
@@ -86,16 +88,16 @@ export function eventKind(title, tags = [], source = null) {
   if (hasWordEnd(t, 'feier') || ['ubergabe', 'brettspiel'].some((w) => t.includes(w))) return 'veranstaltung';
   if (hasWordEnd(t, 'spiel') || hasWordEnd(t, 'spiele')
     || ['spieltag', 'turnier', 'tourney', 'meisterschaft', 'championship', 'pokal', 'wettkampf', 'regatta', 'ligatermin'].some((w) => t.includes(w))
-    || hasWordEnd(t, 'liga') || hasWordEnd(t, 'finale') || ['vs', 'derby', 'cup', 'game', 'match'].some((w) => hasWhole(t, w))
-    || TEAM_VS.test(t) || GEGEN_TEAM.test(t)) return 'spiel';
+    || hasWordEnd(t, 'liga') || hasWordEnd(t, 'finale') || ['vs', 'derby', 'cup', 'game', 'match', 'friendly'].some((w) => hasWhole(t, w))
+    || TEAM_VS.test(t) || GEGEN_TEAM.test(t) || TEAM_GEGEN.test(t)) return 'spiel';
   return source?.kind ?? 'veranstaltung';
 }
 
 // Bonn's postcodes, and the city with the districts a title may name ("Turnier in Beuel").
 const BONN_POSTCODE = /\b(5311[13579]|5312[13579]|5317[3579]|5322[579])\b/;
 const POSTCODE = /\b\d{5}\b/;
-const ARTICLE = /^(der|die|das|dem|den)$/i;
-const VENUE_WORD = /(halle|platz|park|stadion|zentrum|schule|arena|bad)$/;
+const FILLER = /^(der|die|das|dem|den|am|an|im|beim)$/i;
+const VENUE_WORD = /(halle|platz|park|stadion|zentrum|schule|arena|hallenbad|freibad|schwimmbad)$/;
 const BONN_PLACES = ['Bonn', 'Bad Godesberg', 'Godesberg', 'Beuel', 'Hardtberg', 'Duisdorf', 'Tannenbusch',
   'Rheinaue', 'Oberkassel', 'Geislar', 'Kessenich', 'Endenich', 'Poppelsdorf', 'Mehlem', 'Plittersdorf',
   'Friesdorf', 'Dottendorf', 'Lengsdorf', 'Ippendorf', 'Röttgen', 'Venusberg', 'Holzlar', 'Pützchen', 'Vilich',
@@ -125,17 +127,18 @@ export function homeGame(title, location, club, kind) {
     if (POSTCODE.test(l)) return false;
     if (hasWhole(l, 'bonn')) return true;
   }
-  // "… in <Ort>": past an article and venue words ("in der Sporthalle Beuel") the text starts with
-  // a Bonn place — home ("Bonn-Beuel" too, "Köln-Südstadt" not); a capitalised word right after
-  // "in" is a place elsewhere.
+  // "… in <Ort>": a Bonn place at the start or past articles and venue words ("in der Turnhalle
+  // der Gesamtschule Beuel") is home ("Bonn-Beuel" too, "Köln-Südstadt" not); a capitalised
+  // first word that is no venue is a place elsewhere.
   const phrase = /(?:^|\s)in\s+(.+)/u.exec(title)?.[1];
   if (phrase) {
     const ws = phrase.split(/\s+/);
-    let i = ARTICLE.test(ws[0]) ? 1 : 0;
-    while (i < ws.length && VENUE_WORD.test(fold(ws[i]))) i++;
-    const rest = `${fold(ws.slice(i).join(' ')).replace(/[^\p{L}\p{N}\s-]/gu, ' ')} `;
-    if (BONN_PLACES.some((p) => rest.startsWith(`${p} `) || rest.startsWith(`${p}-`))) return true;
-    if (/^\p{Lu}/u.test(phrase)) return false;
+    for (let i = 0; i < ws.length; i++) {
+      const rest = `${fold(ws.slice(i).join(' ')).replace(/[^\p{L}\p{N}\s-]/gu, ' ')} `;
+      if (BONN_PLACES.some((p) => rest.startsWith(`${p} `) || rest.startsWith(`${p}-`))) return true;
+      if (!FILLER.test(ws[i]) && !VENUE_WORD.test(fold(ws[i]))) break;
+    }
+    if (/^\p{Lu}/u.test(phrase) && !VENUE_WORD.test(fold(ws[0]))) return false;
   }
   return null;
 }

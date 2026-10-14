@@ -78,6 +78,7 @@ test('each rule goes red on its own mutant', () => {
     ['unknown field (typo)', (c) => { c.clubs[0].webiste = 'https://x.de/'; }, /unknown field "webiste"/],
     ['missing sources', (c) => { delete c.clubs[0].sources; }, /sources must be an array/],
     ['http source url', (c) => { c.clubs.find((x) => x.sources.length).sources[0].url = 'http://example.org/x.ics'; }, /must be an https URL/],
+    ['an empty =exclude', (c) => { c.clubs.find((x) => x.sources.length).sources[0].exclude = ['Feiertag', '=']; }, /exclude must be a list of non-empty texts/],
     ['unknown adapter type', (c) => { c.clubs.find((x) => x.sources.length).sources[0].type = 'csv'; }, /type must be one of/],
     ['duplicate source id', (c) => { const k = c.clubs.find((x) => x.sources.length); k.sources.push({ ...k.sources[0] }); }, /duplicate source id/],
     ['source sport outside the club', (c) => { const k = c.clubs.find((x) => x.id === 'bsv-roleber'); k.sources[0].sports = ['rugby']; }, /not one of the club's sports/],
