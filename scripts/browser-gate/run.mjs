@@ -3,12 +3,13 @@
 // the clock frozen at 2026-10-14 14:00 Berlin and the browser in
 // America/New_York — the page must still show Bonn dates and times.
 //
-// Checks: rows per sport chip equal what state.js computes in Node; the hash
-// restores a view after a reload; the weekly training after the DST end
-// lands on Tuesday 19:00; 390 px shows cards and the agenda; an
-// <img onerror> title stays text; the .ics download carries exactly the
-// shown dates; the stale banner appears after 48 h; the club directory; no
-// console error, CSP violation, exception or request beyond the dev server.
+// Checks: rows per sport chip and per kind chip equal what state.js computes
+// in Node, with the kind badges; the hash restores a view after a reload; the
+// weekly training after the DST end lands on Tuesday 19:00; 390 px shows
+// cards and the agenda; an <img onerror> title stays text; the .ics download
+// carries exactly the shown dates; the stale banner appears after 48 h; the
+// club directory; no console error, CSP violation, exception or request
+// beyond the dev server.
 //
 // Needs Chrome and Node ≥ 22, outside a command sandbox (loopback server).
 // Usage: node scripts/browser-gate/run.mjs [--keep]    CHROME=<path> overrides the binary.
@@ -20,6 +21,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { openTarget } from './cdp.mjs';
 import { applyFilters, defaultState } from '../../site/state.js';
+import { KIND_IDS } from '../../site/kinds.js';
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
 const KEEP = process.argv.includes('--keep');
@@ -170,9 +172,28 @@ try {
     await settle();
   }
   check(chipIds.length === sports.length && !mismatches.length, `${chipIds.length} sport chips: rows and counts match state.js`, `chip counts: ${mismatches.join('; ') || `${chipIds.length} chips`}`);
+  // Every kind chip likewise; a match or training row carries its badge, an event none.
+  const kindIds = await evaluate(`[...document.querySelectorAll('#kind-chips [data-kind]')].map((b) => b.dataset.kind)`);
+  const kindMismatches = [];
+  for (const id of kindIds) {
+    await evaluate(`document.querySelector('#kind-chips [data-kind="${id}"]').click(), true`);
+    await settle();
+    const got = await evaluate(`document.querySelector('#table .empty') ? 0 : document.querySelectorAll('#table tbody tr').length`);
+    const want = expectRows({ art: [id] });
+    const label = Number(await evaluate(`document.querySelector('#kind-chips [data-kind="${id}"] .count').textContent`));
+    const badges = await evaluate(`[...document.querySelectorAll('#table tbody tr')].map((tr) => tr.querySelector('.badge-kind')?.textContent ?? '')`);
+    const badge = { spiel: 'Spiel', training: 'Training', veranstaltung: '' }[id];
+    const hash = await evaluate('location.hash');
+    if (got !== want || label !== want || !want || badges.some((b) => b !== badge) || hash !== `#art=${id}`) kindMismatches.push(`${id}: ${got} rows, chip says ${label}, expected ${want}, badges ${[...new Set(badges)].join('/')}, hash ${hash}`);
+    await evaluate(`document.querySelector('#kind-chips [data-kind="${id}"]').click(), true`);
+    await settle();
+  }
+  check(kindIds.join() === KIND_IDS.join() && !kindMismatches.length, `${kindIds.length} kind chips: rows, counts and badges match state.js`, `kind chips: ${kindMismatches.join('; ') || kindIds.join()}`);
 
   // --- 3. the hash restores a view after a reload
   await evaluate(`document.querySelector('#sport-chips [data-sport="rugby"]').click(), true`);
+  await settle();
+  await evaluate(`document.querySelector('#kind-chips [data-kind="training"]').click(), true`);
   await settle();
   await evaluate(`document.querySelector('#f-zeit [data-zeit="woche"]').click(), true`);
   await settle();
@@ -181,13 +202,15 @@ try {
   await evaluate(`document.querySelector('.cal-nav [data-nav]:not(:disabled)[aria-label^="Nächster"]').click(), true`);
   await settle();
   const hash = await evaluate('location.hash');
-  check(hash === '#ansicht=kalender&sport=rugby&zeit=woche&monat=2026-11', `filters write the hash (${hash})`, `hash after clicks: ${hash}`);
+  check(hash === '#ansicht=kalender&sport=rugby&art=training&zeit=woche&monat=2026-11', `filters write the hash (${hash})`, `hash after clicks: ${hash}`);
   await t.send('Page.reload', { ignoreCache: true });
   await sleep(150);
   await waitFor(ready, 8000);
-  const restored = await evaluate(`({ title: document.querySelector('.cal-title')?.textContent, tab: document.querySelector('[role=tab][aria-selected=true]').dataset.view, pressed: [...document.querySelectorAll('#sport-chips [aria-pressed=true]')].map((b) => b.dataset.sport), hash: location.hash })`);
-  check(restored.title === 'November 2026' && restored.tab === 'kalender' && restored.pressed.join() === 'rugby' && restored.hash === hash, 'a reload restores view, month and chips from the hash', `after reload: ${JSON.stringify(restored)}`);
-  await open('#ansicht=kalender&sport=quidditch&monat=1999-01&verein=nope');
+  const restored = await evaluate(`({ title: document.querySelector('.cal-title')?.textContent, tab: document.querySelector('[role=tab][aria-selected=true]').dataset.view, pressed: [...document.querySelectorAll('#sport-chips [aria-pressed=true]')].map((b) => b.dataset.sport), kinds: [...document.querySelectorAll('#kind-chips [aria-pressed=true]')].map((b) => b.dataset.kind), chips: [...document.querySelectorAll('.cal-ev')].map((c) => c.className), hash: location.hash })`);
+  check(restored.title === 'November 2026' && restored.tab === 'kalender' && restored.pressed.join() === 'rugby' && restored.kinds.join() === 'training' && restored.hash === hash
+    && restored.chips.length > 0 && restored.chips.every((c) => c.split(' ').includes('cal-ev-training')),
+  'a reload restores view, month, sport and kind chips from the hash; the calendar marks the trainings', `after reload: ${JSON.stringify(restored)}`);
+  await open('#ansicht=kalender&sport=quidditch&art=foo&monat=1999-01&verein=nope');
   check(await evaluate(`location.hash === '#ansicht=kalender&monat=1999-01' && document.querySelector('.cal-title').textContent === 'September 2026'`), 'unknown hash values are dropped, an out-of-window month clamps to the data', `stale link gives ${await evaluate('location.hash')} / ${await evaluate(`document.querySelector('.cal-title').textContent`)}`);
 
   // --- 4. the DST end: the Tuesday training stays on Tuesday 19:00
@@ -243,8 +266,8 @@ try {
 
   // --- 7. clubs
   await open('#ansicht=vereine');
-  const dirInfo = await evaluate(`({ result: document.getElementById('result').textContent, cards: document.querySelectorAll('.club').length, sources: document.querySelectorAll('table.sources tbody tr').length, zeit: document.getElementById('zeit-field').hidden, actions: document.getElementById('view-actions').hidden })`);
-  check(dirInfo.result === `${clubs.length} Vereine` && dirInfo.cards >= clubs.length && dirInfo.sources === 5 && dirInfo.zeit && dirInfo.actions, `club directory: ${clubs.length} clubs, 5 sources listed`, `clubs: ${JSON.stringify(dirInfo)}`);
+  const dirInfo = await evaluate(`({ result: document.getElementById('result').textContent, cards: document.querySelectorAll('.club').length, sources: document.querySelectorAll('table.sources tbody tr').length, zeit: document.getElementById('zeit-field').hidden, kind: document.getElementById('kind-field').hidden, actions: document.getElementById('view-actions').hidden })`);
+  check(dirInfo.result === `${clubs.length} Vereine` && dirInfo.cards >= clubs.length && dirInfo.sources === 5 && dirInfo.zeit && dirInfo.kind && dirInfo.actions, `club directory: ${clubs.length} clubs, 5 sources listed, no range or kind filter`, `clubs: ${JSON.stringify(dirInfo)}`);
   // The "Neues zuletzt" column shows status.json's `changed` as a short date, a dash without one (the two disabled sources).
   const newsCol = await evaluate(`(() => { const th = [...document.querySelectorAll('table.sources thead th')].map((t) => t.textContent); const i = th.indexOf('Neues zuletzt'); return { i, cells: [...document.querySelectorAll('table.sources tbody tr')].map((tr) => [tr.children[0].textContent, tr.children[i]?.textContent]) }; })()`);
   const jetzt = newsCol.cells.find(([name]) => name === 'bonn.jetzt')?.[1];

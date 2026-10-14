@@ -184,6 +184,11 @@ main { padding-block: 18px 40px; outline: none; }
   background: none; cursor: pointer; color: var(--muted); font-size: 0.9rem; white-space: nowrap; flex: none;
 }
 .chip-more:hover { color: var(--fg); border-style: solid; }
+/* The kind chips (Spiel, Training, Veranstaltung): no sport colour, the accent instead. */
+.kind-field { margin-top: 12px; }
+.chip-kind { --sport: var(--accent); }
+.chip-kind::before { display: none; }
+.chip-kind[aria-pressed="true"] .count { color: var(--accent-fg); }
 
 .link-button {
   border: 0; background: none; padding: 2px 0; cursor: pointer;
@@ -342,6 +347,8 @@ a.title:hover .ext { color: var(--accent); }
   font-size: 0.74rem; font-weight: 700; letter-spacing: 0.02em; vertical-align: 1px;
 }
 .badge-cancelled { background: var(--err-bg); color: var(--cancel); }
+.badge-kind { background: var(--surface-2); color: var(--muted); }
+.badge-spiel { background: var(--accent-weak); color: var(--accent); }
 
 .sport-pills { display: inline-flex; flex-wrap: wrap; gap: 4px; }
 .sport-pill {
@@ -451,6 +458,9 @@ a.title:hover .ext { color: var(--accent); }
 .cal-ev-time { font-weight: 700; flex: none; }
 .cal-ev-title { overflow: hidden; text-overflow: ellipsis; }
 .cal-ev.is-cancelled .cal-ev-title { text-decoration: line-through; color: var(--muted); }
+/* Matches stand out, trainings step back: a lighter tint and a dotted bar. */
+.cal-ev-spiel .cal-ev-title { font-weight: 650; }
+.cal-ev-training { border-left-style: dotted; background: var(--surface); background: color-mix(in srgb, var(--sport) 6%, var(--surface)); }
 .cal-ev.is-span.cont-left { border-left-style: dashed; border-top-left-radius: 0; border-bottom-left-radius: 0; margin-left: -6px; padding-left: 9px; }
 .cal-ev.is-span.cont-right { border-top-right-radius: 0; border-bottom-right-radius: 0; margin-right: -6px; }
 .cal-more { padding-left: 6px; font-size: 0.72rem; font-weight: 650; color: var(--muted); }

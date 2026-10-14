@@ -90,7 +90,7 @@ function onKey(e) {
 
 function chip(e, day, ctx) {
   const [first, last] = eventDays(e);
-  const c = el('span', 'cal-ev');
+  const c = el('span', `cal-ev cal-ev-${e.kind}`);
   c.style.setProperty('--sport', ctx.sportsById.get(e.sports[0])?.colour ?? '#787878');
   if (first !== last) {
     c.classList.add('is-span');

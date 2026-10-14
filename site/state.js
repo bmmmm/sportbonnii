@@ -2,11 +2,12 @@
 // writeAddress — the one place on the page that touches the address bar
 // (history.replaceState, so filtering never floods the back button).
 //
-//   #ansicht=kalender&sport=fussball,tennis&verein=bsv-roleber&q=camp&zeit=woche&monat=2026-11
+//   #ansicht=kalender&sport=fussball,tennis&art=spiel&verein=bsv-roleber&q=camp&zeit=woche&monat=2026-11
 //
 // Defaults are left out, unknown values dropped, so every link stays valid
 // when the registry changes.
 import { overlaps, rangeFor } from './dates.js';
+import { KIND_IDS } from './kinds.js';
 
 export const VIEWS = ['tabelle', 'kalender', 'vereine'];
 export const RANGES = ['alle', 'heute', 'woche', 'monat'];
@@ -14,7 +15,7 @@ const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
 const MAX_QUERY = 100;
 
 export function defaultState() {
-  return { ansicht: 'tabelle', sport: [], verein: '', q: '', zeit: 'alle', monat: '' };
+  return { ansicht: 'tabelle', sport: [], art: [], verein: '', q: '', zeit: 'alle', monat: '' };
 }
 
 const decode = (v) => {
@@ -38,6 +39,9 @@ export function parseHash(hash, known = {}) {
     else if (key === 'sport') {
       const ids = value.split(',').map((s) => s.trim()).filter((s) => s && (!known.sportIds || known.sportIds.has(s)));
       state.sport = [...new Set(ids)];
+    } else if (key === 'art') {
+      const ids = value.split(',').map((s) => s.trim()).filter((s) => KIND_IDS.includes(s));
+      state.art = [...new Set(ids)];
     } else if (key === 'verein' && value && (!known.clubIds || known.clubIds.has(value))) state.verein = value;
     else if (key === 'q') state.q = value.slice(0, MAX_QUERY);
     else if (key === 'zeit' && RANGES.includes(value)) state.zeit = value;
@@ -46,12 +50,13 @@ export function parseHash(hash, known = {}) {
   return state;
 }
 
-/** State → hash ('' when everything is default). Commas in the sport list stay readable. */
+/** State → hash ('' when everything is default). Commas in the sport and kind lists stay readable. */
 export function formatHash(state) {
   const d = defaultState();
   const out = [];
   if (state.ansicht !== d.ansicht) out.push(`ansicht=${state.ansicht}`);
   if (state.sport.length) out.push(`sport=${state.sport.map(encodeURIComponent).join(',')}`);
+  if (state.art.length) out.push(`art=${state.art.map(encodeURIComponent).join(',')}`);
   if (state.verein) out.push(`verein=${encodeURIComponent(state.verein)}`);
   if (state.q) out.push(`q=${encodeURIComponent(state.q)}`);
   if (state.zeit !== d.zeit) out.push(`zeit=${state.zeit}`);
@@ -73,8 +78,9 @@ function haystack(e, ctx) {
 
 const searchCache = new WeakMap();
 
-function matches(e, state, ctx, { skipSport = false, skipTime = false } = {}) {
+function matches(e, state, ctx, { skipSport = false, skipKind = false, skipTime = false } = {}) {
   if (!skipSport && state.sport.length && !e.sports.some((s) => state.sport.includes(s))) return false;
+  if (!skipKind && state.art.length && !state.art.includes(e.kind)) return false;
   if (state.verein && e.club !== state.verein) return false;
   if (state.q) {
     let hay = searchCache.get(e);
@@ -107,10 +113,20 @@ export function chipCounts(events, state, ctx, opts = {}) {
   return counts;
 }
 
+/** Per kind: how many events the view would show with that kind selected — the other filters applied. */
+export function kindCounts(events, state, ctx, opts = {}) {
+  const counts = new Map();
+  for (const e of events) {
+    if (!matches(e, state, ctx, { ...opts, skipKind: true })) continue;
+    counts.set(e.kind, (counts.get(e.kind) ?? 0) + 1);
+  }
+  return counts;
+}
+
 /** The published feed that matches the filter best: one club, one sport, or everything. */
 export function subscription(state, ctx) {
-  // A feed carries every date of its club or sport; search and time range only narrow the page.
-  const narrowed = Boolean(state.q) || (state.ansicht === 'tabelle' && state.zeit !== 'alle');
+  // A feed carries every date of its club or sport; search, kind and time range only narrow the page.
+  const narrowed = Boolean(state.q) || state.art.length > 0 || (state.ansicht === 'tabelle' && state.zeit !== 'alle');
   if (state.verein) {
     const c = ctx.clubsById.get(state.verein);
     return { file: `verein-${c.id}.ics`, title: `Alle Termine von ${c.name}`, exact: !state.sport.length && !narrowed };

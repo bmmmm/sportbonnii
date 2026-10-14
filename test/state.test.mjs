@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { parseHash, formatHash, applyFilters, chipCounts, defaultState, fold } from '../site/state.js';
+import { parseHash, formatHash, applyFilters, chipCounts, kindCounts, defaultState, fold } from '../site/state.js';
 import {
   berlinToday, rangeFor, eventDays, overlaps, formatShortDate, formatLongDate, formatTime, formatSpan,
   formatCheckedAt, weekdayIndex, addMonths, lastDayOfMonth, formatMonth,
@@ -21,9 +21,9 @@ const state = (o) => ({ ...defaultState(), ...o });
 const titles = (list) => list.map((e) => e.title);
 
 test('hash round trip keeps every field', () => {
-  const s = state({ ansicht: 'kalender', sport: ['fussball', 'tennis'], verein: 'bsv-roleber', q: 'Camp & Spiel', zeit: 'woche', monat: '2026-11' });
+  const s = state({ ansicht: 'kalender', sport: ['fussball', 'tennis'], art: ['training', 'spiel'], verein: 'bsv-roleber', q: 'Camp & Spiel', zeit: 'woche', monat: '2026-11' });
   const hash = formatHash(s);
-  assert.equal(hash, '#ansicht=kalender&sport=fussball,tennis&verein=bsv-roleber&q=Camp%20%26%20Spiel&zeit=woche&monat=2026-11');
+  assert.equal(hash, '#ansicht=kalender&sport=fussball,tennis&art=training,spiel&verein=bsv-roleber&q=Camp%20%26%20Spiel&zeit=woche&monat=2026-11');
   assert.deepEqual(parseHash(hash, known), s);
   assert.equal(formatHash(defaultState()), '', 'defaults leave no hash');
 });
@@ -32,6 +32,8 @@ test('hash parsing drops what it does not know', () => {
   const s = parseHash('#ansicht=karte&sport=fussball,quidditch,fussball&verein=gibts-nicht&zeit=jahr&monat=2026-13&x=1', known);
   assert.deepEqual(s, state({ sport: ['fussball'] }));
   assert.deepEqual(parseHash('#q=%E0%A4%A&sport=', known), state({}));
+  assert.deepEqual(parseHash('#art=foo,spiel,match,spiel', known), state({ art: ['spiel'] }), 'only known kinds, once');
+  assert.deepEqual(parseHash('#art=', known), state({}));
   assert.equal(parseHash(`#q=${'a'.repeat(500)}`, known).q.length, 100);
   assert.equal(parseHash('#q=fu%C3%9Fball+camp', known).q, 'fußball camp');
 });
@@ -52,6 +54,23 @@ test('filters: sport (any of), club, words, time range from today', () => {
   const month = applyFilters(events, state({ zeit: 'monat' }), ctx);
   assert.ok(month.some((e) => e.title === 'Critical Mass Bonn') && !month.some((e) => e.title === 'Jahreshauptversammlung'));
   assert.equal(applyFilters(events, state({}), ctx, { skipTime: true }).length, events.length);
+});
+
+test('the kind filter: any of the chosen kinds, counted like the sports', () => {
+  for (const kind of ['spiel', 'training', 'veranstaltung']) {
+    const shown = applyFilters(events, state({ art: [kind] }), ctx);
+    assert.ok(shown.length > 0 && shown.every((e) => e.kind === kind), kind);
+    assert.equal(kindCounts(events, state({}), ctx).get(kind), shown.length, `${kind}: the chip counts what it shows`);
+    assert.equal(kindCounts(events, state({ art: [kind] }), ctx).get(kind), shown.length, `${kind}: the kind itself does not narrow its count`);
+  }
+  assert.deepEqual(kindCounts(events, state({ art: ['spiel'] }), ctx), kindCounts(events, state({}), ctx), 'the other kinds keep their counts while one is selected');
+  assert.deepEqual(titles(applyFilters(events, state({ art: ['training'], sport: ['leichtathletik'] }), ctx)), ['Lauftreff im Rheinauenpark']);
+  const both = applyFilters(events, state({ art: ['spiel', 'training'] }), ctx);
+  assert.ok(both.some((e) => e.kind === 'spiel') && both.some((e) => e.kind === 'training') && both.every((e) => e.kind !== 'veranstaltung'));
+  assert.deepEqual([...kindCounts(events, state({ sport: ['fussball'] }), ctx)].sort(), [['spiel', 2], ['veranstaltung', 3]], 'other filters narrow the counts');
+  assert.ok(kindCounts(events, state({}), ctx, { skipTime: true }).get('training') > kindCounts(events, state({}), ctx).get('training'), 'past trainings count without the time range');
+  const rugby = chipCounts(events, state({ art: ['training'] }), ctx);
+  assert.equal(rugby.get('rugby'), applyFilters(events, state({ art: ['training'], sport: ['rugby'] }), ctx).length, 'sport chips honour the kind');
 });
 
 test('a multi-day event stays visible on its later days', () => {
@@ -129,6 +148,8 @@ test('subscription: the club feed, else one sport, else everything; exact only w
   const club = subscription(state({ verein: 'bsv-roleber', sport: ['fussball'] }), ctx);
   assert.deepEqual([club.file, club.exact], ['verein-bsv-roleber.ics', false]);
   assert.equal(subscription(state({ q: 'camp' }), ctx).exact, false);
+  assert.equal(subscription(state({ art: ['spiel'] }), ctx).exact, false, 'the feeds carry every kind');
+  assert.equal(subscription(state({ sport: ['rugby'], art: ['training'] }), ctx).exact, false);
 });
 
 test('club directory state from the source status', async () => {

@@ -2,12 +2,13 @@
 // in the address hash by state.js), renders the views. DOM via createElement /
 // textContent only.
 import { loadData } from './data.js';
-import { parseHash, formatHash, writeAddress, applyFilters, chipCounts, defaultState, fold, subscription } from './state.js';
+import { parseHash, formatHash, writeAddress, applyFilters, chipCounts, kindCounts, defaultState, fold, subscription } from './state.js';
 import { berlinToday, formatCheckedAt, monthOf, addDays, formatMonth } from './dates.js';
 import { renderTable, el, PAGE } from './table.js';
 import { renderCalendar, eventsInMonth } from './calendar.js';
 import { renderClubs } from './clubs.js';
 import { serializeFeed } from './ics.js';
+import { KINDS } from './kinds.js';
 
 const STALE_HOURS = 48;
 const MAX_QUERY = 100;
@@ -27,7 +28,7 @@ function known() {
 function update(patch) {
   const next = { ...state, ...patch };
   next.q = next.q.slice(0, MAX_QUERY); // the hash keeps no more, so neither may the view
-  if (patch.sport || patch.verein !== undefined || patch.q !== undefined || patch.zeit) ui.limit = PAGE;
+  if (patch.sport || patch.art || patch.verein !== undefined || patch.q !== undefined || patch.zeit) ui.limit = PAGE;
   if (patch.monat !== undefined && patch.monat !== state.monat) ui.day = null;
   state = next;
   writeAddress(state);
@@ -90,6 +91,27 @@ function renderChips(counts) {
   $('sport-clear').hidden = state.sport.length === 0;
 }
 
+/** The kind chips: always all three, with the count each would show. */
+function renderKindChips(counts) {
+  const box = $('kind-chips');
+  const chips = KINDS.map((k) => {
+    const pressed = state.art.includes(k.id);
+    const n = counts.get(k.id) ?? 0;
+    const b = el('button', `chip chip-kind chip-${k.id}`);
+    b.type = 'button';
+    b.dataset.kind = k.id;
+    b.setAttribute('aria-pressed', String(pressed));
+    if (!n && !pressed) b.classList.add('is-empty');
+    b.append(el('span', 'emoji', k.emoji), el('span', 'chip-label', k.label), el('span', 'count', String(n)));
+    b.setAttribute('aria-label', `${k.label}, ${n} ${n === 1 ? 'Termin' : 'Termine'}`);
+    return b;
+  });
+  const focused = document.activeElement?.dataset?.kind;
+  box.replaceChildren(...chips);
+  if (focused) box.querySelector(`[data-kind="${focused}"]`)?.focus();
+  $('kind-clear').hidden = state.art.length === 0;
+}
+
 function clubLabel(c) {
   return c.name;
 }
@@ -108,9 +130,10 @@ function renderZeit() {
 
 function isFiltered() {
   const d = defaultState();
-  // The range only acts on the table; elsewhere it is hidden and must not count.
+  // The range only acts on the table, the kind not on the clubs; where hidden they must not count.
   const zeit = state.ansicht === 'tabelle' && state.zeit !== d.zeit;
-  return state.sport.length > 0 || state.verein !== d.verein || state.q !== d.q || zeit;
+  const art = state.ansicht !== 'vereine' && state.art.length > 0;
+  return state.sport.length > 0 || state.verein !== d.verein || state.q !== d.q || zeit || art;
 }
 
 // --- views ---------------------------------------------------------------------
@@ -157,6 +180,8 @@ function renderTabs() {
   }
   // The quick ranges belong to the list; the calendar brings its own month.
   $('zeit-field').hidden = state.ansicht !== 'tabelle';
+  // Clubs have no kind.
+  $('kind-field').hidden = state.ansicht === 'vereine';
 }
 
 function render() {
@@ -215,6 +240,7 @@ function download() {
   const parts = [
     state.verein ? ctx.clubsById.get(state.verein)?.name : null,
     ...state.sport.map((s) => ctx.sportsById.get(s)?.label),
+    ...state.art.map((k) => KINDS.find((x) => x.id === k)?.label),
     state.ansicht === 'kalender' ? formatMonth(shownMonth()) : null,
   ].filter(Boolean);
   const name = `Sport in Bonn${parts.length ? ` – ${parts.join(', ')}` : ''}`;
@@ -237,8 +263,8 @@ function download() {
 function renderClubsView() {
   const upcoming = new Map();
   for (const e of applyFilters(data.events, { ...defaultState() }, ctx)) if (e.club) upcoming.set(e.club, (upcoming.get(e.club) ?? 0) + 1);
-  // Counts of upcoming dates, like the cards ("kommende Termine"); the hidden range does not apply.
-  renderChips(chipCounts(data.events, { ...state, zeit: 'alle' }, ctx));
+  // Counts of upcoming dates, like the cards ("kommende Termine"); the hidden range and kind do not apply.
+  renderChips(chipCounts(data.events, { ...state, zeit: 'alle', art: [] }, ctx));
   const shown = renderClubs($('clubs'), {
     clubs: data.clubs,
     platforms: data.platforms,
@@ -248,7 +274,7 @@ function renderClubsView() {
     state,
     feedUrl,
     onShowClub(id) {
-      update({ verein: id, ansicht: 'tabelle', sport: [], q: '' });
+      update({ verein: id, ansicht: 'tabelle', sport: [], art: [], q: '' });
       $('f-q').value = '';
       $('tab-tabelle').focus();
     },
@@ -260,6 +286,7 @@ function renderClubsView() {
 function renderTableView() {
   const visible = applyFilters(data.events, state, ctx);
   renderChips(chipCounts(data.events, state, ctx));
+  renderKindChips(kindCounts(data.events, state, ctx));
   renderResult(visible.length);
   renderTable($('table'), visible, {
     ctx,
@@ -282,6 +309,7 @@ function renderCalendarView() {
   const filtered = applyFilters(data.events, state, ctx, { skipTime: true });
   const inMonth = eventsInMonth(data.events, ym);
   renderChips(chipCounts(inMonth, state, ctx, { skipTime: true }));
+  renderKindChips(kindCounts(inMonth, state, ctx, { skipTime: true }));
   renderResult(eventsInMonth(filtered, ym).length, ` im ${formatMonth(ym).split(' ')[0]}`);
   const focus = ui.focusDay;
   ui.focusDay = null;
@@ -308,7 +336,7 @@ function renderCalendarView() {
 
 function resetFilters() {
   const d = defaultState();
-  update({ sport: d.sport, verein: d.verein, q: d.q, zeit: d.zeit });
+  update({ sport: d.sport, art: d.art, verein: d.verein, q: d.q, zeit: d.zeit });
   $('f-q').value = '';
 }
 
@@ -323,6 +351,13 @@ function bind() {
     update({ sport: state.sport.includes(id) ? state.sport.filter((s) => s !== id) : [...state.sport, id] });
   });
   $('sport-clear').addEventListener('click', () => update({ sport: [] }));
+  $('kind-chips').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-kind]');
+    if (!b) return;
+    const id = b.dataset.kind;
+    update({ art: state.art.includes(id) ? state.art.filter((k) => k !== id) : [...state.art, id] });
+  });
+  $('kind-clear').addEventListener('click', () => update({ art: [] }));
 
   const club = $('f-club');
   const byName = () => new Map(data.clubs.map((c) => [clubLabel(c).toLowerCase(), c.id]));

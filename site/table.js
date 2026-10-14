@@ -2,6 +2,7 @@
 // 640 px (both rendered, CSS picks one). DOM via createElement/textContent
 // only — every string here is foreign feed text.
 import { eventDays, formatShortDate, formatLongDate, formatTime, formatSpan, addDays } from './dates.js';
+import { KINDS } from './kinds.js';
 
 export const PAGE = 200;
 export const COLUMNS = [
@@ -21,6 +22,8 @@ export function el(tag, className, text) {
 }
 
 const collator = new Intl.Collator('de', { sensitivity: 'base', numeric: true });
+// A badge for matches and trainings; an event is the plain case and carries none.
+const KIND_BADGE = new Map(KINDS.filter((k) => k.id !== 'veranstaltung').map((k) => [k.id, k.short]));
 
 /** Comparator for a column; ties fall back to the date order of events.json. */
 export function sorter(key, ctx) {
@@ -58,6 +61,7 @@ function titleNode(e) {
     span.append(text);
     wrap.append(span);
   }
+  if (KIND_BADGE.has(e.kind)) wrap.append(el('span', `badge badge-kind badge-${e.kind}`, KIND_BADGE.get(e.kind)));
   if (e.status === 'cancelled') wrap.append(el('span', 'badge badge-cancelled', 'Abgesagt'));
   return wrap;
 }
