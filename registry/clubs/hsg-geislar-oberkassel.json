@@ -19,5 +19,15 @@
   "sports": [
     "handball"
   ],
+  "venues": [
+    {
+      "address": "Siegburger Str. 321, 53229 Bonn",
+      "lat": 50.75013,
+      "lon": 7.1486,
+      "name": "Sporthalle Beuel-Ost (Gesamtschule)",
+      "osm": "way/32321255",
+      "use": "spiel"
+    }
+  ],
   "website": "https://www.hsg-geislar-oberkassel.de/"
 }

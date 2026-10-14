@@ -11,5 +11,13 @@
   "sports": [
     "kanu"
   ],
+  "venues": [
+    {
+      "address": "Estermannufer 1, 53117 Bonn",
+      "lat": 50.76212,
+      "lon": 7.08222,
+      "name": "Bootshaus"
+    }
+  ],
   "website": "https://bwb-kanu.de/"
 }

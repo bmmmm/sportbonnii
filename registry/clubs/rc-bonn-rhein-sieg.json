@@ -20,5 +20,14 @@
   "sports": [
     "rugby"
   ],
+  "venues": [
+    {
+      "address": "Martin-Luther-King-Str. 22, 53175 Bonn",
+      "lat": 50.70732,
+      "lon": 7.15703,
+      "name": "Rugbyplatz Rheinaue",
+      "osm": "way/123977272"
+    }
+  ],
   "website": "https://rcbrs.de/"
 }

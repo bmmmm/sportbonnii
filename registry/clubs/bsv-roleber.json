@@ -15,7 +15,19 @@
     }
   ],
   "sports": [
-    "fussball"
+    "fussball",
+    "basketball",
+    "tischtennis",
+    "turnen"
+  ],
+  "venues": [
+    {
+      "address": "Siebengebirgsstraße 181, 53229 Bonn",
+      "lat": 50.74367,
+      "lon": 7.18878,
+      "name": "Sportplatz Roleber",
+      "osm": "way/50752096"
+    }
   ],
   "website": "https://bsvroleber.de/"
 }

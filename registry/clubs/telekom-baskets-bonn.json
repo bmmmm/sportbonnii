@@ -19,5 +19,15 @@
   "sports": [
     "basketball"
   ],
+  "venues": [
+    {
+      "address": "Basketsring 1, 53123 Bonn",
+      "lat": 50.70514,
+      "lon": 7.06037,
+      "name": "Telekom Dome",
+      "osm": "way/1273941076",
+      "use": "spiel"
+    }
+  ],
   "website": "https://www.telekom-baskets-bonn.de/"
 }

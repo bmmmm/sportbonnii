@@ -4,11 +4,29 @@
     "Bonn Gamecocks",
     "Gamecocks"
   ],
+  "district": "Bad Godesberg",
   "id": "bonn-gamecocks",
   "name": "Bonn Gamecocks",
   "sources": [],
   "sports": [
     "american-football"
+  ],
+  "venues": [
+    {
+      "address": "Mallwitzstraße, 53177 Bonn",
+      "lat": 50.66885,
+      "lon": 7.17342,
+      "name": "Sportpark Pennenfeld",
+      "osm": "way/26839678",
+      "use": "spiel"
+    },
+    {
+      "address": "Schießstandweg 25, 53125 Bonn",
+      "lat": 50.7029,
+      "lon": 7.04837,
+      "name": "Sportplatz Brüser Berg",
+      "use": "training"
+    }
   ],
   "website": "https://gamecocks.de/"
 }

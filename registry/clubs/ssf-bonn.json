@@ -16,5 +16,14 @@
     "floorball",
     "tischtennis"
   ],
+  "venues": [
+    {
+      "address": "Kölnstraße 250, 53117 Bonn",
+      "lat": 50.74717,
+      "lon": 7.08455,
+      "name": "Sportpark Nord",
+      "osm": "way/49707892"
+    }
+  ],
   "website": "https://ssfbonn.de/"
 }

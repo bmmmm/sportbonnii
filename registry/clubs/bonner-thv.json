@@ -5,6 +5,7 @@
     "BTHV",
     "Rugby Bonn"
   ],
+  "district": "Bonn",
   "id": "bonner-thv",
   "name": "Bonner THV",
   "sources": [
@@ -24,6 +25,15 @@
     "rugby",
     "hockey",
     "tennis"
+  ],
+  "venues": [
+    {
+      "address": "Christian-Miesen-Str. 1, 53129 Bonn",
+      "lat": 50.70701,
+      "lon": 7.12124,
+      "name": "BTHV-Anlage",
+      "osm": "way/128941575"
+    }
   ],
   "website": "https://www.bthv.de/"
 }
