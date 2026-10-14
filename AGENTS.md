@@ -51,9 +51,11 @@ store index — run installs unsandboxed.
   `exclude`, sports from tagMap → keywords → club, club from aliases, ids,
   `kind` from `eventKind`: title/tag rules, training > spiel, else the
   source's `kind`, else veranstaltung; `home` from `homeGame` for games only:
-  the title's own marker („auswärts", Away, Heimspiel, Home), then the place
-  — a club venue (`venueIndex`) or Bonn is home, another postcode away —,
-  then a title „… in <Ort>", else null).
+  the title's own marker („auswärts", Away, Gast bei, Heim, Heimspiel,
+  Heimturnier, Home), then the place — a club venue (`venueIndex`) or a Bonn
+  postcode is home, another postcode away, else the word Bonn home —, then a
+  title „… in <Ort>" (a Bonn Ortsteil in that phrase is home, another
+  capitalised place away), else null).
 - `pipeline/merge.mjs` — per-source state rules (ok / unchanged on 304 /
   partial / error / blocked / disabled, 7-day retention, drop-to-zero,
   all-failed), `changed` = the last run with a new or modified event (a
@@ -126,7 +128,8 @@ store index — run installs unsandboxed.
   clock, never UTC (ical.js would read it as UTC).
 - The page opens on games without the recognised away games (`art=spiel`,
   `ort=heim`; a game whose side is unknown counts as home); `art=alle`
-  lifts the kind filter. Home/away only ever touches games.
+  lifts the kind filter. Home/away only ever touches games. Links from before
+  2026-10-15 without `art` now open on home games too (accepted).
 - The page: no external resources except OpenStreetMap tiles in the Karte
   view (`img-src` admits `https://tile.openstreetmap.org` only; no tile before
   the tab opens; no `referrer` meta — the tile policy needs the Referer; the

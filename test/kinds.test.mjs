@@ -86,6 +86,11 @@ test('legacy: a previous state without kind or home is accepted and gets both ba
   const withKind = { ...snapshot, events: snapshot.events.map(({ home, ...e }) => e) };
   assert.deepEqual(acceptPrevious(withKind, status, null, clubsById).events, snapshot.events, 'a state with kind but without home gets home');
   assert.equal(acceptPrevious(snapshot, status).events.length, snapshot.events.length, 'a current state passes unchanged');
+  // Home from a club venue alone (street and number, no Bonn, no postcode) needs the clubs.
+  const atVenue = { ...legacy.events[0], club: 'rc-bonn-rhein-sieg', title: 'Ligaspiel: Herren gegen RK Köln', location: 'Martin-Luther-King-Str. 22' };
+  assert.equal(upgradeLegacyEvent(atVenue, clubsById).kind, 'spiel');
+  assert.equal(upgradeLegacyEvent(atVenue, clubsById).home, true, 'the club venue makes it a home game');
+  assert.equal(upgradeLegacyEvent(atVenue).home, null, 'without the clubs nothing says');
   const odd = { ...legacy.events[0], extra: 1 };
   assert.equal(upgradeLegacyEvent(odd), odd, 'only the exact legacy shapes are upgraded');
   assert.equal(acceptPrevious({ ...legacy, events: [odd] }, status), null, 'and anything else still fails the shape check');
