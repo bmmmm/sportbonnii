@@ -98,7 +98,7 @@ test('kind: from title and tags, else the source kind, else an event', () => {
 test('aliases match whole words, longest first, diacritics folded', () => {
   assert.equal(clubByAlias(ctx, 'Spiel der Telekom Baskets heute')?.id, 'telekom-baskets-bonn');
   assert.equal(clubByAlias(ctx, 'Basketsbonner'), null);
-  assert.equal(clubByAlias(ctx, 'Treffen', 'Halle des PSV Bonn')?.id, 'psv-bonn-tischtennis');
+  assert.equal(clubByAlias(ctx, 'Treffen', 'Halle der SSF Dragons Bonn')?.id, 'ssf-bonn');
   assert.equal(fold('Fußball Übungsleiter'), 'fussball ubungsleiter');
   assert.equal(clubByAlias(ctx, 'Rugby Bonn-Rhein-Sieg gegen Köln')?.id, 'rc-bonn-rhein-sieg', 'the longer alias outranks Bonner THV\'s "Rugby Bonn"');
   for (const [text, id] of [['Gamecocks-Heimspiel gegen Köln', 'bonn-gamecocks'], ['BTHV-Sommerfest', 'bonner-thv'], ['SSF Bonn-Schwimmfest', 'ssf-bonn']]) {

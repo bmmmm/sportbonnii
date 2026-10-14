@@ -2,7 +2,8 @@
   "active": true,
   "aliases": [
     "SSF Bonn",
-    "Schwimm- und Sportfreunde Bonn"
+    "Schwimm- und Sportfreunde Bonn",
+    "SSF Dragons Bonn"
   ],
   "district": "Bonn",
   "id": "ssf-bonn",
@@ -11,7 +12,9 @@
   "sports": [
     "schwimmen",
     "triathlon",
-    "leichtathletik"
+    "leichtathletik",
+    "floorball",
+    "tischtennis"
   ],
   "website": "https://ssfbonn.de/"
 }
