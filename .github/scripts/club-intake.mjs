@@ -25,7 +25,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import {
-  validateRegistry, readRegistry, canonicalJson, canonicalClubs, departmentConflict, siteOf, DISTRICTS, REGISTRY_DIR,
+  validateRegistry, readRegistry, canonicalJson, canonicalClubs, departmentConflict, nameKey, siteOf, DISTRICTS, REGISTRY_DIR,
 } from '../../pipeline/registry.mjs';
 import { detectSource, sourceSnippet } from '../../pipeline/detect.mjs';
 import { createNet } from '../../pipeline/net.mjs';
@@ -101,11 +101,26 @@ function conflictProblem(conflict, { shown, parent, website }) {
   return `Den Verein gibt es schon: ${owner.name} (Kennung \`${owner.id}\`).`;
 }
 
+// City words every Bonn club may carry: sharing one says nothing about belonging together.
+const CITY_WORDS = new Set(['bonn', 'bonner']);
+
+/**
+ * A department's own name becomes an alias of its club only when it shares a
+ * word with the club's name ("TV Kessenich Handball" of "Turnverein Kessenich
+ * 1898"). A bare department name ("Tischtennis") would make every platform
+ * date that mentions the sport the club's (model.mjs clubByAlias).
+ */
+export function departmentAlias(name, parent) {
+  const own = new Set(nameKey(parent).split(' ').filter((w) => w && !CITY_WORDS.has(w)));
+  return nameKey(name).split(' ').some((w) => own.has(w));
+}
+
 /**
  * Form fields + registry → { club, problems, detection, calendarUrl }.
  * `detect(url)` resolves like detectSource (injected in tests). A department
  * ("Abteilung von" filled in) becomes an entry for its club — name = the
- * club, the department's name an alias — unless the club is listed already.
+ * club, the department's name an alias when departmentAlias allows it —
+ * unless the club is listed already.
  */
 export async function buildEntry(form, { clubsDoc, sportsDoc, detect }) {
   const problems = [];
@@ -122,7 +137,7 @@ export async function buildEntry(form, { clubsDoc, sportsDoc, detect }) {
   const clubs = clubsDoc.clubs ?? [];
   const owners = [...clubs, ...(clubsDoc.platforms ?? [])];
   if (clubName && !id) problems.push(parent ? 'Aus dem Namen unter „Abteilung von“ lässt sich keine Kennung bilden.' : 'Aus dem Vereinsnamen lässt sich keine Kennung bilden.');
-  const aliases = parent && name && parent !== name ? [parent, name] : [clubName];
+  const aliases = parent && name && parent !== name && departmentAlias(name, parent) ? [parent, name] : [clubName];
 
   const labelToId = new Map(sportsDoc.sports.map((s) => [s.label.toLowerCase(), s.id]));
   const picked = (form[FIELDS.sports] ?? '').split(/,\s+/).map((s) => s.trim()).filter(Boolean);

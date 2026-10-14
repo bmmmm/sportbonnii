@@ -121,6 +121,18 @@ test('a department of a club not yet listed becomes the club\'s entry', async ()
   assert.deepEqual(r.files.map((f) => f.path), ['registry/clubs/turnverein-kessenich-1898.json']);
 });
 
+test('a bare department name never becomes an alias of its club', async () => {
+  const body = (name) => fx('new-club.md').replace('Turnverein Kessenich 1898 e.V.', name)
+    .replace('### Abteilung von\n\n_No response_', '### Abteilung von\n\nPost SV Bonn');
+  for (const name of ['Tischtennis', 'Tischtennis Bonn', 'Bonner Tischtennis']) {
+    const r = await validate({ body: body(name), number: 16, detect: icsFound });
+    assert.equal(r.ok, true, r.problems.join('; '));
+    assert.deepEqual(r.club.aliases, ['Post SV Bonn'], name);
+  }
+  const r = await validate({ body: body('Post SV Tischtennis'), number: 17, detect: icsFound });
+  assert.deepEqual(r.club.aliases, ['Post SV Bonn', 'Post SV Tischtennis']);
+});
+
 test('websites: http is accepted, a shared host counts per path', async () => {
   const http = fx('new-club.md').replace('https://www.tv-kessenich.de/', 'http://www.tv-kessenich.de/');
   assert.equal((await validate({ body: http, number: 13, detect: icsFound })).ok, true);
