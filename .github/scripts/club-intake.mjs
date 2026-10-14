@@ -253,13 +253,18 @@ export const OVERVIEW_FILE = 'docs/vereine.md';
 /** The only paths the bot writes: one club file (its id comes from user text) and the overview. */
 export const PUBLISH_PATH = /^(registry\/clubs\/[a-z0-9]+(-[a-z0-9]+)*\.json|docs\/vereine\.md)$/;
 
-/** validate's files, refused as a whole unless every path matches PUBLISH_PATH and carries text. */
+/**
+ * validate's files, refused as a whole unless every path matches PUBLISH_PATH and carries text,
+ * and the set is exactly one club file plus the overview.
+ */
 export function publishableFiles(files) {
   if (!Array.isArray(files) || files.length === 0) throw new Error('nothing to publish');
   for (const f of files) {
     if (typeof f?.path !== 'string' || !PUBLISH_PATH.test(f.path)) throw new Error(`refusing to write ${JSON.stringify(f?.path)}`);
     if (typeof f.text !== 'string') throw new Error(`no text for ${f.path}`);
   }
+  const clubFiles = files.filter((f) => f.path !== OVERVIEW_FILE).length;
+  if (files.length !== 2 || clubFiles !== 1) throw new Error(`refusing ${files.length} file(s): exactly one club file and ${OVERVIEW_FILE}`);
   return files;
 }
 

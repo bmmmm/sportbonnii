@@ -4,7 +4,7 @@
 // snapshot test/fixtures/site-data/ are all judged by checkSiteData.
 import { instantOf } from './tz.mjs';
 import { KIND_IDS, VENUE_USES } from '../site/kinds.js';
-import { MAX_VENUES, VENUE_BOUNDS, OSM_REF } from './registry.mjs';
+import { MAX_VENUES, VENUE_BOUNDS, OSM_REF, VENUE_FIELDS } from './registry.mjs';
 
 export const EVENT_KEYS = ['id', 'club', 'sports', 'kind', 'home', 'title', 'start', 'end', 'allDay', 'location', 'url', 'description', 'source', 'status'];
 export const STATES = ['ok', 'partial', 'error', 'blocked', 'disabled'];
@@ -15,8 +15,6 @@ export const MAX_DESCRIPTION = 400;
 export const MAX_ETAG = 200;
 export const MAX_LAST_MODIFIED = 64;
 
-// The keys a venue may carry in clubs.json (the registry's list: contract changes travel together).
-const VENUE_KEYS = ['name', 'address', 'lat', 'lon', 'osm', 'use'];
 const isText = (v) => typeof v === 'string' && v.trim() !== '' && v === v.trim();
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -103,7 +101,7 @@ export function checkVenues(venues, at) {
   for (const [j, v] of venues.entries()) {
     const vat = `${at}.venues[${j}]`;
     if (v === null || typeof v !== 'object' || Array.isArray(v)) { errs.push(`${vat}: must be an object`); continue; }
-    for (const k of Object.keys(v)) if (!VENUE_KEYS.includes(k)) errs.push(`${vat}: unknown field "${k}"`);
+    for (const k of Object.keys(v)) if (!VENUE_FIELDS.has(k)) errs.push(`${vat}: unknown field "${k}"`);
     if (!isText(v.name)) errs.push(`${vat}: name must be non-empty text`);
     if ('address' in v && !isText(v.address)) errs.push(`${vat}: address must be non-empty text`);
     for (const axis of ['lat', 'lon']) {

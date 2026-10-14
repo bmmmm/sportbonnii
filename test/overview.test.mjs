@@ -81,6 +81,10 @@ test('venues: at most three, use prefix, OpenStreetMap link; none → dash', () 
 test('Markdown characters in foreign text are escaped, one line per cell', () => {
   assert.equal(escapeMarkdown('a|b [c] *d* _e_ <f> `g` \\h'), 'a\\|b \\[c\\] \\*d\\* \\_e\\_ \\<f\\> \\`g\\` \\\\h');
   assert.equal(escapeMarkdown('a\n\nb'), 'a b');
+  // GitHub autolinks bare www. and scheme:// text; a backslash keeps it plain (checked on GitHub's GFM render).
+  assert.equal(escapeMarkdown('Infos: www.tv-x.de, WWW.Y.DE'), 'Infos: www\\.tv-x.de, WWW\\.Y.DE');
+  assert.equal(escapeMarkdown('siehe https://x.de/a und http://y.de'), 'siehe https\\://x.de/a und http\\://y.de');
+  assert.equal(escapeMarkdown('awww.x.de 10:30'), 'awww.x.de 10:30', 'no autolink, no escape');
   const text = renderOverview({
     clubs: [club({ name: 'A | B *x*', venues: [{ name: 'Halle [1]', lat: 50.7, lon: 7.1 }], website: 'https://x.example/a)b c' })],
     sports,

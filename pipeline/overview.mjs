@@ -14,9 +14,13 @@ const USE_PREFIX = { spiel: 'Spiele: ', training: 'Training: ' };
 const NONE = '–';
 const MAX_VENUES = 3;
 
-/** Text safe inside a Markdown table cell: one line, markup characters escaped. */
+/**
+ * Text safe inside a Markdown table cell: one line, markup characters escaped, and GitHub's
+ * www./scheme:// autolinks broken by a backslash (checked against GitHub's own GFM render).
+ */
 export function escapeMarkdown(text) {
-  return String(text ?? '').replace(/\s+/g, ' ').trim().replace(/[\\|[\]*_<>`]/g, '\\$&');
+  return String(text ?? '').replace(/\s+/g, ' ').trim().replace(/[\\|[\]*_<>`]/g, '\\$&')
+    .replace(/\b(www)\./gi, '$1\\.').replace(/([a-z]):\/\//gi, '$1\\://');
 }
 
 /** A Markdown link whose target cannot end early; plain escaped text when `url` is not an absolute URL. */

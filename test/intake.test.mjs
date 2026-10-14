@@ -58,20 +58,28 @@ test('a complete suggestion with a calendar becomes a new, valid, canonical club
 });
 
 test('publish writes nothing but registry/clubs/<slug>.json and docs/vereine.md', () => {
-  const file = (path) => [{ path, text: '{}\n' }];
-  assert.doesNotThrow(() => publishableFiles(file('registry/clubs/tv-kessenich-1898.json')));
-  assert.doesNotThrow(() => publishableFiles(file('docs/vereine.md')));
+  const file = (path) => ({ path, text: '{}\n' });
+  const club = file('registry/clubs/tv-kessenich-1898.json');
+  const overview = file('docs/vereine.md');
+  assert.doesNotThrow(() => publishableFiles([club, overview]));
+  assert.doesNotThrow(() => publishableFiles([overview, club]));
   for (const path of [
     'docs/vereine.md.bak', 'docs/vereine.md\n', 'docs/other.md', 'docs/README.md', 'docs/../README.md', 'docs/sub/vereine.md', '/docs/vereine.md',
     'Docs/vereine.md', 'docs/vereine.mdx', 'xdocs/vereine.md',
     'registry/clubs/../../.github/workflows/club-intake.yml', 'registry/sports.json', 'registry/platforms/x.json',
     '.github/workflows/club-intake.yml', 'registry/clubs/TV.json', 'registry/clubs/a--b.json', 'registry/clubs/a.json\n',
     'registry/clubs/.json', '/registry/clubs/a.json', 'registry/clubs/a.json.bak', 'registry/clubs/a/b.json', undefined,
-  ]) assert.throws(() => publishableFiles(file(path)), /refusing to write/, String(path));
-  assert.throws(() => publishableFiles([...file('registry/clubs/ok.json'), ...file('README.md')]), /refusing to write "README\.md"/, 'one bad path refuses all');
+  ]) assert.throws(() => publishableFiles([club, overview, file(path)]), /refusing to write/, String(path));
+  assert.throws(() => publishableFiles([club, file('README.md')]), /refusing to write "README\.md"/, 'one bad path refuses all');
+  // The set, not just each path: exactly one club file and the overview, no duplicates.
+  assert.throws(() => publishableFiles([club]), /exactly one club file/, 'the overview is missing');
+  assert.throws(() => publishableFiles([overview]), /exactly one club file/, 'the club file is missing');
+  assert.throws(() => publishableFiles([club, file('registry/clubs/other.json'), overview]), /exactly one club file/, 'two club files');
+  assert.throws(() => publishableFiles([club, club]), /exactly one club file/, 'the same club file twice');
+  assert.throws(() => publishableFiles([overview, overview]), /exactly one club file/, 'the overview twice');
   assert.throws(() => publishableFiles([]), /nothing to publish/);
   assert.throws(() => publishableFiles(null), /nothing to publish/);
-  assert.throws(() => publishableFiles([{ path: 'registry/clubs/ok.json' }]), /no text/);
+  assert.throws(() => publishableFiles([{ path: 'registry/clubs/ok.json' }, overview]), /no text/);
 });
 
 test('without a calendar URL: an entry with no sources, detection not run', async () => {

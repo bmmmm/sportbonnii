@@ -33,7 +33,8 @@ const CLUB_FIELDS = new Set(['id', 'name', 'sports', 'district', 'website', 'ali
 const PLATFORM_FIELDS = new Set(['id', 'name', 'website', 'sources']);
 const SOURCE_FIELDS = new Set(['id', 'type', 'url', 'enabled', 'note', 'sports', 'tagMap', 'exclude', 'params', 'expectEmpty', 'kind']);
 const SPORT_FIELDS = new Set(['id', 'label', 'emoji', 'colour', 'keywords']);
-const VENUE_FIELDS = new Set(['name', 'address', 'lat', 'lon', 'osm', 'use']);
+/** The keys a venue may carry — in the registry and in clubs.json alike. */
+export const VENUE_FIELDS = new Set(['name', 'address', 'lat', 'lon', 'osm', 'use']);
 
 /** A club lists at most this many venues; the first is its main one. */
 export const MAX_VENUES = 3;
