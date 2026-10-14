@@ -2,10 +2,12 @@
 // in the address hash by state.js), renders the views. DOM via createElement /
 // textContent only.
 import { loadData } from './data.js';
-import { parseHash, formatHash, writeAddress, applyFilters, chipCounts, defaultState } from './state.js';
+import { parseHash, formatHash, writeAddress, applyFilters, chipCounts, defaultState, fold, subscription } from './state.js';
 import { berlinToday, formatCheckedAt, monthOf, addDays, formatMonth } from './dates.js';
 import { renderTable, el, PAGE } from './table.js';
 import { renderCalendar, eventsInMonth } from './calendar.js';
+import { renderClubs } from './clubs.js';
+import { serializeFeed } from './ics.js';
 
 const STALE_HOURS = 48;
 const $ = (id) => document.getElementById(id);
@@ -14,7 +16,7 @@ let data = null;
 let ctx = null;
 let state = defaultState();
 const ui = { sort: { key: 'datum', dir: 1 }, limit: PAGE, allChips: false, day: null, focusDay: null };
-const VIEW_IDS = ['tabelle', 'kalender'];
+const VIEW_IDS = ['tabelle', 'kalender', 'vereine'];
 
 function known() {
   return { sportIds: new Set(data.sports.map((s) => s.id)), clubIds: new Set(data.clubs.map((c) => c.id)) };
@@ -157,7 +159,94 @@ function render() {
   renderZeit();
   $('reset').hidden = !isFiltered();
   if (state.ansicht === 'kalender') renderCalendarView();
+  else if (state.ansicht === 'vereine') renderClubsView();
   else renderTableView();
+  renderActions();
+}
+
+// --- feeds: download of the current selection, subscription to a published feed
+
+/** Absolute URL of a generated feed, derived from where the page is served (self-hostable). */
+function feedUrl(file, scheme = 'https') {
+  const base = location.origin + location.pathname.replace(/[^/]*$/, '');
+  const url = `${base}data/ics/${file}`;
+  return scheme === 'webcal' ? url.replace(/^https?:/, 'webcal:') : url;
+}
+
+/** The events the current view shows (for the download). */
+function shownEvents() {
+  if (state.ansicht === 'kalender') return eventsInMonth(applyFilters(data.events, state, ctx, { skipTime: true }), shownMonth());
+  return applyFilters(data.events, state, ctx);
+}
+
+function renderActions() {
+  const box = $('view-actions');
+  box.hidden = state.ansicht === 'vereine';
+  if (box.hidden) return;
+  const n = shownEvents().length;
+  $('download').disabled = n === 0;
+  $('download').setAttribute('aria-label', `${n} angezeigte ${n === 1 ? 'Termin' : 'Termine'} als .ics herunterladen`);
+  const sub = subscription(state, ctx);
+  const details = $('subscribe');
+  details.hidden = !sub;
+  if (!sub) { details.open = false; return; }
+  $('sub-title').textContent = sub.title;
+  $('sub-webcal').href = feedUrl(sub.file, 'webcal');
+  $('sub-url').value = feedUrl(sub.file);
+  $('sub-hint').textContent = sub.exact
+    ? 'Das Abo enthält genau diese Auswahl, auch künftige Termine.'
+    : 'Das Abo enthält alle Termine dieser Sportart bzw. dieses Vereins – Suche, Zeitraum und weitere Filter gelten nur hier auf der Seite.';
+}
+
+function slug(text) {
+  return fold(text).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'auswahl';
+}
+
+function download() {
+  const events = shownEvents();
+  if (!events.length) return;
+  const parts = [
+    state.verein ? ctx.clubsById.get(state.verein)?.name : null,
+    ...state.sport.map((s) => ctx.sportsById.get(s)?.label),
+    state.ansicht === 'kalender' ? formatMonth(shownMonth()) : null,
+  ].filter(Boolean);
+  const name = `Sport in Bonn${parts.length ? ` – ${parts.join(', ')}` : ''}`;
+  const text = serializeFeed(events, {
+    name,
+    windowFrom: data.window.from,
+    labels: Object.fromEntries(data.sports.map((s) => [s.id, s.label])),
+    clubNames: Object.fromEntries(data.clubs.map((c) => [c.id, c.name])),
+  });
+  const url = URL.createObjectURL(new Blob([text], { type: 'text/calendar;charset=utf-8' }));
+  const a = el('a');
+  a.href = url;
+  a.download = `sportbonnii-${slug(parts.join(' ') || 'alle-termine')}.ics`;
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}
+
+function renderClubsView() {
+  const upcoming = new Map();
+  for (const e of applyFilters(data.events, { ...defaultState() }, ctx)) if (e.club) upcoming.set(e.club, (upcoming.get(e.club) ?? 0) + 1);
+  renderChips(chipCounts(data.events, state, ctx));
+  const shown = renderClubs($('clubs'), {
+    clubs: data.clubs,
+    platforms: data.platforms,
+    status: data.status,
+    ctx,
+    upcomingByClub: upcoming,
+    state,
+    feedUrl,
+    onShowClub(id) {
+      update({ verein: id, ansicht: 'tabelle', sport: [], q: '' });
+      $('f-q').value = '';
+      $('tab-tabelle').focus();
+    },
+  });
+  const box = $('result');
+  box.replaceChildren(el('b', null, String(shown)), document.createTextNode(shown === 1 ? ' Verein' : ' Vereine'));
 }
 
 function renderTableView() {
@@ -251,6 +340,15 @@ function bind() {
     if (b) update({ zeit: b.dataset.zeit });
   });
   $('reset').addEventListener('click', resetFilters);
+  $('download').addEventListener('click', download);
+  $('sub-url').addEventListener('focus', (e) => e.target.select());
+  document.addEventListener('click', (e) => {
+    const details = $('subscribe');
+    if (details.open && !details.contains(e.target)) details.open = false;
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && $('subscribe').open) { $('subscribe').open = false; $('subscribe').querySelector('summary').focus(); }
+  });
 
   const tabs = document.querySelector('[role="tablist"]');
   tabs.addEventListener('click', (e) => {

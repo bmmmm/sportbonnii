@@ -481,6 +481,82 @@ a.title:hover .ext { color: var(--accent); }
   .cal-list-head { padding-inline: 12px; }
 }
 
+/* --- feeds: download + subscribe ------------------------------------------------- */
+
+.view-actions .button { min-height: 38px; }
+.view-actions .button:disabled { opacity: 0.45; cursor: default; filter: none; }
+.subscribe { position: relative; }
+.subscribe > summary { list-style: none; }
+.subscribe > summary::-webkit-details-marker { display: none; }
+.subscribe > summary::after { content: "▾"; font-size: 0.8em; margin-left: 2px; }
+.subscribe[open] > summary::after { content: "▴"; }
+.subscribe-panel {
+  position: absolute; right: 0; top: calc(100% + 8px); z-index: 5;
+  width: min(23rem, calc(100vw - 32px)); display: grid; gap: 8px;
+  padding: 14px; border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--surface); box-shadow: 0 10px 30px rgb(0 0 0 / 0.18);
+}
+.subscribe-title { margin: 0; font-weight: 700; }
+.subscribe-text, .subscribe-hint { margin: 0; color: var(--muted); font-size: 0.88rem; }
+.subscribe-label { font-size: 0.8rem; font-weight: 650; color: var(--muted); margin-top: 4px; }
+.subscribe-panel input {
+  width: 100%; min-height: 36px; padding: 6px 10px; border: 1px solid var(--border-strong);
+  border-radius: var(--radius-s); background: var(--bg); font-size: 0.82rem; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+@media (max-width: 640px) {
+  .view-actions { margin-left: 0; width: 100%; }
+  .subscribe-panel { left: auto; right: 0; }
+}
+
+/* --- clubs ----------------------------------------------------------------------- */
+
+.view-plain { background: none; border: 0; box-shadow: none; }
+.clubs { display: grid; gap: 26px; }
+.club-group-title {
+  display: flex; align-items: center; gap: 8px; margin: 0 0 10px;
+  font-size: 1.1rem; padding-left: 10px; border-left: 4px solid var(--sport);
+}
+.club-group-count { margin-left: 6px; color: var(--muted); font-size: 0.86rem; font-weight: 500; }
+.club-groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(17.5rem, 1fr)); gap: 22px 16px; align-items: start; }
+.club-stack { display: grid; gap: 12px; }
+.club {
+  --sport: var(--faint);
+  display: grid; align-content: start; gap: 8px;
+  padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--surface); box-shadow: var(--shadow);
+  border-top: 4px solid var(--sport);
+}
+.club.is-selected { box-shadow: 0 0 0 2px var(--accent); }
+.club-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.club-name { margin: 0; font-size: 1.05rem; }
+.club-district {
+  flex: none; padding: 1px 8px; border-radius: 999px; background: var(--surface-2);
+  color: var(--muted); font-size: 0.78rem; font-weight: 600;
+}
+.club-facts { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 0; font-size: 0.88rem; }
+.club-count { color: var(--muted); }
+.club-site { font-size: 0.9rem; justify-self: start; }
+.club-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 2px; }
+.club-actions .button { min-height: 34px; padding: 4px 12px; font-size: 0.86rem; }
+.state {
+  display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: 0.86rem;
+}
+.state::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--faint); }
+.state-ok::before { background: #2e9b57; }
+.state-partial::before { background: #d39a12; }
+.state-error::before { background: #d4483f; }
+.state-none, .state-disabled { color: var(--muted); font-weight: 500; }
+
+.club-extra { display: grid; gap: 10px; padding-top: 6px; border-top: 1px solid var(--border); }
+.club-suggest { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 6px 0 10px; }
+.sources-title { margin: 8px 0 0; font-size: 1.05rem; }
+.sources-note { margin: 0; font-size: 0.9rem; }
+.sources-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+table.sources { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+table.sources th { text-align: left; padding: 9px 12px; background: var(--surface-2); font-weight: 650; white-space: nowrap; }
+table.sources td { padding: 9px 12px; border-top: 1px solid var(--border); white-space: nowrap; }
+table.sources .num { text-align: right; }
+
 /* --- footer -------------------------------------------------------------------- */
 
 .site-footer { border-top: 1px solid var(--border); background: var(--surface); color: var(--muted); font-size: 0.88rem; }

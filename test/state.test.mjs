@@ -123,3 +123,27 @@ test('the browser-free modules import without a DOM', () => {
   const file = fileURLToPath(new URL('../site/state.js', import.meta.url));
   assert.ok(readFileSync(file, 'utf8').includes('history.replaceState'));
 });
+
+test('subscription: the club feed, else one sport, else everything; exact only without narrowing filters', async () => {
+  const { subscription } = await import('../site/state.js');
+  assert.deepEqual(subscription(state({}), ctx), { file: 'alle.ics', title: 'Alle Termine aller Vereine', exact: true });
+  assert.equal(subscription(state({ sport: ['rugby'] }), ctx).file, 'sport-rugby.ics');
+  assert.equal(subscription(state({ sport: ['rugby'], zeit: 'woche' }), ctx).exact, false, 'a time range narrows the page only');
+  assert.equal(subscription(state({ sport: ['rugby'], zeit: 'woche', ansicht: 'kalender' }), ctx).exact, true, 'the calendar ignores the range');
+  assert.equal(subscription(state({ sport: ['rugby', 'tennis'] }), ctx), null);
+  const club = subscription(state({ verein: 'bsv-roleber', sport: ['fussball'] }), ctx);
+  assert.deepEqual([club.file, club.exact], ['verein-bsv-roleber.ics', false]);
+  assert.equal(subscription(state({ q: 'camp' }), ctx).exact, false);
+});
+
+test('club directory state from the source status', async () => {
+  const { calendarState } = await import('../site/clubs.js');
+  const club = { id: 'x', sources: [{ id: 'a' }, { id: 'b' }] };
+  const st = (a, b) => ({ 'x/a': a, 'x/b': b });
+  assert.equal(calendarState({ id: 'x', sources: [] }, {}, 2026).kind, 'none');
+  assert.equal(calendarState(club, st({ state: 'disabled', since: '2026-10-01', count: 0 }, { state: 'disabled', since: '2026-10-01', count: 0 }), 2026).kind, 'disabled');
+  assert.equal(calendarState(club, st({ state: 'ok', since: '2026-10-01', count: 3 }, { state: 'disabled', since: '2026-10-01', count: 0 }), 2026).kind, 'ok');
+  assert.equal(calendarState(club, st({ state: 'ok', since: '2026-10-01', count: 3 }, { state: 'error', since: '2026-10-10', count: 2 }), 2026).kind, 'partial');
+  const down = calendarState(club, st({ state: 'error', since: '2026-10-12', count: 3 }, { state: 'blocked', since: '2026-10-10', count: 0 }), 2026);
+  assert.deepEqual(down, { kind: 'error', text: 'Abruf scheitert seit Sa., 10. Okt.' });
+});

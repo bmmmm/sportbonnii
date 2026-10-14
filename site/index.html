@@ -70,9 +70,26 @@
     <div class="tabs" role="tablist" aria-label="Ansicht">
       <button type="button" role="tab" id="tab-tabelle" data-view="tabelle" aria-controls="view-tabelle" aria-selected="true">Tabelle</button>
       <button type="button" role="tab" id="tab-kalender" data-view="kalender" aria-controls="view-kalender" aria-selected="false" tabindex="-1">Kalender</button>
+      <button type="button" role="tab" id="tab-vereine" data-view="vereine" aria-controls="view-vereine" aria-selected="false" tabindex="-1">Vereine</button>
     </div>
     <p class="result" id="result" aria-live="polite"></p>
     <button type="button" class="link-button" id="reset" hidden>Filter zurücksetzen</button>
+    <div class="view-actions" id="view-actions">
+      <button type="button" class="button button-quiet" id="download" title="Die angezeigten Termine als Kalenderdatei (.ics) herunterladen">
+        <span aria-hidden="true">⬇</span> .ics
+      </button>
+      <details class="subscribe" id="subscribe">
+        <summary class="button">Abonnieren</summary>
+        <div class="subscribe-panel">
+          <p class="subscribe-title" id="sub-title"></p>
+          <p class="subscribe-text">Ein Abo hält deinen Kalender von selbst aktuell – neue und geänderte Termine kommen automatisch dazu.</p>
+          <a class="button" id="sub-webcal" href="./">Im Kalender öffnen</a>
+          <label class="subscribe-label" for="sub-url">Adresse für Google Kalender &amp; Co.</label>
+          <input id="sub-url" type="text" readonly spellcheck="false">
+          <p class="subscribe-hint" id="sub-hint"></p>
+        </div>
+      </details>
+    </div>
   </div>
 
   <section class="view" id="view-tabelle" role="tabpanel" aria-labelledby="tab-tabelle">
@@ -80,6 +97,9 @@
   </section>
   <section class="view" id="view-kalender" role="tabpanel" aria-labelledby="tab-kalender" hidden>
     <div id="calendar" class="calendar"></div>
+  </section>
+  <section class="view view-plain" id="view-vereine" role="tabpanel" aria-labelledby="tab-vereine" hidden>
+    <div id="clubs" class="clubs"></div>
   </section>
 </main>
 
@@ -92,6 +112,7 @@
     </p>
     <ul class="footer-links">
       <li><a href="https://github.com/bmmmm/sportbonnii/issues/new?template=verein-hinzufuegen.yml">Verein vorschlagen</a></li>
+      <li><a href="#ansicht=vereine" id="footer-sources">Quellen</a></li>
       <li><a href="https://github.com/bmmmm/sportbonnii">Quellcode</a></li>
       <li><a href="https://github.com/bmmmm/sportbonnii/blob/main/LICENSE">Lizenz: GPL-3.0-or-later</a></li>
     </ul>

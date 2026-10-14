@@ -107,6 +107,22 @@ export function chipCounts(events, state, ctx, opts = {}) {
   return counts;
 }
 
+/** The published feed that matches the filter best: one club, one sport, or everything. */
+export function subscription(state, ctx) {
+  // A feed carries every date of its club or sport; search and time range only narrow the page.
+  const narrowed = Boolean(state.q) || (state.ansicht === 'tabelle' && state.zeit !== 'alle');
+  if (state.verein) {
+    const c = ctx.clubsById.get(state.verein);
+    return { file: `verein-${c.id}.ics`, title: `Alle Termine von ${c.name}`, exact: !state.sport.length && !narrowed };
+  }
+  if (state.sport.length === 1) {
+    const s = ctx.sportsById.get(state.sport[0]);
+    return { file: `sport-${s.id}.ics`, title: `Alle ${s.label}-Termine`, exact: !narrowed };
+  }
+  if (!state.sport.length) return { file: 'alle.ics', title: 'Alle Termine aller Vereine', exact: !narrowed };
+  return null;
+}
+
 /** The single address-bar writer. */
 export function writeAddress(state) {
   const hash = formatHash(state);
