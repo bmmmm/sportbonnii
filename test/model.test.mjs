@@ -67,8 +67,8 @@ test('exclude: case-insensitive against title and tags', () => {
 
 test('club sources: a multi-sport club narrows by keyword, else keeps all its sports', () => {
   assert.deepEqual(asClub({ title: 'Hockey: Heimspiel Damen' }).sports, ['hockey']);
-  assert.deepEqual(asClub({ title: 'Mitgliederversammlung' }).sports, ['hockey', 'rugby', 'tennis'].sort((a, b) => ctx.order.get(a) - ctx.order.get(b)));
-  assert.deepEqual(asClub({ title: 'Fußball-Freundschaftsspiel' }).sports, ['hockey', 'rugby', 'tennis'].sort((a, b) => ctx.order.get(a) - ctx.order.get(b)), 'keywords outside the club do not apply');
+  assert.deepEqual(asClub({ title: 'Mitgliederversammlung' }).sports, ['hockey', 'tennis'].sort((a, b) => ctx.order.get(a) - ctx.order.get(b)));
+  assert.deepEqual(asClub({ title: 'Fußball-Freundschaftsspiel' }).sports, ['hockey', 'tennis'].sort((a, b) => ctx.order.get(a) - ctx.order.get(b)), 'keywords outside the club do not apply');
   assert.deepEqual(asClub({ title: 'Saisonstart' }, { ...clubSource, sports: ['tennis'] }).sports, ['tennis']);
   assert.equal(asClub({}).club, 'bonner-thv');
 });
@@ -100,12 +100,12 @@ test('aliases match whole words, longest first, diacritics folded', () => {
   assert.equal(clubByAlias(ctx, 'Basketsbonner'), null);
   assert.equal(clubByAlias(ctx, 'Treffen', 'Halle der SSF Dragons Bonn')?.id, 'ssf-bonn');
   assert.equal(fold('Fußball Übungsleiter'), 'fussball ubungsleiter');
-  assert.equal(clubByAlias(ctx, 'Rugby Bonn-Rhein-Sieg gegen Köln')?.id, 'rc-bonn-rhein-sieg', 'the longer alias outranks Bonner THV\'s "Rugby Bonn"');
+  assert.equal(clubByAlias(ctx, 'Rugby Bonn-Rhein-Sieg gegen Köln')?.id, 'rc-bonn-rhein-sieg', 'the longer alias outranks the Bonn Rugby UC\'s "Rugby Bonn"');
   for (const [text, id] of [['Gamecocks-Heimspiel gegen Köln', 'bonn-gamecocks'], ['BTHV-Sommerfest', 'bonner-thv'], ['SSF Bonn-Schwimmfest', 'ssf-bonn']]) {
     assert.equal(clubByAlias(ctx, text)?.id, id, `German compounds keep their club: ${text}`);
   }
   assert.equal(clubByAlias(ctx, 'Heimspiel des RC Bonn-Rhein-Sieg')?.id, 'rc-bonn-rhein-sieg');
-  assert.equal(clubByAlias(ctx, 'Rugby Bonn lädt ein')?.id, 'bonner-thv');
+  assert.equal(clubByAlias(ctx, 'Rugby Bonn lädt ein')?.id, 'bonn-rugby-union-club');
   assert.equal(clubByAlias(ctx, 'Lauftreff', 'Sportplatz Bonn-Roleber'), null, 'a place name is not a club');
 });
 

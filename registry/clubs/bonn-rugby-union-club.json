@@ -1,0 +1,24 @@
+{
+  "active": true,
+  "aliases": [
+    "Bonn Rugby Union Club",
+    "Bonn Rugby UC",
+    "Rugby Bonn"
+  ],
+  "district": "Bonn",
+  "id": "bonn-rugby-union-club",
+  "name": "Bonn Rugby Union Club",
+  "sources": [],
+  "sports": [
+    "rugby"
+  ],
+  "venues": [
+    {
+      "address": "Christian-Miesen-Straße, 53129 Bonn",
+      "lat": 50.70765,
+      "lon": 7.12122,
+      "name": "Wasserland-Stadion (Sportpark Wasserland)"
+    }
+  ],
+  "website": "https://www.rugby-bonn.de/start"
+}

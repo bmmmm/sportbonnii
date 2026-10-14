@@ -2,7 +2,7 @@
 
 Generiert von `pnpm run registry:fmt` – nicht von Hand ändern.
 
-23 Vereine · 8 mit Online-Kalender · 24 Sportarten
+24 Vereine · 8 mit Online-Kalender · 24 Sportarten
 
 Abteilungen stehen beim Verein, nie als eigener Eintrag. Neuer Verein? Erst hier nachsehen, dann [registry/README.md](../registry/README.md) lesen.
 
@@ -13,9 +13,10 @@ Abteilungen stehen beim Verein, nie als eigener Eintrag. Neuer Verein? Erst hier
 | **Bonn Capitals**<br>`bonn-capitals` | Baseball & Softball | Bad Godesberg | [Baseballstadion Rheinaue](https://www.openstreetmap.org/way/1246087726) | – | [capitals.de](https://www.capitals.de/) |
 | **Bonn Fire**<br>`bonn-fire` | Hockey | Bonn | [Bertolt-Brecht-Sportanlage](https://www.openstreetmap.org/relation/1851114) | – | [bonnfire.de](https://bonnfire.de/) |
 | **Bonn Gamecocks**<br>`bonn-gamecocks` | American Football | Bad Godesberg | Spiele: [Sportpark Pennenfeld](https://www.openstreetmap.org/way/26839678)<br>Training: [Sportplatz Brüser Berg](https://www.openstreetmap.org/?mlat=50.7029&mlon=7.04837#map=18/50.7029/7.04837) | – | [gamecocks.de](https://gamecocks.de/) |
+| **Bonn Rugby Union Club**<br>`bonn-rugby-union-club` | Rugby | Bonn | [Wasserland-Stadion (Sportpark Wasserland)](https://www.openstreetmap.org/?mlat=50.70765&mlon=7.12122#map=18/50.70765/7.12122) | – | [rugby-bonn.de](https://www.rugby-bonn.de/start) |
 | **Bonner Bogenschützenclub 1965**<br>`bonner-bogenschuetzen` | Bogenschießen | Bonn | Training: [Josef-Strunck-Halle](https://www.openstreetmap.org/?mlat=50.72304&mlon=7.07351#map=18/50.72304/7.07351) | iCal | [bonnerbogensport.de](https://bonnerbogensport.de/) |
 | **Bonner SC**<br>`bonner-sc` | Fußball | Bonn | [Sportpark Nord](https://www.openstreetmap.org/way/49707892) | iCal (aus) | [bonner-sc.de](https://www.bonner-sc.de/) |
-| **Bonner THV**<br>`bonner-thv` | Hockey, Rugby, Tennis | Bonn | [BTHV-Anlage](https://www.openstreetmap.org/way/128941575) | TEC | [bthv.de](https://www.bthv.de/) |
+| **Bonner THV**<br>`bonner-thv` | Hockey, Tennis | Bonn | [BTHV-Anlage](https://www.openstreetmap.org/way/128941575) | TEC | [bthv.de](https://www.bthv.de/) |
 | **Bonnsai**<br>`bonnsai` | Frisbeesport | Bonn | Training: [BTHV-Anlage (Naturrasen)](https://www.openstreetmap.org/way/128941575)<br>Training: [Franz-Elbern-Stadion](https://www.openstreetmap.org/relation/1460995) | – | [bonnsai.org](https://www.bonnsai.org/) |
 | **BSV Roleber**<br>`bsv-roleber` | Fußball, Basketball, Tischtennis, Turnen & Gymnastik | Beuel | [Sportplatz Roleber](https://www.openstreetmap.org/way/50752096) | TEC | [bsvroleber.de](https://bsvroleber.de/) |
 | **Bonner Turnverein 1860**<br>`btv-1860` | Volleyball, Turnen & Gymnastik | Bonn | Training: [Turnhalle Münsterschule](https://www.openstreetmap.org/way/106549267) | TEC | [btv1860.de](https://www.btv1860.de/) |

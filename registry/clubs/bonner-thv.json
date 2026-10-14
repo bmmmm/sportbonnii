@@ -2,8 +2,7 @@
   "active": true,
   "aliases": [
     "Bonner THV",
-    "BTHV",
-    "Rugby Bonn"
+    "BTHV"
   ],
   "district": "Bonn",
   "id": "bonner-thv",
@@ -14,7 +13,6 @@
       "note": "WordPress in /blog with The Events Calendar (found by detect: meta refresh to /blog, REST root from the api.w.org link); club-wide events are categorised Club",
       "tagMap": {
         "Hockey": "hockey",
-        "Rugby": "rugby",
         "Tennis": "tennis"
       },
       "type": "tec",
@@ -22,7 +20,6 @@
     }
   ],
   "sports": [
-    "rugby",
     "hockey",
     "tennis"
   ],

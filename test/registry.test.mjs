@@ -115,9 +115,9 @@ test('each rule goes red on its own mutant', () => {
 test('one club, one entry: what stays valid', () => {
   // A hyphen is part of the name: "Rugby Bonn-Rhein-Sieg" is no department of "Rugby Bonn" (both listed today).
   const reg = docs().clubs;
-  const [thv, rc] = ['bonner-thv', 'rc-bonn-rhein-sieg'].map((id) => reg.clubs.find((c) => c.id === id));
-  assert.ok(thv.aliases.includes('Rugby Bonn') && rc.aliases.includes('Rugby Bonn-Rhein-Sieg'));
-  assert.equal(departmentConflict(rc, [thv]), null);
+  const [uc, rc] = ['bonn-rugby-union-club', 'rc-bonn-rhein-sieg'].map((id) => reg.clubs.find((c) => c.id === id));
+  assert.ok(uc.aliases.includes('Rugby Bonn') && rc.aliases.includes('Rugby Bonn-Rhein-Sieg'));
+  assert.equal(departmentConflict(rc, [uc]), null);
   // Shared hosting: the same host with different paths is two clubs.
   assert.equal(errorsAfter((c) => { c.clubs.push(club('tt-a', 'TT A', 'https://sites.google.com/view/tt-a'), club('tt-b', 'TT B', 'https://sites.google.com/view/tt-b')); }), '');
   // A department with its own words in front is no prefix match.
