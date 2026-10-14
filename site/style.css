@@ -563,6 +563,8 @@ table.sources .num { text-align: right; }
 .footer-inner { display: grid; gap: 10px; padding-block: 20px calc(24px + env(safe-area-inset-bottom)); }
 .footer-inner p { margin: 0; max-width: 46rem; }
 .footer-links { display: flex; flex-wrap: wrap; gap: 6px 20px; margin: 0; padding: 0; list-style: none; }
+.impressum summary { cursor: pointer; width: max-content; }
+.impressum address { font-style: normal; margin: 6px 0 0; line-height: 1.5; }
 
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; scroll-behavior: auto !important; }
