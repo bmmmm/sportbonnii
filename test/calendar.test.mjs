@@ -44,3 +44,20 @@ test('eventsInMonth: what touches the month, including spans from before', () =>
   assert.equal(eventsInMonth(span, '2026-11').length, 1);
   assert.equal(eventsInMonth(span, '2026-12').length, 0);
 });
+
+test('day mapping never uses the machine zone: 00:30 in Bonn is still the day before in New York and UTC', async () => {
+  const { execFileSync } = await import('node:child_process');
+  const cal = new URL('../site/calendar.js', import.meta.url).href;
+  const dates = new URL('../site/dates.js', import.meta.url).href;
+  const probe = `
+    const { eventsByDay } = await import('${cal}');
+    const { eventDays, formatShortDate } = await import('${dates}');
+    const e = { start: '2026-10-31T00:30:00+01:00', end: '2026-10-31T02:00:00+01:00', allDay: false };
+    const map = eventsByDay([e], ['2026-10-30', '2026-10-31']);
+    console.log(eventDays(e).join(' '), map.get('2026-10-30').length, map.get('2026-10-31').length, formatShortDate(eventDays(e)[0], 2026));`;
+  for (const tz of ['America/New_York', 'UTC', 'Pacific/Honolulu', 'Asia/Tokyo']) {
+    const out = execFileSync(process.execPath, ['--input-type=module', '-e', probe], { env: { ...process.env, TZ: tz } }).toString().trim();
+    assert.equal(out, '2026-10-31 2026-10-31 0 1 Sa., 31. Okt.', tz);
+  }
+  assert.ok(events.some((e) => e.start === '2026-10-31T00:30:00+01:00'), 'the snapshot carries the night probe the browser gate uses');
+});

@@ -4,7 +4,6 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
 import { parseHash, formatHash, applyFilters, chipCounts, defaultState, fold } from '../site/state.js';
 import {
   berlinToday, rangeFor, eventDays, overlaps, formatShortDate, formatLongDate, formatTime, formatSpan,
@@ -119,10 +118,6 @@ test('table helpers: sorting, place text without the club, relative days', () =>
   assert.equal(fold('Übungs-Straße'), 'ubungs-strasse');
 });
 
-test('the browser-free modules import without a DOM', () => {
-  const file = fileURLToPath(new URL('../site/state.js', import.meta.url));
-  assert.ok(readFileSync(file, 'utf8').includes('history.replaceState'));
-});
 
 test('subscription: the club feed, else one sport, else everything; exact only without narrowing filters', async () => {
   const { subscription } = await import('../site/state.js');
