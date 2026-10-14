@@ -28,7 +28,7 @@ function known() {
 function update(patch) {
   const next = { ...state, ...patch };
   next.q = next.q.slice(0, MAX_QUERY); // the hash keeps no more, so neither may the view
-  if (patch.sport || patch.art || patch.verein !== undefined || patch.q !== undefined || patch.zeit) ui.limit = PAGE;
+  if (patch.sport || patch.art || patch.ort || patch.verein !== undefined || patch.q !== undefined || patch.zeit) ui.limit = PAGE;
   if (patch.monat !== undefined && patch.monat !== state.monat) ui.day = null;
   state = next;
   writeAddress(state);
@@ -128,12 +128,20 @@ function renderZeit() {
   for (const b of $('f-zeit').querySelectorAll('[data-zeit]')) b.setAttribute('aria-pressed', String(b.dataset.zeit === state.zeit));
 }
 
+/** Home/away only concerns games: shown while games are among the kinds. */
+const showsGames = () => !state.art.length || state.art.includes('spiel');
+
+function renderOrt() {
+  for (const b of $('f-ort').querySelectorAll('[data-ort]')) b.setAttribute('aria-pressed', String(b.dataset.ort === state.ort));
+}
+
 function isFiltered() {
   const d = defaultState();
   // The range only acts on the table, the kind not on the clubs; where hidden they must not count.
   const zeit = state.ansicht === 'tabelle' && state.zeit !== d.zeit;
-  const art = state.ansicht !== 'vereine' && state.art.length > 0;
-  return state.sport.length > 0 || state.verein !== d.verein || state.q !== d.q || zeit || art;
+  const art = state.ansicht !== 'vereine' && state.art.join() !== d.art.join();
+  const ort = state.ansicht !== 'vereine' && showsGames() && state.ort !== d.ort;
+  return state.sport.length > 0 || state.verein !== d.verein || state.q !== d.q || zeit || art || ort;
 }
 
 // --- views ---------------------------------------------------------------------
@@ -182,6 +190,7 @@ function renderTabs() {
   $('zeit-field').hidden = state.ansicht !== 'tabelle';
   // Clubs have no kind.
   $('kind-field').hidden = state.ansicht === 'vereine';
+  $('ort-field').hidden = !showsGames();
 }
 
 function render() {
@@ -189,6 +198,7 @@ function render() {
   renderTabs();
   renderClubField();
   renderZeit();
+  renderOrt();
   $('reset').hidden = !isFiltered();
   if (state.ansicht === 'kalender') renderCalendarView();
   else if (state.ansicht === 'vereine') renderClubsView();
@@ -262,9 +272,9 @@ function download() {
 
 function renderClubsView() {
   const upcoming = new Map();
-  for (const e of applyFilters(data.events, { ...defaultState() }, ctx)) if (e.club) upcoming.set(e.club, (upcoming.get(e.club) ?? 0) + 1);
-  // Counts of upcoming dates, like the cards ("kommende Termine"); the hidden range and kind do not apply.
-  renderChips(chipCounts(data.events, { ...state, zeit: 'alle', art: [] }, ctx));
+  for (const e of applyFilters(data.events, { ...defaultState(), art: [], ort: 'alle' }, ctx)) if (e.club) upcoming.set(e.club, (upcoming.get(e.club) ?? 0) + 1);
+  // Counts of upcoming dates, like the cards ("kommende Termine"); the hidden range, kind and home/away do not apply.
+  renderChips(chipCounts(data.events, { ...state, zeit: 'alle', art: [], ort: 'alle' }, ctx));
   const shown = renderClubs($('clubs'), {
     clubs: data.clubs,
     platforms: data.platforms,
@@ -274,7 +284,7 @@ function renderClubsView() {
     state,
     feedUrl,
     onShowClub(id) {
-      update({ verein: id, ansicht: 'tabelle', sport: [], art: [], q: '' });
+      update({ verein: id, ansicht: 'tabelle', sport: [], art: [], ort: 'alle', q: '' });
       $('f-q').value = '';
       $('tab-tabelle').focus();
     },
@@ -336,7 +346,7 @@ function renderCalendarView() {
 
 function resetFilters() {
   const d = defaultState();
-  update({ sport: d.sport, art: d.art, verein: d.verein, q: d.q, zeit: d.zeit });
+  update({ sport: d.sport, art: d.art, ort: d.ort, verein: d.verein, q: d.q, zeit: d.zeit });
   $('f-q').value = '';
 }
 
@@ -381,6 +391,10 @@ function bind() {
   $('f-zeit').addEventListener('click', (e) => {
     const b = e.target.closest('[data-zeit]');
     if (b) update({ zeit: b.dataset.zeit });
+  });
+  $('f-ort').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-ort]');
+    if (b) update({ ort: b.dataset.ort });
   });
   $('reset').addEventListener('click', resetFilters);
   $('download').addEventListener('click', download);

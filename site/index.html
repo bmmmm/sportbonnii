@@ -44,6 +44,14 @@
         <button type="button" class="link-button" id="kind-clear" hidden>Alle Arten</button>
       </div>
       <div class="chips" id="kind-chips" role="group" aria-labelledby="kind-title"></div>
+      <div class="ort-field" id="ort-field">
+        <span class="field-label" id="ort-label">Spielort</span>
+        <div class="segmented" id="f-ort" role="group" aria-labelledby="ort-label">
+          <button type="button" data-ort="heim" aria-pressed="true" title="Heimspiele der Vereine und Spiele ohne erkennbaren Ort">Heimspiele</button>
+          <button type="button" data-ort="auswaerts" aria-pressed="false">Auswärts</button>
+          <button type="button" data-ort="alle" aria-pressed="false">Alle Spiele</button>
+        </div>
+      </div>
     </div>
 
     <div class="filter-row">

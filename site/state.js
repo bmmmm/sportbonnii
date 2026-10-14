@@ -2,20 +2,23 @@
 // writeAddress — the one place on the page that touches the address bar
 // (history.replaceState, so filtering never floods the back button).
 //
-//   #ansicht=kalender&sport=fussball,tennis&art=spiel&verein=bsv-roleber&q=camp&zeit=woche&monat=2026-11
+//   #ansicht=kalender&sport=fussball,tennis&art=spiel,training&ort=alle&verein=bsv-roleber&q=camp&zeit=woche&monat=2026-11
 //
 // Defaults are left out, unknown values dropped, so every link stays valid
-// when the registry changes.
+// when the registry changes. The page opens on games (`art` = spiel) without
+// the recognised away games (`ort` = heim); `art=alle` lifts the kind filter.
 import { overlaps, rangeFor } from './dates.js';
 import { KIND_IDS } from './kinds.js';
 
 export const VIEWS = ['tabelle', 'kalender', 'vereine'];
 export const RANGES = ['alle', 'heute', 'woche', 'monat'];
+/** Which games: home (and unknown), away, or all. Only games are touched. */
+export const ORTE = ['heim', 'auswaerts', 'alle'];
 const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
 const MAX_QUERY = 100;
 
 export function defaultState() {
-  return { ansicht: 'tabelle', sport: [], art: [], verein: '', q: '', zeit: 'alle', monat: '' };
+  return { ansicht: 'tabelle', sport: [], art: ['spiel'], ort: 'heim', verein: '', q: '', zeit: 'alle', monat: '' };
 }
 
 const decode = (v) => {
@@ -41,8 +44,9 @@ export function parseHash(hash, known = {}) {
       state.sport = [...new Set(ids)];
     } else if (key === 'art') {
       const ids = value.split(',').map((s) => s.trim()).filter((s) => KIND_IDS.includes(s));
-      state.art = [...new Set(ids)];
-    } else if (key === 'verein' && value && (!known.clubIds || known.clubIds.has(value))) state.verein = value;
+      if (value === 'alle') state.art = [];
+      else if (ids.length) state.art = [...new Set(ids)];
+    } else if (key === 'ort' && ORTE.includes(value)) state.ort = value; else if (key === 'verein' && value && (!known.clubIds || known.clubIds.has(value))) state.verein = value;
     else if (key === 'q') state.q = value.slice(0, MAX_QUERY);
     else if (key === 'zeit' && RANGES.includes(value)) state.zeit = value;
     else if (key === 'monat' && MONTH.test(value)) state.monat = value;
@@ -56,7 +60,8 @@ export function formatHash(state) {
   const out = [];
   if (state.ansicht !== d.ansicht) out.push(`ansicht=${state.ansicht}`);
   if (state.sport.length) out.push(`sport=${state.sport.map(encodeURIComponent).join(',')}`);
-  if (state.art.length) out.push(`art=${state.art.map(encodeURIComponent).join(',')}`);
+  if (state.art.join() !== d.art.join()) out.push(`art=${state.art.length ? state.art.map(encodeURIComponent).join(',') : 'alle'}`);
+  if (state.ort !== d.ort) out.push(`ort=${state.ort}`);
   if (state.verein) out.push(`verein=${encodeURIComponent(state.verein)}`);
   if (state.q) out.push(`q=${encodeURIComponent(state.q)}`);
   if (state.zeit !== d.zeit) out.push(`zeit=${state.zeit}`);
@@ -81,6 +86,7 @@ const searchCache = new WeakMap();
 function matches(e, state, ctx, { skipSport = false, skipKind = false, skipTime = false } = {}) {
   if (!skipSport && state.sport.length && !e.sports.some((s) => state.sport.includes(s))) return false;
   if (!skipKind && state.art.length && !state.art.includes(e.kind)) return false;
+  if (e.kind === 'spiel' && (state.ort === 'heim' ? e.home === false : state.ort === 'auswaerts' && e.home !== false)) return false;
   if (state.verein && e.club !== state.verein) return false;
   if (state.q) {
     let hay = searchCache.get(e);
@@ -125,8 +131,8 @@ export function kindCounts(events, state, ctx, opts = {}) {
 
 /** The published feed that matches the filter best: one club, one sport, or everything. */
 export function subscription(state, ctx) {
-  // A feed carries every date of its club or sport; search, kind and time range only narrow the page.
-  const narrowed = Boolean(state.q) || state.art.length > 0 || (state.ansicht === 'tabelle' && state.zeit !== 'alle');
+  // A feed carries every date of its club or sport; search, kind, home/away and time range only narrow the page.
+  const narrowed = Boolean(state.q) || state.art.length > 0 || state.ort !== 'alle' || (state.ansicht === 'tabelle' && state.zeit !== 'alle');
   if (state.verein) {
     const c = ctx.clubsById.get(state.verein);
     return { file: `verein-${c.id}.ics`, title: `Alle Termine von ${c.name}`, exact: !state.sport.length && !narrowed };

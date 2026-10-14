@@ -189,6 +189,8 @@ main { padding-block: 18px 40px; outline: none; }
 .chip-kind { --sport: var(--accent); }
 .chip-kind::before { display: none; }
 .chip-kind[aria-pressed="true"] .count { color: var(--accent-fg); }
+/* Home/away: only for games, below the kind chips. */
+.ort-field { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin-top: 10px; }
 
 .link-button {
   border: 0; background: none; padding: 2px 0; cursor: pointer;
@@ -241,6 +243,7 @@ main { padding-block: 18px 40px; outline: none; }
   .chip { flex: none; }
   .filter-row { grid-template-columns: 1fr; }
   .segmented { display: flex; }
+  .ort-field .segmented { flex: 1 1 100%; }
   .segmented button { flex: 1; padding-inline: 6px; }
 }
 
