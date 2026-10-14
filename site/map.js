@@ -46,9 +46,12 @@ export function visibleTiles({ z, cx, cy }, { width, height }) {
   return tiles;
 }
 
-/** The view that shows every point: the largest zoom that fits them (with `pad` px on each side), centred. */
+/** The view that shows every point: the largest zoom that fits them (with `pad` px on each side), centred; Bonn at z12 without points. */
 export function fitView(points, { width, height }, { minZoom = 11, maxZoom = 16, pad = 40 } = {}) {
-  if (!points.length) points = [BONN];
+  if (!points.length) {
+    const c = project(BONN.lat, BONN.lon, 12);
+    return { z: 12, cx: c.x, cy: c.y };
+  }
   let z = maxZoom;
   for (; z > minZoom; z--) {
     const xs = points.map((p) => project(p.lat, p.lon, z));
@@ -135,6 +138,8 @@ export function createMap(box, { onSelect }) {
     for (const m of markers) {
       const p = project(m.lat, m.lon, view.z);
       translate(m.node, p.x - left, p.y - top);
+      // A marker off the box is out of the tab order: focusing it would scroll the layers.
+      m.node.tabIndex = p.x >= left && p.x <= left + s.width && p.y >= top && p.y <= top + s.height ? 0 : -1;
     }
     zin.disabled = view.z >= MAX_ZOOM;
     zout.disabled = view.z <= MIN_ZOOM;
@@ -162,7 +167,7 @@ export function createMap(box, { onSelect }) {
   const down = new Map();
   let pinch = null;
   root.addEventListener('pointerdown', (ev) => {
-    if (ev.target.closest('button, a') || !view) return;
+    if (ev.button !== 0 || ev.target.closest('button, a') || !view) return;
     root.setPointerCapture(ev.pointerId);
     down.set(ev.pointerId, [ev.clientX, ev.clientY]);
     if (down.size === 2) {
@@ -188,14 +193,19 @@ export function createMap(box, { onSelect }) {
   const up = (ev) => { down.delete(ev.pointerId); if (down.size < 2) pinch = null; };
   root.addEventListener('pointerup', up);
   root.addEventListener('pointercancel', up);
+  root.addEventListener('lostpointercapture', up);
+  // The layers move by transform only; a focused node must never scroll the box itself.
+  root.addEventListener('scroll', () => { root.scrollTop = 0; root.scrollLeft = 0; });
 
   let wheelAt = 0;
   root.addEventListener('wheel', (ev) => {
-    if (!view) return;
+    if (!view || !ev.deltaY) return;
+    const z = view.z + (ev.deltaY < 0 ? 1 : -1);
+    if (z < MIN_ZOOM || z > MAX_ZOOM) return; // at the limit the page scrolls
     ev.preventDefault();
-    if (ev.timeStamp - wheelAt < 250 || !ev.deltaY) return;
+    if (ev.timeStamp - wheelAt < 250) return;
     wheelAt = ev.timeStamp;
-    zoomTo(view.z + (ev.deltaY < 0 ? 1 : -1), ...local(ev));
+    zoomTo(z, ...local(ev));
   }, { passive: false });
   root.addEventListener('dblclick', (ev) => { if (view && !ev.target.closest('button, a')) zoomTo(view.z + 1, ...local(ev)); });
   root.addEventListener('keydown', (ev) => {

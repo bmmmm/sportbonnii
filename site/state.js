@@ -46,7 +46,8 @@ export function parseHash(hash, known = {}) {
       const ids = value.split(',').map((s) => s.trim()).filter((s) => KIND_IDS.includes(s));
       if (value === 'alle') state.art = [];
       else if (ids.length) state.art = [...new Set(ids)];
-    } else if (key === 'ort' && ORTE.includes(value)) state.ort = value; else if (key === 'verein' && value && (!known.clubIds || known.clubIds.has(value))) state.verein = value;
+    } else if (key === 'ort' && ORTE.includes(value)) state.ort = value;
+    else if (key === 'verein' && value && (!known.clubIds || known.clubIds.has(value))) state.verein = value;
     else if (key === 'q') state.q = value.slice(0, MAX_QUERY);
     else if (key === 'zeit' && RANGES.includes(value)) state.zeit = value;
     else if (key === 'monat' && MONTH.test(value)) state.monat = value;

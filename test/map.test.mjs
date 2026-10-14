@@ -57,6 +57,7 @@ test('fitting: the largest zoom that shows every point, centred', () => {
   assert.equal(fitView([pts[0]], size).z, 16, 'one point: the closest default zoom');
   const bonn = fitView([], size);
   assert.ok(close(unproject(bonn.cx, bonn.cy, bonn.z).lat, 50.7374, 1e-4), 'nothing to show: Bonn');
+  assert.equal(bonn.z, 12, 'nothing to show: the whole city, not the closest zoom');
 });
 
 test('zooming keeps the point under the cursor in place', () => {

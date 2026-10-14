@@ -239,7 +239,7 @@ function renderActions() {
   $('sub-url').value = feedUrl(sub.file);
   $('sub-hint').textContent = sub.exact
     ? 'Das Abo enthält genau diese Auswahl, auch künftige Termine.'
-    : 'Das Abo enthält alle Termine dieser Sportart bzw. dieses Vereins – Suche, Zeitraum und weitere Filter gelten nur hier auf der Seite.';
+    : `Das Abo enthält ${sub.title[0].toLowerCase()}${sub.title.slice(1)} – Art, Spielort, Suche und Zeitraum gelten nur hier auf der Seite.`;
 }
 
 function slug(text) {
@@ -253,6 +253,7 @@ function download() {
     state.verein ? ctx.clubsById.get(state.verein)?.name : null,
     ...state.sport.map((s) => ctx.sportsById.get(s)?.label),
     ...state.art.map((k) => KINDS.find((x) => x.id === k)?.label),
+    showsGames() && state.ort !== 'alle' ? (state.ort === 'heim' ? 'Heimspiele' : 'Auswärtsspiele') : null,
     state.ansicht === 'kalender' ? formatMonth(shownMonth()) : null,
   ].filter(Boolean);
   const name = `Sport in Bonn${parts.length ? ` – ${parts.join(', ')}` : ''}`;

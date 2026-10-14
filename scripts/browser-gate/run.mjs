@@ -297,7 +297,9 @@ try {
     const text = blob ? await blob.text() : '';
     return { name, vevents: (text.match(/BEGIN:VEVENT/g) || []).length, crlf: text.includes('\\r\\n'), rows: document.querySelectorAll('#table tbody tr').length };
   })()`);
-  check(dl.name === 'sportbonnii-rugby.ics' && dl.vevents === dl.rows && dl.rows === expectRows({ sport: ['rugby'], art: [] }) && dl.crlf, `.ics download: ${dl.vevents} VEVENTs = ${dl.rows} rows, ${dl.name}`, `download: ${JSON.stringify(dl)}`);
+  const subHint = await evaluate(`document.getElementById('sub-hint').textContent`);
+  check(subHint === 'Das Abo enthält alle Rugby-Termine – Art, Spielort, Suche und Zeitraum gelten nur hier auf der Seite.', 'the subscription hint names what the feed holds', `sub hint: ${subHint}`);
+  check(dl.name === 'sportbonnii-rugby-heimspiele.ics' && dl.vevents === dl.rows && dl.rows === expectRows({ sport: ['rugby'], art: [] }) && dl.crlf, `.ics download: ${dl.vevents} VEVENTs = ${dl.rows} rows, ${dl.name}`, `download: ${JSON.stringify(dl)}`);
   const sub = await evaluate(`({ hidden: document.getElementById('subscribe').hidden, webcal: document.getElementById('sub-webcal').getAttribute('href'), url: document.getElementById('sub-url').value })`);
   check(!sub.hidden && sub.webcal === `webcal://127.0.0.1:${httpPort}/data/ics/sport-rugby.ics` && sub.url === `${BASE}data/ics/sport-rugby.ics`, 'one sport offers its feed, derived from the page location', `subscribe: ${JSON.stringify(sub)}`);
 
@@ -378,6 +380,13 @@ try {
   await settle();
   const x1 = await markerAt();
   check(z1 === z0 + 1 && Math.abs(x1 - x0 - 100) <= 2, `zoom in loads z${z1} tiles; a 100 px drag moves the markers by ${Math.round(x1 - x0)} px`, `zoom/drag: z ${z0}→${z1}, marker ${x0}→${x1}`);
+  // A marker off the box leaves the tab order; one inside stays in it.
+  const tabs = await evaluate(`(() => { const r = document.querySelector('#map .map').getBoundingClientRect(); return [...document.querySelectorAll('#map .map-marker')].map((b) => { const m = b.getBoundingClientRect(); const x = m.x + m.width / 2, y = m.y + m.height / 2; const d = Math.min(x - r.left, r.right - x, y - r.top, r.bottom - y); return [Math.round(d), b.tabIndex]; }); })()`);
+  check(tabs.some(([d]) => d < -2) && tabs.every(([d, i]) => (d < -2 ? i === -1 : d > 2 ? i === 0 : true)),
+    `after zooming in, ${tabs.filter(([, i]) => i === -1).length} of ${tabs.length} markers off the box are out of the tab order`, `marker tab order: ${JSON.stringify(tabs)}`);
+  // At the closest zoom a wheel step further in scrolls the page; a step out zooms the map.
+  const wheelAtMax = await evaluate(`(() => { const m = document.querySelector('#map .map'); const zin = m.querySelector('.map-zoom-in'); while (!zin.disabled) zin.click(); const r = m.getBoundingClientRect(); const wheel = (deltaY) => { const ev = new WheelEvent('wheel', { deltaY, clientX: r.x + r.width / 2, clientY: r.y + r.height / 2, bubbles: true, cancelable: true }); m.dispatchEvent(ev); return ev.defaultPrevented; }; return { inward: wheel(-100), outward: wheel(100), zoomOut: zin.disabled }; })()`);
+  check(!wheelAtMax.inward && wheelAtMax.outward && !wheelAtMax.zoomOut, 'at the closest zoom the wheel scrolls the page; a step out still zooms the map', `wheel at max zoom: ${JSON.stringify(wheelAtMax)}`);
   await evaluate(`document.querySelector('.map-panel-where [data-club]').click(), true`);
   await settle();
   check(await evaluate(`location.hash`) === '#verein=bsv-roleber' && await rows() === expectRows({ verein: 'bsv-roleber' }), 'the club in the panel opens its dates in the table', `map club jump: ${await evaluate('location.hash')}`);
