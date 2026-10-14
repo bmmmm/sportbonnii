@@ -112,6 +112,7 @@ export async function run(opts = {}) {
   const net = createNet({ fetchImpl, lookupImpl: opts.lookupImpl, sleep: opts.sleep, minGapMs: opts.minGapMs });
   const ctx = buildContext(registry);
   const previous = await readPrevious({ outDir, previousStateUrl, fetchImpl, log });
+  log(previous ? `previous state: ${previous.events.length} events from ${previous.from}` : 'previous state: none (first run)');
 
   const owners = [
     ...registry.clubs.map((o) => ({ owner: o, kind: 'club' })),
