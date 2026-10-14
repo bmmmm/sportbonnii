@@ -4,7 +4,7 @@
 // carries it, and a test pins the committed file to this output.
 //
 // Zero dependencies on purpose (the club-intake workflow runs this without
-// `pnpm install`); the two site modules it imports import nothing themselves.
+// `pnpm install`); the one site module it imports (venue.js) imports nothing.
 // German text, since the page is for the clubs' people; no date, so the
 // output depends on the registry alone.
 import { osmUrl } from '../site/venue.js';

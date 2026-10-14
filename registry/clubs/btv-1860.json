@@ -11,7 +11,10 @@
   "sources": [
     {
       "id": "termine",
-      "note": "WordPress with The Events Calendar (found by detect); competitions, meetings and school holidays",
+      "note": "WordPress with The Events Calendar (found by detect); gymnastics competitions, meetings and school holidays — the volleyball department has no calendar here",
+      "sports": [
+        "turnen"
+      ],
       "type": "tec",
       "url": "https://www.btv1860.de/wp-json/tribe/events/v1/events"
     }
