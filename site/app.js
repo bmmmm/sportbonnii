@@ -7,6 +7,7 @@ import { berlinToday, formatCheckedAt, monthOf, addDays, formatMonth } from './d
 import { renderTable, el, PAGE } from './table.js';
 import { renderCalendar, eventsInMonth } from './calendar.js';
 import { renderClubs } from './clubs.js';
+import { renderMapView } from './map.js';
 import { serializeFeed } from './ics.js';
 import { KINDS } from './kinds.js';
 
@@ -17,8 +18,8 @@ const $ = (id) => document.getElementById(id);
 let data = null;
 let ctx = null;
 let state = defaultState();
-const ui = { sort: { key: 'datum', dir: 1 }, limit: PAGE, allChips: false, day: null, focusDay: null };
-const VIEW_IDS = ['tabelle', 'kalender', 'vereine'];
+const ui = { sort: { key: 'datum', dir: 1 }, limit: PAGE, allChips: false, day: null, focusDay: null, place: null };
+const VIEW_IDS = ['tabelle', 'kalender', 'karte', 'vereine'];
 
 function known() {
   return { sportIds: new Set(data.sports.map((s) => s.id)), clubIds: new Set(data.clubs.map((c) => c.id)) };
@@ -137,8 +138,8 @@ function renderOrt() {
 
 function isFiltered() {
   const d = defaultState();
-  // The range only acts on the table, the kind not on the clubs; where hidden they must not count.
-  const zeit = state.ansicht === 'tabelle' && state.zeit !== d.zeit;
+  // The range only acts on the table and the map, the kind not on the clubs; where hidden they must not count.
+  const zeit = (state.ansicht === 'tabelle' || state.ansicht === 'karte') && state.zeit !== d.zeit;
   const art = state.ansicht !== 'vereine' && state.art.join() !== d.art.join();
   const ort = state.ansicht !== 'vereine' && showsGames() && state.ort !== d.ort;
   return state.sport.length > 0 || state.verein !== d.verein || state.q !== d.q || zeit || art || ort;
@@ -186,8 +187,8 @@ function renderTabs() {
     tab.tabIndex = on ? 0 : -1;
     $(`view-${tab.dataset.view}`).hidden = !on;
   }
-  // The quick ranges belong to the list; the calendar brings its own month.
-  $('zeit-field').hidden = state.ansicht !== 'tabelle';
+  // The quick ranges belong to the list and the map; the calendar brings its own month.
+  $('zeit-field').hidden = state.ansicht !== 'tabelle' && state.ansicht !== 'karte';
   // Clubs have no kind.
   $('kind-field').hidden = state.ansicht === 'vereine';
   $('ort-field').hidden = !showsGames();
@@ -202,6 +203,7 @@ function render() {
   $('reset').hidden = !isFiltered();
   if (state.ansicht === 'kalender') renderCalendarView();
   else if (state.ansicht === 'vereine') renderClubsView();
+  else if (state.ansicht === 'karte') renderMap();
   else renderTableView();
   renderActions();
 }
@@ -223,7 +225,7 @@ function shownEvents() {
 
 function renderActions() {
   const box = $('view-actions');
-  box.hidden = state.ansicht === 'vereine';
+  box.hidden = state.ansicht === 'vereine' || state.ansicht === 'karte';
   if (box.hidden) return;
   const n = shownEvents().length;
   $('download').disabled = n === 0;
@@ -312,6 +314,23 @@ function renderTableView() {
     onClub(id) { update({ verein: id }); },
     onMore() { ui.limit += PAGE; render(); },
   });
+}
+
+function renderMap() {
+  const visible = applyFilters(data.events, state, ctx);
+  renderChips(chipCounts(data.events, state, ctx));
+  renderKindChips(kindCounts(data.events, state, ctx));
+  const located = renderMapView($('map'), {
+    events: visible,
+    clubs: data.clubs,
+    state,
+    ctx,
+    refYear: Number(ctx.today.slice(0, 4)),
+    selected: ui.place,
+    onSelect(id) { ui.place = id; render(); },
+    onClub(id) { update({ verein: id, ansicht: 'tabelle' }); $('tab-tabelle').focus(); },
+  });
+  renderResult(located, ' auf der Karte');
 }
 
 function renderCalendarView() {

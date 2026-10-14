@@ -24,7 +24,7 @@ const site = join(root, 'site');
 const PAGES = { 'index.html': 'app.js' };
 // Each page's exact module set. A new import is a one-line change here.
 const PAGE_GRAPH = {
-  'index.html': ['app.js', 'data.js', 'state.js', 'dates.js', 'table.js', 'calendar.js', 'clubs.js', 'ics.js', 'kinds.js', 'venue.js'],
+  'index.html': ['app.js', 'data.js', 'state.js', 'dates.js', 'table.js', 'calendar.js', 'clubs.js', 'map.js', 'ics.js', 'kinds.js', 'venue.js'],
 };
 const MODULES = [...new Set(Object.values(PAGE_GRAPH).flat())];
 // Shipped modules outside every page graph, until a page imports them.
@@ -35,7 +35,7 @@ const NETWORK_MODULE = 'data.js';
 const ADDRESS_MODULE = 'state.js';
 const CSP = {
   'index.html': [
-    ['default-src', "'none'"], ['script-src', "'self'"], ['style-src', "'self'"], ['img-src', "'self' data:"],
+    ['default-src', "'none'"], ['script-src', "'self'"], ['style-src', "'self'"], ['img-src', "'self' data: https://tile.openstreetmap.org"],
     ['connect-src', "'self'"], ['base-uri', "'none'"], ['form-action', "'none'"],
   ],
   '404.html': [['default-src', "'none'"], ['style-src', "'self'"], ['img-src', "'self'"], ['base-uri', "'none'"], ['form-action', "'none'"]],

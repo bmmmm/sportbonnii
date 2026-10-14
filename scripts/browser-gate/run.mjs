@@ -9,8 +9,10 @@
 // weekly training after the DST end lands on Tuesday 19:00; 390 px shows
 // cards and the agenda; an <img onerror> title stays text; the .ics download
 // carries exactly the shown dates; the stale banner appears after 48 h; the
-// club directory; no console error, CSP violation, exception or request
-// beyond the dev server.
+// club directory; the map: no tile before its tab opens, a marker per venue
+// with the dates state.js and map.js compute, zoom and drag; no console error,
+// CSP violation, exception or request beyond the dev server (OSM tiles are
+// answered inside the browser with a 1×1 PNG, so the gate stays offline).
 //
 // Needs Chrome and Node ≥ 22, outside a command sandbox (loopback server).
 // Usage: node scripts/browser-gate/run.mjs [--keep]    CHROME=<path> overrides the binary.
@@ -22,6 +24,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { openTarget } from './cdp.mjs';
 import { applyFilters, defaultState } from '../../site/state.js';
+import { mapPlaces, TILE_URL } from '../../site/map.js';
 import { KIND_IDS } from '../../site/kinds.js';
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
@@ -118,6 +121,15 @@ try {
   t.on('Runtime.consoleAPICalled', (p) => { if (p.type === 'error' || p.type === 'warning') loud.push(p.args.map((a) => a.value ?? a.description).join(' ')); });
   t.on('Runtime.exceptionThrown', (p) => exceptions.push(p.exceptionDetails.exception?.description || p.exceptionDetails.text));
   for (const d of ['Page.enable', 'Runtime.enable', 'Log.enable', 'Network.enable']) await t.send(d);
+  // OSM tiles never leave the machine: the browser gets a 1×1 PNG for each.
+  const served = new Set();
+  const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+  t.on('Fetch.requestPaused', (p) => {
+    served.add(p.request.url);
+    t.send('Fetch.fulfillRequest', { requestId: p.requestId, responseCode: 200, responseHeaders: [{ name: 'Content-Type', value: 'image/png' }], body: PNG }).catch(() => {});
+  });
+  await t.send('Fetch.enable', { patterns: [{ urlPattern: `${TILE_URL}*` }] });
+  const isTile = (u) => u.startsWith(TILE_URL);
   await t.send('Network.setCacheDisabled', { cacheDisabled: true });
   await t.send('Emulation.setTimezoneOverride', { timezoneId: 'America/New_York' });
   await t.send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false });
@@ -315,6 +327,57 @@ try {
   await settle();
   check(await evaluate(`location.hash === '#art=alle&ort=alle&verein=bsv-roleber' && document.getElementById('f-club').value === 'BSV Roleber'`) && await rows() === expectRows({ verein: 'bsv-roleber', art: [], ort: 'alle' }), '"Termine" on a club card filters the table to all its dates', `club jump: ${await evaluate('location.hash')}`);
 
+  // --- 7b. the map: venues with their dates, tiles only once it is open
+  check(requests.filter(isTile).length === 0, 'no map tile is requested before the Karte tab opens', `tiles before the map: ${requests.filter(isTile).length}`);
+  await open('#ansicht=karte');
+  await waitFor(`document.querySelectorAll('#map .map-tile').length > 0 && [...document.querySelectorAll('#map .map-tile')].every((i) => i.complete)`, 6000);
+  const every = { ...defaultState() };
+  const { places } = mapPlaces(applyFilters(events, every, ctx), clubs, every);
+  const mapInfo = await evaluate(`({
+    markers: [...document.querySelectorAll('#map .map-marker')].map((b) => [b.dataset.marker, b.textContent, b.getAttribute('aria-label')]),
+    tiles: [...document.querySelectorAll('#map .map-tile')].map((i) => [i.getAttribute('src'), i.naturalWidth]),
+    list: document.querySelectorAll('#map .map-list-item').length,
+    result: document.getElementById('result').textContent,
+    zeit: document.getElementById('zeit-field').hidden, kind: document.getElementById('kind-field').hidden, actions: document.getElementById('view-actions').hidden,
+    attrib: document.querySelector('#map .map-attrib a')?.getAttribute('href'),
+  })`);
+  const wantMarkers = places.map((p) => [p.id, p.events.length ? String(p.events.length) : '']);
+  const located = places.reduce((n, p) => n + p.events.length, 0);
+  check(JSON.stringify(mapInfo.markers.map(([id, n]) => [id, n])) === JSON.stringify(wantMarkers) && mapInfo.list === places.length
+    && mapInfo.result === `${located} ${located === 1 ? 'Termin' : 'Termine'} auf der Karte` && !mapInfo.zeit && !mapInfo.kind && mapInfo.actions
+    && mapInfo.attrib === 'https://www.openstreetmap.org/copyright',
+  `map: ${places.length} venue markers with the dates map.js computes (${located} on the map), filters shown, OSM attribution`, `map: ${JSON.stringify({ mapInfo, wantMarkers, located })}`);
+  check(mapInfo.tiles.length > 0 && mapInfo.tiles.every(([src, w]) => src.startsWith(TILE_URL) && /\/\d+\/\d+\/\d+\.png$/.test(src) && w === 1),
+    `${mapInfo.tiles.length} tiles from tile.openstreetmap.org (answered locally)`, `tiles: ${JSON.stringify(mapInfo.tiles.slice(0, 4))}`);
+  // A marker opens its venue: name, club, the next dates.
+  const roleber = places.find((p) => p.id === 'bsv-roleber/0');
+  await evaluate(`document.querySelector('#map [data-marker="bsv-roleber/0"]').click(), true`);
+  await settle();
+  const panel = await evaluate(`({ title: document.querySelector('.map-panel-title')?.textContent, club: document.querySelector('.map-panel-where [data-club]')?.textContent, dates: [...document.querySelectorAll('.map-dates .card .title')].map((x) => x.textContent), pressed: document.querySelector('#map [data-marker="bsv-roleber/0"]').getAttribute('aria-pressed') })`);
+  check(panel.title === 'Sportplatz Roleber' && panel.club === 'BSV Roleber' && panel.pressed === 'true' && panel.dates.length === Math.min(5, roleber.events.length) && panel.dates.every((d, i) => d.startsWith(roleber.events[i].title)),
+    `a marker opens its venue with its ${panel.dates.length} next dates`, `panel: ${JSON.stringify({ panel, want: roleber.events.map((e) => e.title) })}`);
+  // Zoom and drag move the map.
+  const zOf = () => evaluate(`Math.max(...[...document.querySelectorAll('#map .map-tile')].map((i) => Number(i.getAttribute('src').split('/').at(-3))))`);
+  const z0 = await zOf();
+  await evaluate(`document.querySelector('#map .map-zoom-in').click(), true`);
+  await settle();
+  const z1 = await zOf();
+  const markerAt = () => evaluate(`document.querySelector('#map [data-marker="bsv-roleber/0"]').getBoundingClientRect().x`);
+  const box = await evaluate(`(() => { const m = document.querySelector('#map .map'); m.scrollIntoView({ block: 'center' }); const r = m.getBoundingClientRect(); return { x: r.x + 60, y: r.y + 80 }; })()`);
+  const x0 = await markerAt();
+  await t.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: box.x, y: box.y, button: 'left', clickCount: 1 });
+  for (let i = 1; i <= 5; i++) await t.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: box.x + i * 20, y: box.y, button: 'left', buttons: 1 });
+  await t.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: box.x + 100, y: box.y, button: 'left', clickCount: 1 });
+  await settle();
+  const x1 = await markerAt();
+  check(z1 === z0 + 1 && Math.abs(x1 - x0 - 100) <= 2, `zoom in loads z${z1} tiles; a 100 px drag moves the markers by ${Math.round(x1 - x0)} px`, `zoom/drag: z ${z0}→${z1}, marker ${x0}→${x1}`);
+  await evaluate(`document.querySelector('.map-panel-where [data-club]').click(), true`);
+  await settle();
+  check(await evaluate(`location.hash`) === '#verein=bsv-roleber' && await rows() === expectRows({ verein: 'bsv-roleber' }), 'the club in the panel opens its dates in the table', `map club jump: ${await evaluate('location.hash')}`);
+  await open('#ansicht=karte&sport=rugby&ort=auswaerts');
+  const rugbyAway = await evaluate(`[...document.querySelectorAll('#map .map-marker')].map((b) => [b.dataset.marker, b.textContent])`);
+  check(JSON.stringify(rugbyAway) === JSON.stringify([['rc-bonn-rhein-sieg/0', '']]), 'the filters narrow the map (rugby, away: the venue without dates)', `rugby away: ${JSON.stringify(rugbyAway)}`);
+
   // --- 8. phone width: cards and agenda
   await t.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
   await open();
@@ -323,6 +386,10 @@ try {
   await open('#ansicht=kalender');
   const agenda = await evaluate(`({ chips: getComputedStyle(document.querySelector('.cal-evs')).display, dots: getComputedStyle(document.querySelector('.cal-dots')).display, agenda: document.querySelectorAll('.agenda .card').length, overflow: document.documentElement.scrollWidth > innerWidth + 1 })`);
   check(agenda.chips === 'none' && agenda.dots === 'flex' && agenda.agenda > 0 && !agenda.overflow, `390 px: the grid shows dots, the agenda lists ${agenda.agenda} dates`, `phone calendar: ${JSON.stringify(agenda)}`);
+  await open('#ansicht=karte');
+  await waitFor(`document.querySelectorAll('#map .map-tile').length > 0`, 6000);
+  const phoneMap = await evaluate(`({ w: document.querySelector('#map .map').getBoundingClientRect().width, markers: document.querySelectorAll('#map .map-marker').length, overflow: document.documentElement.scrollWidth > innerWidth + 1 })`);
+  check(phoneMap.w > 300 && phoneMap.markers > 0 && !phoneMap.overflow, `390 px: the map spans ${Math.round(phoneMap.w)} px, no horizontal overflow`, `phone map: ${JSON.stringify(phoneMap)}`);
   await t.send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false });
 
   // --- 9. stale data: three days later
@@ -342,8 +409,8 @@ try {
   await writeFile(metaPath, meta);
 
   // --- hygiene
-  const off = requests.filter((u) => !u.startsWith(BASE) && !u.startsWith('data:') && !u.startsWith('blob:'));
-  check(!off.length, `${requests.length} requests, all to the dev server`, `requests beyond the dev server: ${off.join(', ')}`);
+  const off = requests.filter((u) => !u.startsWith(BASE) && !u.startsWith('data:') && !u.startsWith('blob:') && !(isTile(u) && served.has(u)));
+  check(!off.length, `${requests.length} requests, all to the dev server or answered locally (${served.size} tiles)`, `requests beyond the dev server: ${off.join(', ')}`);
   check(!loud.length, 'no console error or warning (no CSP violation)', `console: ${loud.join(' | ')}`);
   check(!exceptions.length, 'no uncaught exception', `exceptions: ${exceptions.join(' | ')}`);
   await t.close();

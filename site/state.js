@@ -10,7 +10,7 @@
 import { overlaps, rangeFor } from './dates.js';
 import { KIND_IDS } from './kinds.js';
 
-export const VIEWS = ['tabelle', 'kalender', 'vereine'];
+export const VIEWS = ['tabelle', 'kalender', 'karte', 'vereine'];
 export const RANGES = ['alle', 'heute', 'woche', 'monat'];
 /** Which games: home (and unknown), away, or all. Only games are touched. */
 export const ORTE = ['heim', 'auswaerts', 'alle'];

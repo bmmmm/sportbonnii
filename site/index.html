@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data: https://tile.openstreetmap.org; connect-src 'self'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <meta name="theme-color" content="#f6f5f1" media="(prefers-color-scheme: light)">
@@ -85,6 +85,7 @@
     <div class="tabs" role="tablist" aria-label="Ansicht">
       <button type="button" role="tab" id="tab-tabelle" data-view="tabelle" aria-controls="view-tabelle" aria-selected="true">Tabelle</button>
       <button type="button" role="tab" id="tab-kalender" data-view="kalender" aria-controls="view-kalender" aria-selected="false" tabindex="-1">Kalender</button>
+      <button type="button" role="tab" id="tab-karte" data-view="karte" aria-controls="view-karte" aria-selected="false" tabindex="-1">Karte</button>
       <button type="button" role="tab" id="tab-vereine" data-view="vereine" aria-controls="view-vereine" aria-selected="false" tabindex="-1">Vereine</button>
     </div>
     <p class="result" id="result" aria-live="polite"></p>
@@ -113,6 +114,10 @@
   <section class="view" id="view-kalender" role="tabpanel" aria-labelledby="tab-kalender" hidden>
     <div id="calendar" class="calendar"></div>
   </section>
+  <section class="view view-plain" id="view-karte" role="tabpanel" aria-labelledby="tab-karte" hidden>
+    <div id="map" class="map-view"></div>
+    <p class="map-privacy">Die Karte lädt Kartenkacheln von der OpenStreetMap Foundation; dabei wird deine IP-Adresse übertragen.</p>
+  </section>
   <section class="view view-plain" id="view-vereine" role="tabpanel" aria-labelledby="tab-vereine" hidden>
     <div id="clubs" class="clubs"></div>
   </section>
@@ -139,6 +144,11 @@
         53111 Bonn<br>
         <a href="https://bitcircus101.de/">bitcircus101.de</a>
       </address>
+      <p class="impressum-note">
+        Datenschutz: Die Seite setzt keine Cookies und speichert nichts. Nur die Kartenansicht lädt
+        Kartenkacheln von der OpenStreetMap Foundation (tile.openstreetmap.org); dabei wird deine
+        IP-Adresse übertragen. Alle anderen Ansichten laden nichts von Dritten.
+      </p>
     </details>
   </div>
 </footer>
