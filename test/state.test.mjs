@@ -67,7 +67,7 @@ test('the kind filter: any of the chosen kinds, counted like the sports', () => 
   assert.deepEqual(titles(applyFilters(events, state({ art: ['training'], sport: ['leichtathletik'] }), ctx)), ['Lauftreff im Rheinauenpark']);
   const both = applyFilters(events, state({ art: ['spiel', 'training'] }), ctx);
   assert.ok(both.some((e) => e.kind === 'spiel') && both.some((e) => e.kind === 'training') && both.every((e) => e.kind !== 'veranstaltung'));
-  assert.deepEqual([...kindCounts(events, state({ sport: ['fussball'] }), ctx)].sort(), [['spiel', 2], ['veranstaltung', 3]], 'other filters narrow the counts');
+  assert.deepEqual([...kindCounts(events, state({ sport: ['fussball'] }), ctx)].sort(), [['spiel', 3], ['veranstaltung', 3]], 'other filters narrow the counts');
   assert.ok(kindCounts(events, state({}), ctx, { skipTime: true }).get('training') > kindCounts(events, state({}), ctx).get('training'), 'past trainings count without the time range');
   const rugby = chipCounts(events, state({ art: ['training'] }), ctx);
   assert.equal(rugby.get('rugby'), applyFilters(events, state({ art: ['training'], sport: ['rugby'] }), ctx).length, 'sport chips honour the kind');

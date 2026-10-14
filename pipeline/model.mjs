@@ -7,11 +7,13 @@
 // normalizeEvent applies the contract: Berlin wall-clock times with offset,
 // exclusive all-day ends, caps on text, the source's `exclude` list, sports
 // from tagMap / keywords / club, the club from the owner or an alias, and the
-// kind (match, training, event) from title and tags.
+// kind (match, training, event) from title and tags, and for a match whether
+// it is a home game.
 import { createHash } from 'node:crypto';
 import { MAX_TITLE, MAX_DESCRIPTION } from './contract.mjs';
 import { toBerlinIso, berlinDate, addDays, berlinMidnight } from './tz.mjs';
 import { safeHttpUrl } from './text.mjs';
+import { venueIndex } from '../site/venue.js';
 
 const validMs = (ms) => Number.isFinite(ms) && Math.abs(ms) <= 8.64e15;
 
@@ -76,6 +78,37 @@ export function eventKind(title, tags = [], source = null) {
     || hasWordEnd(t, 'liga') || ['vs', 'derby', 'cup'].some((w) => hasWhole(t, w))
     || TEAM_VS.test(t)) return 'spiel';
   return source?.kind ?? 'veranstaltung';
+}
+
+// Bonn's postcodes, and the city with the districts a title may name ("Turnier in Beuel").
+const BONN_POSTCODE = /\b(5311[13579]|5312[13579]|5317[3579]|5322[579])\b/;
+const POSTCODE = /\b\d{5}\b/;
+const BONN_PLACES = ['Bonn', 'Bad Godesberg', 'Godesberg', 'Beuel', 'Hardtberg', 'Duisdorf', 'Tannenbusch',
+  'Rheinaue', 'Oberkassel', 'Geislar', 'Kessenich', 'Endenich', 'Poppelsdorf', 'Mehlem', 'Plittersdorf',
+  'Friesdorf', 'Dottendorf', 'Lengsdorf', 'Ippendorf', 'Röttgen', 'Venusberg', 'Holzlar', 'Pützchen', 'Vilich',
+  'Ramersdorf', 'Limperich', 'Küdinghoven', 'Lannesdorf', 'Muffendorf', 'Pennenfeld', 'Brüser Berg', 'Auerberg',
+  'Graurheindorf', 'Buschdorf', 'Dransdorf', 'Medinghoven'].map(fold);
+
+/**
+ * Whether a match is a home game: true, false, or null when nothing says.
+ * Only games have one. The title's own word wins ("(auswärts)" in a Bonn hall
+ * is still away), then the place: one of the club's venues or anywhere in
+ * Bonn is home, another postcode is away; last, a title "… in <Ort>".
+ */
+export function homeGame(title, location, club, kind) {
+  if (kind !== 'spiel') return null;
+  const t = fold(title);
+  if (hasWordStart(t, 'auswarts') || hasWhole(t, 'away') || hasWhole(t, 'gast bei')) return false;
+  if (hasWhole(t, 'heim') || hasWhole(t, 'home') || hasWordStart(t, 'heimspiel') || hasWordStart(t, 'heimturnier')) return true;
+  if (location) {
+    if (venueIndex(location, club?.venues) >= 0) return true;
+    const l = fold(location);
+    if (hasWhole(l, 'bonn') || BONN_POSTCODE.test(l)) return true;
+    if (POSTCODE.test(l)) return false;
+  }
+  const place = /(?:^|\s)in\s+((?:Bad\s+|Brüser\s+)?\p{Lu}[\p{L}-]*)/u.exec(title)?.[1];
+  if (place) return BONN_PLACES.includes(fold(place).split('-')[0]);
+  return null;
 }
 
 const LOCATION_NOISE = /^(deutschland|germany|nordrhein-westfalen|nrw|stadtbezirk .+|regierungsbezirk .+)$/i;
@@ -193,11 +226,13 @@ export function normalizeEvent(raw, { owner, kind: ownerKind, source, ctx, windo
     description = null;
   }
   const location = tidyLocation(raw.location);
+  const kind = eventKind(title, tags, source);
   return {
     id: eventId(sourceKey, String(raw.uid), raw.recurrenceId ?? ''),
     club: club ? club.id : null,
     sports,
-    kind: eventKind(title, tags, source),
+    kind,
+    home: homeGame(title, location, club, kind),
     title,
     start,
     end,

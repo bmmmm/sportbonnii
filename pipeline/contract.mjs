@@ -6,7 +6,7 @@ import { instantOf } from './tz.mjs';
 import { KIND_IDS, VENUE_USES } from '../site/kinds.js';
 import { MAX_VENUES, VENUE_BOUNDS, OSM_REF } from './registry.mjs';
 
-export const EVENT_KEYS = ['id', 'club', 'sports', 'kind', 'title', 'start', 'end', 'allDay', 'location', 'url', 'description', 'source', 'status'];
+export const EVENT_KEYS = ['id', 'club', 'sports', 'kind', 'home', 'title', 'start', 'end', 'allDay', 'location', 'url', 'description', 'source', 'status'];
 export const STATES = ['ok', 'partial', 'error', 'blocked', 'disabled'];
 export const STATUSES = ['confirmed', 'cancelled'];
 export const MAX_TITLE = 200;
@@ -76,6 +76,8 @@ export function checkEvent(e, { sportIds, clubIds } = {}) {
   if (!Array.isArray(e.sports) || e.sports.length === 0 || new Set(e.sports).size !== e.sports.length) errs.push(`${at}: sports must be a non-empty list without repeats`);
   else if (sportIds && e.sports.some((s) => !sportIds.has(s))) errs.push(`${at}: unknown sport in ${e.sports.join(', ')}`);
   if (!KIND_IDS.includes(e.kind)) errs.push(`${at}: kind must be one of ${KIND_IDS.join(', ')}`);
+  if (![true, false, null].includes(e.home)) errs.push(`${at}: home must be true, false or null`);
+  else if (e.home !== null && e.kind !== 'spiel') errs.push(`${at}: only a game (kind spiel) can be home or away`);
   if (typeof e.title !== 'string' || e.title.trim() === '' || e.title.length > MAX_TITLE) errs.push(`${at}: title must be 1–${MAX_TITLE} characters`);
   if (typeof e.allDay !== 'boolean') errs.push(`${at}: allDay must be boolean`);
   const kind = e.allDay ? DATE : DATETIME;

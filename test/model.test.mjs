@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { normalizeEvent, buildContext, eventId, clip, fold, clubByAlias } from '../pipeline/model.mjs';
+import { normalizeEvent, buildContext, eventId, clip, fold, clubByAlias, homeGame } from '../pipeline/model.mjs';
 import { htmlToText, singleLineText, decodeEntities, safeHttpUrl } from '../pipeline/text.mjs';
 import { toBerlinIso, zonedToUtc, berlinDate, addMonths } from '../pipeline/tz.mjs';
 import { windowFor } from '../pipeline/run.mjs';
@@ -93,6 +93,41 @@ test('kind: from title and tags, else the source kind, else an event', () => {
   assert.equal(asClub({ title: 'Saisonstart' }).kind, 'veranstaltung');
   assert.equal(asClub({ title: 'Saisonstart' }, { ...clubSource, kind: 'training' }).kind, 'training');
   assert.equal(asPlatform({ title: 'Lauftreff am Rhein' }).kind, 'training');
+});
+
+test('home: the title marker, then the club venue, Bonn, another postcode, a title place', () => {
+  const rc = { venues: [{ name: 'Rugbyplatz Rheinaue', address: 'Martin-Luther-King-Str. 22, 53175 Bonn' }] };
+  const spiel = (title, location = null, c = rc) => homeGame(title, location, c, 'spiel');
+  assert.equal(homeGame('Training', 'Sportplatz, Bonn', rc, 'training'), null, 'only games have one');
+  assert.equal(homeGame('Heimspiel gegen X', null, rc, 'veranstaltung'), null);
+  // 1. the title's own word, which beats a Bonn hall
+  assert.equal(spiel('TSV Bonn rrh. 3. Männer vs. HSG GEISLAR-OBERKASSEL (auswärts)', 'SPORTHALLE RINGSTRASSE, BONN'), false);
+  assert.equal(spiel("Men's Regionalliga Away"), false);
+  assert.equal(spiel('Damen zu Gast bei TuS Pützchen', 'Sportplatz Pützchen, Bonn'), false);
+  assert.equal(spiel('Herren: Heim gegen TuS Pützchen'), true);
+  assert.equal(spiel('U16W Home Game vs. St. Pauli'), true);
+  assert.equal(spiel('Heimspiel gegen RK Heusenstamm'), true);
+  assert.equal(spiel('Heimturnier U12', 'Sportplatz Rheinbach, 53359 Rheinbach'), true, 'a home word beats the place');
+  // 2. one of the club's venues, even without the city
+  assert.equal(spiel('Liga: Herren vs. Köln', 'Martin-Luther-King-Straße 22'), true);
+  assert.equal(spiel('Liga: Herren vs. Köln', 'Martin-Luther-King-Straße 22', null), null, 'without the club nothing says');
+  // 3. anywhere in Bonn
+  assert.equal(spiel('BONNER JSG vs. BTB AACHEN', 'SPORTHALLE PENNENFELD, BONN'), true);
+  assert.equal(spiel('Liga vs. Köln', 'Halle Ost, 53229'), true, 'a Bonn postcode');
+  // 4. another postcode
+  assert.equal(spiel('Touch Rugby German Championship', 'Oeserstraße 84, 65934 Frankfurt am Main'), false);
+  // 5. a place in the title
+  assert.equal(spiel("Women's Bundesliga 7s Tourney in Darmstadt"), false);
+  assert.equal(spiel('Deutsche Mehrkampfmeisterschaften in Heide', 'Heide'), false);
+  assert.equal(spiel('E-team in Bonn - Freundschaftsspiele', 'Sportplatz Schulzentrum Tannenbusch'), true);
+  assert.equal(spiel('Turnier in Bad Godesberg'), true);
+  assert.equal(spiel('Turnier in Bad Honnef'), false);
+  // nothing says
+  assert.equal(spiel('Hockey: 1. Damen – RTHC Leverkusen'), null);
+  assert.equal(spiel('E-team Freundschaftsspiele', 'Sportplatz Schulzentrum Tannenbusch'), null);
+  // in normalizeEvent: the owner's venues count
+  assert.equal(asClub({ title: 'Hockey: 1. Herren – RW Köln', location: 'Christian-Miesen-Str. 1' }).home, true);
+  assert.equal(asClub({ title: 'Training', location: 'Christian-Miesen-Str. 1' }).home, null);
 });
 
 test('aliases match whole words, longest first, diacritics folded', () => {

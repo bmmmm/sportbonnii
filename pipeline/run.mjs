@@ -6,7 +6,7 @@
 // ahead (Berlin), so it moves monthly and two runs in one month agree.
 // Previous state: site/data/ when present, else $PREVIOUS_STATE_URL (the live
 // site); anything that fails the shape check is ignored. Events published
-// before the `kind` field get one from their title first (upgradeLegacyEvent).
+// before the `kind` or `home` field get them first (upgradeLegacyEvent).
 //
 // Only sources with news are re-read in full. A single-request adapter
 // (CONDITIONAL: ical, gancio, jsonld) whose last ok answer carried an ETag or
@@ -27,7 +27,7 @@ import { fileURLToPath } from 'node:url';
 import { loadRegistry, REGISTRY_DIR } from './registry.mjs';
 import { loadAdapter } from './adapters/index.mjs';
 import { createNet, NetError } from './net.mjs';
-import { buildContext, normalizeEvent, eventKind } from './model.mjs';
+import { buildContext, normalizeEvent, eventKind, homeGame } from './model.mjs';
 import { mergeRun } from './merge.mjs';
 import { formatEventsJson, formatJson, checkEvent, EVENT_KEYS, STATES } from './contract.mjs';
 import { addMonths, berlinDate } from './tz.mjs';
@@ -43,27 +43,31 @@ export function windowFor(today) {
 }
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
-const LEGACY_KEYS = EVENT_KEYS.filter((k) => k !== 'kind').join();
+// Earlier contract versions: before `kind` and `home`, and before `home`.
+const LEGACY_SHAPES = [['kind', 'home'], ['home']].map((missing) => EVENT_KEYS.filter((k) => !missing.includes(k)).join());
 
 /**
- * An event published before events carried a `kind` gets one from its title,
- * keys in contract order; anything else is returned as it is. Known limit:
- * tags and the source's `kind` are not in events.json, so on the first run
- * after the upgrade `changed` moves for a source whose fresh kind needs them.
+ * An event published before events carried a `kind` or `home` gets them from
+ * its title (and, for `home`, its location and the club's venues), keys in
+ * contract order; anything else is returned as it is. Known limit: tags and
+ * the source's `kind` are not in events.json, so on the first run after the
+ * upgrade `changed` moves for a source whose fresh kind needs them.
+ * `clubsById` maps registry club ids to clubs (for their venues).
  */
-export function upgradeLegacyEvent(e) {
-  if (!e || typeof e !== 'object' || Object.keys(e).join() !== LEGACY_KEYS || typeof e.title !== 'string') return e;
-  const kind = eventKind(e.title, [], null);
-  return Object.fromEntries(EVENT_KEYS.map((k) => [k, k === 'kind' ? kind : e[k]]));
+export function upgradeLegacyEvent(e, clubsById = new Map()) {
+  if (!e || typeof e !== 'object' || !LEGACY_SHAPES.includes(Object.keys(e).join()) || typeof e.title !== 'string') return e;
+  const kind = 'kind' in e ? e.kind : eventKind(e.title, [], null);
+  const home = homeGame(e.title, e.location, clubsById.get(e.club) ?? null, kind);
+  return Object.fromEntries(EVENT_KEYS.map((k) => [k, k === 'kind' ? kind : k === 'home' ? home : e[k]]));
 }
 
 /**
  * Previous events/status if they pass the shape check, else null. The window
  * and the build (meta.json, optional) decide whether validators may be reused.
  */
-export function acceptPrevious(eventsDoc, statusDoc, metaDoc = null) {
+export function acceptPrevious(eventsDoc, statusDoc, metaDoc = null, clubsById = new Map()) {
   if (!eventsDoc || eventsDoc.version !== 1 || !Array.isArray(eventsDoc.events)) return null;
-  const events = eventsDoc.events.map(upgradeLegacyEvent);
+  const events = eventsDoc.events.map((e) => upgradeLegacyEvent(e, clubsById));
   if (events.some((e) => checkEvent(e).length)) return null;
   if (!statusDoc || typeof statusDoc !== 'object' || Array.isArray(statusDoc)) return null;
   for (const s of Object.values(statusDoc)) {
@@ -75,13 +79,13 @@ export function acceptPrevious(eventsDoc, statusDoc, metaDoc = null) {
   return { events, status: statusDoc, window, build };
 }
 
-async function readPrevious({ outDir, previousStateUrl, fetchImpl, log }) {
+async function readPrevious({ outDir, previousStateUrl, fetchImpl, log, clubsById }) {
   const parse = async (name) => JSON.parse(await readFile(join(outDir, name), 'utf8'));
   try {
     const ev = await parse('events.json');
     const st = await parse('status.json');
     const meta = await parse('meta.json').catch(() => null);
-    const ok = acceptPrevious(ev, st, meta);
+    const ok = acceptPrevious(ev, st, meta, clubsById);
     if (ok) return { ...ok, from: 'local' };
     log(`previous state in ${outDir} failed the shape check — ignored`);
   } catch {
@@ -95,7 +99,7 @@ async function readPrevious({ outDir, previousStateUrl, fetchImpl, log }) {
       if (!r.ok) throw new Error(`HTTP ${r.status} for ${name}`);
       return r.json();
     };
-    const ok = acceptPrevious(await get('events.json'), await get('status.json'), await get('meta.json').catch(() => null));
+    const ok = acceptPrevious(await get('events.json'), await get('status.json'), await get('meta.json').catch(() => null), clubsById);
     if (ok) return { ...ok, from: base };
     log(`previous state at ${base} failed the shape check — ignored`);
   } catch (e) {
@@ -174,7 +178,8 @@ export async function run(opts = {}) {
   const window = windowFor(today);
   const net = createNet({ fetchImpl, lookupImpl: opts.lookupImpl, sleep: opts.sleep, minGapMs: opts.minGapMs });
   const ctx = buildContext(registry);
-  const previous = await readPrevious({ outDir, previousStateUrl, fetchImpl, log });
+  const clubsById = new Map(registry.clubs.map((c) => [c.id, c]));
+  const previous = await readPrevious({ outDir, previousStateUrl, fetchImpl, log, clubsById });
   log(previous ? `previous state: ${previous.events.length} events from ${previous.from}` : 'previous state: none (first run)');
   // Validators may be reused only against a state the very same build produced for the same window.
   const reusable = Boolean(build && previous && previous.build === build && previous.window
