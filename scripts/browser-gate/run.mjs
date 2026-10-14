@@ -420,7 +420,7 @@ try {
   await settle();
   const mx2 = await markerAt();
   const scrolled = await evaluate(`new Promise((done) => { const m = document.querySelector('#map .map'); m.scrollTop = 40; m.scrollLeft = 40; requestAnimationFrame(() => requestAnimationFrame(() => done([m.scrollTop, m.scrollLeft, m.scrollHeight > m.clientHeight || m.scrollWidth > m.clientWidth]))); })`);
-  check(Math.abs(mx1 - mx0) <= 1 && Math.abs(mx2 - mx0) <= 1 && scrolled[0] === 0 && scrolled[1] === 0,
+  check(Math.abs(mx1 - mx0) <= 1 && Math.abs(mx2 - mx0) <= 1 && scrolled[0] === 0 && scrolled[1] === 0 && scrolled[2],
     'a right drag and a move after the capture is lost leave the map; the box itself never scrolls', `pointer guards: marker ${mx0}→${mx1}→${mx2}, released ${released}, scroll ${JSON.stringify(scrolled)}`);
   await evaluate(`document.querySelector('.map-panel-where [data-club]').click(), true`);
   await settle();

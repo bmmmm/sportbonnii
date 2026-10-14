@@ -39,7 +39,10 @@ test('a title that calls the date off marks it cancelled', () => {
   assert.equal(asClub({ title: 'Training', status: 'cancelled' }).status, 'cancelled', 'the feed\'s own status still counts');
   assert.equal(asClub({ title: 'Training entfällt nicht' }).status, 'confirmed', 'negated');
   assert.equal(asClub({ title: 'Spiel (ursprünglich abgesagt)' }).status, 'confirmed', 'looking back');
-  assert.equal(asClub({ title: 'Nachholspiel: früher abgesagt' }).status, 'confirmed', 'a replay');
+  assert.equal(asClub({ title: 'Termin nicht abgesagt' }).status, 'confirmed');
+  assert.equal(asClub({ title: 'Nachholspiel gegen TuS Pützchen abgesagt' }).status, 'cancelled', 'a replay can be called off');
+  assert.equal(asClub({ title: 'Training für Nicht-Schwimmer fällt aus' }).status, 'cancelled', 'nicht elsewhere in the title');
+  assert.equal(asClub({ title: 'Training (ursprünglich 18 Uhr) fällt aus' }).status, 'cancelled', 'ursprünglich elsewhere');
 });
 
 test('timed events: Berlin offset, end before start becomes null', () => {

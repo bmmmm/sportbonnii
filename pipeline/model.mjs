@@ -206,8 +206,12 @@ export function clubByAlias(ctx, ...texts) {
 
 // A title that calls the date off ("Training fällt aus") marks it cancelled; the page strikes it.
 const CANCELLED = ['fallt aus', 'entfallt', 'abgesagt'];
-// … unless the title says the opposite or looks back ("entfällt nicht", "Nachholspiel (ursprünglich abgesagt)").
-const calledOff = (t) => CANCELLED.some((w) => hasWhole(t, w)) && !hasWhole(t, 'nicht') && !t.includes('ursprunglich') && !hasWordStart(t, 'nachhol');
+// … unless that very phrase says the opposite or looks back ("entfällt nicht", "ursprünglich abgesagt").
+const NOT_CALLED_OFF = /\b(?:entfallt nicht|nicht abgesagt|ursprunglich abgesagt)\b/g;
+const calledOff = (t) => {
+  const u = t.replace(NOT_CALLED_OFF, ' ');
+  return CANCELLED.some((w) => hasWhole(u, w));
+};
 
 /**
  * One raw adapter event → an events.json entry, or null when it is dropped
