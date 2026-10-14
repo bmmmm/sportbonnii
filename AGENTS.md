@@ -1,7 +1,7 @@
 # sportbonnii — agent instructions
 
 Static GitHub-Pages site: sports clubs in Bonn and every date they publish,
-as a filterable table, a month calendar and a club directory. A Node
+as a filterable table, a month calendar, a map and a club directory. A Node
 pipeline (one runtime dependency, `ical.js`) turns the club registry into
 `site/data/*.json` + ICS feeds; the page is vanilla ESM with no build step.
 
@@ -50,7 +50,10 @@ store index — run installs unsandboxed.
 - `pipeline/model.mjs` — raw → events.json entry (Berlin times, caps,
   `exclude`, sports from tagMap → keywords → club, club from aliases, ids,
   `kind` from `eventKind`: title/tag rules, training > spiel, else the
-  source's `kind`, else veranstaltung).
+  source's `kind`, else veranstaltung; `home` from `homeGame` for games only:
+  the title's own marker („auswärts", Away, Heimspiel, Home), then the place
+  — a club venue (`venueIndex`) or Bonn is home, another postcode away —,
+  then a title „… in <Ort>", else null).
 - `pipeline/merge.mjs` — per-source state rules (ok / unchanged on 304 /
   partial / error / blocked / disabled, 7-day retention, drop-to-zero,
   all-failed), `changed` = the last run with a new or modified event (a
@@ -71,7 +74,9 @@ store index — run installs unsandboxed.
   (string-part dates), `table.js`, `calendar.js` (calqrii's `monthGrid`),
   `clubs.js`, `ics.js` (feed writer shared with the pipeline), `kinds.js`
   (event kinds and venue uses, shared with the pipeline), `venue.js`
-  (OpenStreetMap link), favicon,
+  (OpenStreetMap link, `venueIndex` shared with the pipeline), `map.js`
+  (the Karte view: a slippy map of its own on OSM tiles, venue markers,
+  `eventVenue`/`mapPlaces`), favicon,
   robots, sitemap. `site/data/` is generated and gitignored.
 - `scripts/web-smoke.mjs` — static gate; `PAGE_GRAPH` pins the module set
   (a new import is a one-line change there). `scripts/browser-gate/run.mjs` —
@@ -111,14 +116,21 @@ store index — run installs unsandboxed.
   with it, and `changed` also moves when our own normalisation changes.
   A previous state without `kind` is upgraded from the titles alone
   (`upgradeLegacyEvent` in run.mjs), so `changed` moves once for a source
-  whose kind needs its tags or the source's `kind`.
+  whose kind needs its tags or the source's `kind`; one without `home` gets
+  it from `homeGame` with the club's venues (the same rule as a fresh run).
 - Times in events.json are Europe/Berlin wall clock with offset; all-day
   events are dates with an exclusive end. The page slices strings and never
   does timezone maths — the browser gate runs it in New York to prove it
   (the snapshot's 00:30 night run is the day-mapping probe).
 - A TZID without VTIMEZONE, a Windows TZID or a floating time is Berlin wall
   clock, never UTC (ical.js would read it as UTC).
-- The page: no external resources, the meta CSP pinned per directive,
+- The page opens on games without the recognised away games (`art=spiel`,
+  `ort=heim`; a game whose side is unknown counts as home); `art=alle`
+  lifts the kind filter. Home/away only ever touches games.
+- The page: no external resources except OpenStreetMap tiles in the Karte
+  view (`img-src` admits `https://tile.openstreetmap.org` only; no tile before
+  the tab opens; no `referrer` meta — the tile policy needs the Referer; the
+  browser gate answers tiles locally), the meta CSP pinned per directive,
   `createElement`/`textContent` only, sport colours via `style.setProperty`,
   no storage. Foreign text is always text.
 - Changing the data contract means changing `pipeline/contract.mjs`, the

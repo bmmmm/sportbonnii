@@ -4,20 +4,23 @@
 
 One page for sports in Bonn: which sports exist, which clubs offer them, and
 every date those clubs publish — matches, training, camps, club events — in a
-filterable table, a month calendar and a club directory. Sports are the
-primary filter; every view narrows as you pick them.
+filterable table, a month calendar, a map of the clubs' venues and a club
+directory. Sports are the primary filter; every view narrows as you pick
+them. The page opens on matches and competitions at home.
 
 The site is static. A scheduled build reads each club's own published
 calendar (iCalendar, WordPress *The Events Calendar*, Gancio, schema.org
 JSON-LD, RSS), normalises everything into one `events.json` and publishes
 the result to GitHub Pages. There is no server and no database, and the page
-loads nothing from third parties.
+loads nothing from third parties — except the OpenStreetMap tiles of the map
+view, once it is opened.
 
 ## Use
 
-- **Filter** by sport (chips), club, free text and time range. The filter
-  lives in the address (`#ansicht=kalender&sport=rugby&zeit=monat`), so a
-  view can be shared as a link.
+- **Filter** by sport (chips), kind of date, home or away games, club, free
+  text and time range. The filter lives in the address
+  (`#ansicht=karte&sport=rugby&ort=alle&zeit=monat`), so a view can be
+  shared as a link.
 - **Subscribe** to all dates, one sport or one club as an `.ics` feed, or
   download the current filter as a file.
 - **Suggest a club** through the issue form *Verein hinzufügen*; a workflow
