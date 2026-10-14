@@ -8,6 +8,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parseIssueForm, slugify, validate, quoted, renderComment, publishableFiles, FIELDS } from '../.github/scripts/club-intake.mjs';
 import { loadRegistry, canonicalJson, REGISTRY_DIR } from '../pipeline/registry.mjs';
+import { renderOverview } from '../pipeline/overview.mjs';
 
 const fx = (p) => readFileSync(new URL(`./fixtures/intake/${p}`, import.meta.url), 'utf8');
 const sports = JSON.parse(readFileSync(new URL('../registry/sports.json', import.meta.url), 'utf8')).sports;
@@ -32,7 +33,7 @@ test('slugs: umlauts transliterated, e.V. dropped, single hyphens', () => {
   assert.equal(slugify('!!!'), '');
 });
 
-test('a complete suggestion with a calendar becomes one new, valid, canonical club file', async () => {
+test('a complete suggestion with a calendar becomes a new, valid, canonical club file plus the regenerated overview', async () => {
   const r = await validate({ body: fx('new-club.md'), number: 7, detect: icsFound });
   assert.equal(r.ok, true, r.problems.join('; '));
   assert.deepEqual(r.club, {
@@ -40,21 +41,29 @@ test('a complete suggestion with a calendar becomes one new, valid, canonical cl
     website: 'https://www.tv-kessenich.de/', aliases: ['Turnverein Kessenich 1898 e.V.'], active: true,
     sources: [{ id: 'kalender', type: 'ical', url: 'https://www.tv-kessenich.de/termine.ics' }],
   });
-  assert.deepEqual(r.files, [{ path: 'registry/clubs/turnverein-kessenich-1898.json', text: canonicalJson(r.club) }]);
+  assert.deepEqual(r.files.map((f) => f.path), ['registry/clubs/turnverein-kessenich-1898.json', 'docs/vereine.md']);
+  assert.deepEqual(r.files[0], { path: 'registry/clubs/turnverein-kessenich-1898.json', text: canonicalJson(r.club) });
   assert.deepEqual(publishableFiles(r.files), r.files);
-  // Written into a copy of the registry, the files make a valid registry with exactly one more club.
+  // Written into a copy of the registry, the club file makes a valid registry with exactly one more club.
   const dir = await mkdtemp(join(tmpdir(), 'sb-intake-'));
   await cp(REGISTRY_DIR, dir, { recursive: true });
-  for (const f of r.files) await writeFile(join(dir, f.path.replace(/^registry\//, '')), f.text, { flag: 'wx' });
-  assert.equal((await loadRegistry(dir)).clubs.length, (await loadRegistry()).clubs.length + 1, 'exactly one entry added');
+  await writeFile(join(dir, r.files[0].path.replace(/^registry\//, '')), r.files[0].text, { flag: 'wx' });
+  const grown = await loadRegistry(dir);
+  assert.equal(grown.clubs.length, (await loadRegistry()).clubs.length + 1, 'exactly one entry added');
+  // The overview is the one of the grown registry — the freshness test stays green on the PR — and lists the new club.
+  assert.equal(r.files[1].text, renderOverview(grown));
+  assert.ok(r.files[1].text.split('\n').some((l) => l.startsWith('| **Turnverein Kessenich 1898 e.V.**<br>`turnverein-kessenich-1898` |')), 'the new row');
   assert.ok(!r.files[0].text.includes('vorstand@'), 'the contact never reaches the registry');
   assert.match(r.comment, /Pull Request/);
 });
 
-test('publish writes nothing but registry/clubs/<slug>.json', () => {
+test('publish writes nothing but registry/clubs/<slug>.json and docs/vereine.md', () => {
   const file = (path) => [{ path, text: '{}\n' }];
   assert.doesNotThrow(() => publishableFiles(file('registry/clubs/tv-kessenich-1898.json')));
+  assert.doesNotThrow(() => publishableFiles(file('docs/vereine.md')));
   for (const path of [
+    'docs/vereine.md.bak', 'docs/vereine.md\n', 'docs/other.md', 'docs/README.md', 'docs/../README.md', 'docs/sub/vereine.md', '/docs/vereine.md',
+    'Docs/vereine.md', 'docs/vereine.mdx', 'xdocs/vereine.md',
     'registry/clubs/../../.github/workflows/club-intake.yml', 'registry/sports.json', 'registry/platforms/x.json',
     '.github/workflows/club-intake.yml', 'registry/clubs/TV.json', 'registry/clubs/a--b.json', 'registry/clubs/a.json\n',
     'registry/clubs/.json', '/registry/clubs/a.json', 'registry/clubs/a.json.bak', 'registry/clubs/a/b.json', undefined,
@@ -118,7 +127,7 @@ test('a department of a club not yet listed becomes the club\'s entry', async ()
   assert.equal(r.club.id, 'turnverein-kessenich-1898');
   assert.equal(r.club.name, 'Turnverein Kessenich 1898 e.V.');
   assert.deepEqual(r.club.aliases, ['Turnverein Kessenich 1898 e.V.', 'TV Kessenich Handball']);
-  assert.deepEqual(r.files.map((f) => f.path), ['registry/clubs/turnverein-kessenich-1898.json']);
+  assert.deepEqual(r.files.map((f) => f.path), ['registry/clubs/turnverein-kessenich-1898.json', 'docs/vereine.md']);
 });
 
 test('a bare department name never becomes an alias of its club', async () => {

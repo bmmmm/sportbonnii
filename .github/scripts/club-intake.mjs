@@ -1,5 +1,7 @@
 // Club intake: the issue form "Verein hinzufügen" → a pull request that adds
-// exactly one file, registry/clubs/<id>.json.
+// the club's file, registry/clubs/<id>.json, and regenerates the club
+// overview, docs/vereine.md (a test pins that file to the registry, so the
+// pull request must carry both).
 //
 //   node .github/scripts/club-intake.mjs validate   (no token; the issue text arrives only via env ISSUE_BODY)
 //   node .github/scripts/club-intake.mjs publish    (GH_TOKEN; reads nothing but the validate step's JSON)
@@ -27,6 +29,7 @@ import { promisify } from 'node:util';
 import {
   validateRegistry, readRegistry, canonicalJson, canonicalClubs, departmentConflict, nameKey, siteOf, DISTRICTS, REGISTRY_DIR,
 } from '../../pipeline/registry.mjs';
+import { renderOverview } from '../../pipeline/overview.mjs';
 import { detectSource, sourceSnippet } from '../../pipeline/detect.mjs';
 import { createNet } from '../../pipeline/net.mjs';
 
@@ -212,7 +215,8 @@ export function renderComment(result) {
 
 /**
  * The validate step: environment in, intake.json out. `files` holds what the
- * PR writes — the new club's file (path relative to the repository root).
+ * PR writes (paths relative to the repository root): the new club's file and
+ * the club overview regenerated from the patched registry.
  */
 export async function validate({ body, number, registryDir = REGISTRY_DIR, detect }) {
   const { docs, texts } = await readRegistry(registryDir);
@@ -224,7 +228,10 @@ export async function validate({ body, number, registryDir = REGISTRY_DIR, detec
     const clubsDoc = canonicalClubs({ ...docs.clubs, clubs: [...docs.clubs.clubs, entry.club] });
     const errors = validateRegistry({ clubs: clubsDoc, sports: docs.sports }, { texts: { ...texts, files: [...texts.files, file] } });
     if (errors.length) entry.problems.push(...errors.map((e) => `Der Eintrag passt nicht ins Verzeichnis: ${e}`));
-    else files = [{ path: `registry/${file.path}`, text: file.text }];
+    else {
+      const overview = renderOverview({ clubs: clubsDoc.clubs, platforms: clubsDoc.platforms, sports: docs.sports.sports });
+      files = [{ path: `registry/${file.path}`, text: file.text }, { path: OVERVIEW_FILE, text: overview }];
+    }
   }
   const ok = entry.problems.length === 0;
   return { ok, number, club: entry.club, problems: entry.problems, detection: entry.detection, files: ok ? files : null, comment: renderComment({ ok, ...entry }) };
@@ -241,8 +248,10 @@ async function gh(args, input) {
 }
 const ghJson = async (args, input) => JSON.parse(await gh(args, input));
 
-/** The only paths the bot writes: one club file. The id behind it comes from user text. */
-export const PUBLISH_PATH = /^registry\/clubs\/[a-z0-9]+(-[a-z0-9]+)*\.json$/;
+/** The club overview, the one fixed path the bot writes besides a club file. */
+export const OVERVIEW_FILE = 'docs/vereine.md';
+/** The only paths the bot writes: one club file (its id comes from user text) and the overview. */
+export const PUBLISH_PATH = /^(registry\/clubs\/[a-z0-9]+(-[a-z0-9]+)*\.json|docs\/vereine\.md)$/;
 
 /** validate's files, refused as a whole unless every path matches PUBLISH_PATH and carries text. */
 export function publishableFiles(files) {
