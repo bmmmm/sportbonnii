@@ -15,7 +15,8 @@ jobs:
   test:
     runs-on: docker
     container:
-      image: data.forgejo.org/oci/node:22-bookworm
+      # Tag for readers, digest for the runner: a moved tag cannot change CI silently.
+      image: data.forgejo.org/oci/node:22-bookworm@sha256:0e5f906573693feaa1e21057ebdcfdb5bd5021f050b2dc7c9deceb629c7da2a8
     steps:
       # Dependabot does not scan .forgejo/; bump by hand
       # (https://data.forgejo.org/actions/checkout).
