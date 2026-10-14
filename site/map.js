@@ -199,11 +199,12 @@ export function createMap(box, { onSelect }) {
 
   let wheelAt = 0;
   root.addEventListener('wheel', (ev) => {
-    if (!view || !ev.deltaY) return;
+    if (!view) return;
     const z = view.z + (ev.deltaY < 0 ? 1 : -1);
-    if (z < MIN_ZOOM || z > MAX_ZOOM) return; // at the limit the page scrolls
+    // At the limit a plain vertical step scrolls the page; a pinch (ctrl) or a sideways swipe stays on the map.
+    if (ev.deltaY && !ev.ctrlKey && (z < MIN_ZOOM || z > MAX_ZOOM)) return;
     ev.preventDefault();
-    if (ev.timeStamp - wheelAt < 250) return;
+    if (!ev.deltaY || ev.timeStamp - wheelAt < 250) return;
     wheelAt = ev.timeStamp;
     zoomTo(z, ...local(ev));
   }, { passive: false });

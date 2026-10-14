@@ -299,9 +299,20 @@ try {
   })()`);
   const subHint = await evaluate(`document.getElementById('sub-hint').textContent`);
   check(subHint === 'Das Abo enthält alle Rugby-Termine – Art, Spielort, Suche und Zeitraum gelten nur hier auf der Seite.', 'the subscription hint names what the feed holds', `sub hint: ${subHint}`);
-  check(dl.name === 'sportbonnii-rugby-heimspiele.ics' && dl.vevents === dl.rows && dl.rows === expectRows({ sport: ['rugby'], art: [] }) && dl.crlf, `.ics download: ${dl.vevents} VEVENTs = ${dl.rows} rows, ${dl.name}`, `download: ${JSON.stringify(dl)}`);
+  check(dl.name === 'sportbonnii-rugby-ohne-auswartsspiele.ics' && dl.vevents === dl.rows && dl.rows === expectRows({ sport: ['rugby'], art: [] }) && dl.crlf, `.ics download: ${dl.vevents} VEVENTs = ${dl.rows} rows, ${dl.name}`, `download: ${JSON.stringify(dl)}`);
   const sub = await evaluate(`({ hidden: document.getElementById('subscribe').hidden, webcal: document.getElementById('sub-webcal').getAttribute('href'), url: document.getElementById('sub-url').value })`);
   check(!sub.hidden && sub.webcal === `webcal://127.0.0.1:${httpPort}/data/ics/sport-rugby.ics` && sub.url === `${BASE}data/ics/sport-rugby.ics`, 'one sport offers its feed, derived from the page location', `subscribe: ${JSON.stringify(sub)}`);
+  // The file name says which side it holds: games only, or everything but the other side's games.
+  const dlName = async (hash) => {
+    await open(hash);
+    return evaluate(`(() => { let name = null; const click = HTMLAnchorElement.prototype.click; HTMLAnchorElement.prototype.click = function () { name = this.download; }; const create = URL.createObjectURL; URL.createObjectURL = () => 'blob:x'; document.getElementById('download').click(); HTMLAnchorElement.prototype.click = click; URL.createObjectURL = create; return name; })()`);
+  };
+  const names = [await dlName('#sport=rugby'), await dlName('#ort=auswaerts'), await dlName('#art=alle&ort=auswaerts')];
+  check(JSON.stringify(names) === JSON.stringify(['sportbonnii-rugby-spiele-wettkampfe-heimspiele.ics', 'sportbonnii-spiele-wettkampfe-auswartsspiele.ics', 'sportbonnii-ohne-heimspiele.ics']),
+    'the download name names the side: Heimspiele, Auswärtsspiele, ohne Heimspiele', `download names: ${JSON.stringify(names)}`);
+  await open('#verein=rc-bonn-rhein-sieg&sport=rugby');
+  const clubHint = await evaluate(`document.getElementById('sub-hint').textContent`);
+  check(clubHint === 'Das Abo enthält alle Termine von Rugby Club Bonn-Rhein-Sieg – Sportart, Art, Spielort, Suche und Zeitraum gelten nur hier auf der Seite.', 'a club feed with a sport chosen says the sport is page-only too', `club sub hint: ${clubHint}`);
 
   // --- 7. clubs
   await open('#ansicht=vereine');
@@ -387,6 +398,30 @@ try {
   // At the closest zoom a wheel step further in scrolls the page; a step out zooms the map.
   const wheelAtMax = await evaluate(`(() => { const m = document.querySelector('#map .map'); const zin = m.querySelector('.map-zoom-in'); while (!zin.disabled) zin.click(); const r = m.getBoundingClientRect(); const wheel = (deltaY) => { const ev = new WheelEvent('wheel', { deltaY, clientX: r.x + r.width / 2, clientY: r.y + r.height / 2, bubbles: true, cancelable: true }); m.dispatchEvent(ev); return ev.defaultPrevented; }; return { inward: wheel(-100), outward: wheel(100), zoomOut: zin.disabled }; })()`);
   check(!wheelAtMax.inward && wheelAtMax.outward && !wheelAtMax.zoomOut, 'at the closest zoom the wheel scrolls the page; a step out still zooms the map', `wheel at max zoom: ${JSON.stringify(wheelAtMax)}`);
+  // At the farthest zoom too; a pinch (ctrl) or a sideways swipe never reaches the page; a throttled step is still the map's.
+  const wheelMore = await evaluate(`(() => { const m = document.querySelector('#map .map'); const zout = m.querySelector('.map-zoom-out'); while (!zout.disabled) zout.click(); const r = m.getBoundingClientRect(); const wheel = (o) => { const ev = new WheelEvent('wheel', { clientX: r.x + r.width / 2, clientY: r.y + r.height / 2, bubbles: true, cancelable: true, ...o }); m.dispatchEvent(ev); return ev.defaultPrevented; }; const out = { outward: wheel({ deltaY: 100 }), pinch: wheel({ deltaY: 100, ctrlKey: true }), sideways: wheel({ deltaX: 100 }), inward: wheel({ deltaY: -100 }), throttled: wheel({ deltaY: -100 }) }; return { ...out, zoomOut: zout.disabled }; })()`);
+  // The pinch took the step, so the step in right after it is throttled: the map keeps it, the zoom stays.
+  check(!wheelMore.outward && wheelMore.pinch && wheelMore.sideways && wheelMore.inward && wheelMore.throttled && wheelMore.zoomOut,
+    'at the farthest zoom the wheel scrolls the page; pinch, sideways and throttled steps stay on the map', `wheel at min zoom: ${JSON.stringify(wheelMore)}`);
+  // A right-button drag does not move the map; nor does a move after the pointer capture is lost; the box never scrolls.
+  const box2 = await evaluate(`(() => { const r = document.querySelector('#map .map').getBoundingClientRect(); return { x: r.x + 60, y: r.y + 80 }; })()`);
+  const mx0 = await markerAt();
+  await t.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: box2.x, y: box2.y, button: 'right', clickCount: 1 });
+  for (let i = 1; i <= 3; i++) await t.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: box2.x + i * 20, y: box2.y, button: 'right', buttons: 2 });
+  await t.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: box2.x + 60, y: box2.y, button: 'right', clickCount: 1 });
+  await settle();
+  const mx1 = await markerAt();
+  await evaluate(`(() => { document.querySelector('#map .map').addEventListener('pointerdown', (e) => { globalThis.__pid = e.pointerId; }, { once: true }); return true; })()`);
+  await t.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: box2.x, y: box2.y, button: 'left', clickCount: 1 });
+  // Headless Chrome fires no lostpointercapture after releasePointerCapture over CDP, so the loss is dispatched.
+  const released = await evaluate(`(() => { const m = document.querySelector('#map .map'); m.dispatchEvent(new PointerEvent('lostpointercapture', { pointerId: globalThis.__pid })); return globalThis.__pid; })()`);
+  for (let i = 1; i <= 3; i++) await t.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: box2.x + i * 20, y: box2.y, button: 'left', buttons: 1 });
+  await t.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: box2.x + 60, y: box2.y, button: 'left', clickCount: 1 });
+  await settle();
+  const mx2 = await markerAt();
+  const scrolled = await evaluate(`new Promise((done) => { const m = document.querySelector('#map .map'); m.scrollTop = 40; m.scrollLeft = 40; requestAnimationFrame(() => requestAnimationFrame(() => done([m.scrollTop, m.scrollLeft, m.scrollHeight > m.clientHeight || m.scrollWidth > m.clientWidth]))); })`);
+  check(Math.abs(mx1 - mx0) <= 1 && Math.abs(mx2 - mx0) <= 1 && scrolled[0] === 0 && scrolled[1] === 0,
+    'a right drag and a move after the capture is lost leave the map; the box itself never scrolls', `pointer guards: marker ${mx0}→${mx1}→${mx2}, released ${released}, scroll ${JSON.stringify(scrolled)}`);
   await evaluate(`document.querySelector('.map-panel-where [data-club]').click(), true`);
   await settle();
   check(await evaluate(`location.hash`) === '#verein=bsv-roleber' && await rows() === expectRows({ verein: 'bsv-roleber' }), 'the club in the panel opens its dates in the table', `map club jump: ${await evaluate('location.hash')}`);

@@ -239,7 +239,14 @@ function renderActions() {
   $('sub-url').value = feedUrl(sub.file);
   $('sub-hint').textContent = sub.exact
     ? 'Das Abo enthält genau diese Auswahl, auch künftige Termine.'
-    : `Das Abo enthält ${sub.title[0].toLowerCase()}${sub.title.slice(1)} – Art, Spielort, Suche und Zeitraum gelten nur hier auf der Seite.`;
+    : `Das Abo enthält ${sub.title[0].toLowerCase()}${sub.title.slice(1)} – ${sub.file.startsWith('verein-') && state.sport.length ? 'Sportart, ' : ''}Art, Spielort, Suche und Zeitraum gelten nur hier auf der Seite.`;
+}
+
+// The side filter in a file name: "Heimspiele" for games only, "ohne Auswärtsspiele" when the file holds more.
+function sideLabel() {
+  const onlyGames = state.art.length === 1 && state.art[0] === 'spiel';
+  if (state.ort === 'heim') return onlyGames ? 'Heimspiele' : 'ohne Auswärtsspiele';
+  return onlyGames ? 'Auswärtsspiele' : 'ohne Heimspiele';
 }
 
 function slug(text) {
@@ -253,7 +260,7 @@ function download() {
     state.verein ? ctx.clubsById.get(state.verein)?.name : null,
     ...state.sport.map((s) => ctx.sportsById.get(s)?.label),
     ...state.art.map((k) => KINDS.find((x) => x.id === k)?.label),
-    showsGames() && state.ort !== 'alle' ? (state.ort === 'heim' ? 'Heimspiele' : 'Auswärtsspiele') : null,
+    showsGames() && state.ort !== 'alle' ? sideLabel() : null,
     state.ansicht === 'kalender' ? formatMonth(shownMonth()) : null,
   ].filter(Boolean);
   const name = `Sport in Bonn${parts.length ? ` – ${parts.join(', ')}` : ''}`;
