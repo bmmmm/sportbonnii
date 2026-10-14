@@ -12,6 +12,23 @@
       "sports": [
         "american-football"
       ],
+      "venues": [
+        {
+          "address": "Mallwitzstraße, 53177 Bonn",
+          "lat": 50.66885,
+          "lon": 7.17342,
+          "name": "Sportpark Pennenfeld",
+          "osm": "way/26839678",
+          "use": "spiel"
+        },
+        {
+          "address": "Schießstandweg 25, 53125 Bonn",
+          "lat": 50.7029,
+          "lon": 7.04837,
+          "name": "Sportplatz Brüser Berg",
+          "use": "training"
+        }
+      ],
       "website": "https://gamecocks.de/"
     },
     {
@@ -121,6 +138,15 @@
       ],
       "sports": [
         "rugby"
+      ],
+      "venues": [
+        {
+          "address": "Martin-Luther-King-Str. 22, 53175 Bonn",
+          "lat": 50.70732,
+          "lon": 7.15703,
+          "name": "Rugbyplatz Rheinaue",
+          "osm": "way/123977272"
+        }
       ],
       "website": "https://rcbrs.de/"
     },

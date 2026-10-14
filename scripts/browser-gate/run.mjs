@@ -268,6 +268,19 @@ try {
   await open('#ansicht=vereine');
   const dirInfo = await evaluate(`({ result: document.getElementById('result').textContent, cards: document.querySelectorAll('.club').length, sources: document.querySelectorAll('table.sources tbody tr').length, zeit: document.getElementById('zeit-field').hidden, kind: document.getElementById('kind-field').hidden, actions: document.getElementById('view-actions').hidden })`);
   check(dirInfo.result === `${clubs.length} Vereine` && dirInfo.cards >= clubs.length && dirInfo.sources === 5 && dirInfo.zeit && dirInfo.kind && dirInfo.actions, `club directory: ${clubs.length} clubs, 5 sources listed, no range or kind filter`, `clubs: ${JSON.stringify(dirInfo)}`);
+  // Venues sit on the club card as OpenStreetMap links: the mapped object when the registry names one, else a marker; the prefix says what the venue is for.
+  const venues = await evaluate(`(() => {
+    const links = (name) => { const card = [...document.querySelectorAll('.club')].find((c) => c.querySelector('.club-name').textContent === name); return [...(card?.querySelectorAll('.club-venues a.club-venue') ?? [])].map((a) => [a.textContent, a.getAttribute('href'), a.rel, a.title]); };
+    return { gamecocks: links('Bonn Gamecocks'), rugby: links('Rugby Club Bonn-Rhein-Sieg'), none: links('BSV Roleber') };
+  })()`);
+  check(JSON.stringify(venues) === JSON.stringify({
+    gamecocks: [
+      ['📍 Spiele: Sportpark Pennenfeld', 'https://www.openstreetmap.org/way/26839678', 'noopener', 'Sportpark Pennenfeld, Mallwitzstraße, 53177 Bonn – in OpenStreetMap öffnen'],
+      ['📍 Training: Sportplatz Brüser Berg', 'https://www.openstreetmap.org/?mlat=50.7029&mlon=7.04837#map=18/50.7029/7.04837', 'noopener', 'Sportplatz Brüser Berg, Schießstandweg 25, 53125 Bonn – in OpenStreetMap öffnen'],
+    ],
+    rugby: [['📍 Rugbyplatz Rheinaue', 'https://www.openstreetmap.org/way/123977272', 'noopener', 'Rugbyplatz Rheinaue, Martin-Luther-King-Str. 22, 53175 Bonn – in OpenStreetMap öffnen']],
+    none: [],
+  }), 'club cards link their venues to OpenStreetMap (object or marker, "Spiele:"/"Training:" prefix, none without venues)', `venues: ${JSON.stringify(venues)}`);
   // The "Neues zuletzt" column shows status.json's `changed` as a short date, a dash without one (the two disabled sources).
   const newsCol = await evaluate(`(() => { const th = [...document.querySelectorAll('table.sources thead th')].map((t) => t.textContent); const i = th.indexOf('Neues zuletzt'); return { i, cells: [...document.querySelectorAll('table.sources tbody tr')].map((tr) => [tr.children[0].textContent, tr.children[i]?.textContent]) }; })()`);
   const jetzt = newsCol.cells.find(([name]) => name === 'bonn.jetzt')?.[1];

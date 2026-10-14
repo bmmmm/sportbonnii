@@ -5,6 +5,7 @@
 import { el, sportPills } from './table.js';
 import { formatShortDate } from './dates.js';
 import { fold } from './state.js';
+import { osmUrl } from './venue.js';
 
 const TYPE_LABEL = { ical: 'iCalendar', tec: 'The Events Calendar', gancio: 'Gancio', jsonld: 'schema.org', rss: 'RSS + schema.org' };
 
@@ -26,6 +27,9 @@ export function calendarState(owner, status, refYear) {
   if (failing.length || live.some((e) => e.state === 'partial')) return { kind: 'partial', text: 'Termine teilweise aktuell' };
   return { kind: 'ok', text: 'Termine aktuell' };
 }
+
+// What a venue is used for, in front of its name; no `use` means both, so no prefix.
+const USE_LABEL = { spiel: 'Spiele: ', training: 'Training: ' };
 
 const host = (url) => {
   try {
@@ -55,6 +59,20 @@ function clubCard(club, { ctx, status, upcoming, feedUrl, selected, colour }) {
   site.href = club.website;
   site.rel = 'noopener';
   card.append(site);
+
+  if (club.venues?.length) {
+    const list = el('ul', 'club-venues');
+    for (const v of club.venues) {
+      const a = el('a', 'club-venue', `📍 ${USE_LABEL[v.use] ?? ''}${v.name}`);
+      a.href = osmUrl(v);
+      a.rel = 'noopener';
+      a.title = `${v.address ? `${v.name}, ${v.address}` : v.name} – in OpenStreetMap öffnen`;
+      const li = el('li');
+      li.append(a);
+      list.append(li);
+    }
+    card.append(list);
+  }
 
   const actions = el('div', 'club-actions');
   if (upcoming > 0) {

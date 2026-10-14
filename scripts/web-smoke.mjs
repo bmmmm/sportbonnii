@@ -24,12 +24,11 @@ const site = join(root, 'site');
 const PAGES = { 'index.html': 'app.js' };
 // Each page's exact module set. A new import is a one-line change here.
 const PAGE_GRAPH = {
-  'index.html': ['app.js', 'data.js', 'state.js', 'dates.js', 'table.js', 'calendar.js', 'clubs.js', 'ics.js', 'kinds.js'],
+  'index.html': ['app.js', 'data.js', 'state.js', 'dates.js', 'table.js', 'calendar.js', 'clubs.js', 'ics.js', 'kinds.js', 'venue.js'],
 };
 const MODULES = [...new Set(Object.values(PAGE_GRAPH).flat())];
-// Shipped modules outside every page graph, until a page imports them (venue.js
-// already serves the pipeline and its tests).
-const OTHER_MODULES = ['venue.js'];
+// Shipped modules outside every page graph, until a page imports them.
+const OTHER_MODULES = [];
 const STATIC = ['index.html', '404.html', 'style.css', 'favicon.ico', 'robots.txt', 'sitemap.xml'];
 const SHIPPED = [...STATIC, ...MODULES, ...OTHER_MODULES];
 const NETWORK_MODULE = 'data.js';

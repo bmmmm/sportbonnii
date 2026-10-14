@@ -546,6 +546,8 @@ a.title:hover .ext { color: var(--accent); }
 .club-facts { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 0; font-size: 0.88rem; }
 .club-count { color: var(--muted); }
 .club-site { font-size: 0.9rem; justify-self: start; }
+.club-venues { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; font-size: 0.86rem; }
+.club-venue { overflow-wrap: anywhere; }
 .club-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 2px; }
 .club-actions .button { min-height: 34px; padding: 4px 12px; font-size: 0.86rem; }
 .state {

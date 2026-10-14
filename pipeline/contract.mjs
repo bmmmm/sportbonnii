@@ -3,7 +3,8 @@
 // formatters below; the tests, the web-smoke gate and the committed
 // snapshot test/fixtures/site-data/ are all judged by checkSiteData.
 import { instantOf } from './tz.mjs';
-import { KIND_IDS } from '../site/kinds.js';
+import { KIND_IDS, VENUE_USES } from '../site/kinds.js';
+import { MAX_VENUES, VENUE_BOUNDS, OSM_REF } from './registry.mjs';
 
 export const EVENT_KEYS = ['id', 'club', 'sports', 'kind', 'title', 'start', 'end', 'allDay', 'location', 'url', 'description', 'source', 'status'];
 export const STATES = ['ok', 'partial', 'error', 'blocked', 'disabled'];
@@ -13,6 +14,10 @@ export const MAX_DESCRIPTION = 400;
 // status.json validators (response headers kept verbatim for the next conditional request).
 export const MAX_ETAG = 200;
 export const MAX_LAST_MODIFIED = 64;
+
+// The keys a venue may carry in clubs.json (the registry's list: contract changes travel together).
+const VENUE_KEYS = ['name', 'address', 'lat', 'lon', 'osm', 'use'];
+const isText = (v) => typeof v === 'string' && v.trim() !== '' && v === v.trim();
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const DATETIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/;
@@ -88,6 +93,27 @@ export function checkEvent(e, { sportIds, clubIds } = {}) {
   return errs;
 }
 
+/** Contract violations of one club's `venues` (the registry's rules and bounds, applied to the published form). */
+export function checkVenues(venues, at) {
+  const errs = [];
+  if (!Array.isArray(venues)) return [`${at}: venues must be a list`];
+  if (venues.length === 0 || venues.length > MAX_VENUES) errs.push(`${at}: venues must list 1 to ${MAX_VENUES} venues`);
+  for (const [j, v] of venues.entries()) {
+    const vat = `${at}.venues[${j}]`;
+    if (v === null || typeof v !== 'object' || Array.isArray(v)) { errs.push(`${vat}: must be an object`); continue; }
+    for (const k of Object.keys(v)) if (!VENUE_KEYS.includes(k)) errs.push(`${vat}: unknown field "${k}"`);
+    if (!isText(v.name)) errs.push(`${vat}: name must be non-empty text`);
+    if ('address' in v && !isText(v.address)) errs.push(`${vat}: address must be non-empty text`);
+    for (const axis of ['lat', 'lon']) {
+      const [min, max] = VENUE_BOUNDS[axis];
+      if (typeof v[axis] !== 'number' || !Number.isFinite(v[axis]) || v[axis] < min || v[axis] > max) errs.push(`${vat}: ${axis} must be a number from ${min} to ${max}`);
+    }
+    if ('osm' in v && !(typeof v.osm === 'string' && OSM_REF.test(v.osm))) errs.push(`${vat}: osm must be node/<n>, way/<n> or relation/<n>`);
+    if ('use' in v && !VENUE_USES.includes(v.use)) errs.push(`${vat}: use must be one of ${VENUE_USES.join(', ')}`);
+  }
+  return errs;
+}
+
 /**
  * Every contract violation in a site/data/ snapshot. `texts` holds the raw
  * file contents keyed by name (events.json, status.json, clubs.json,
@@ -110,6 +136,7 @@ export function checkSiteData(texts) {
   const clubIds = new Set((clubs.clubs ?? []).map((c) => c.id));
   const sourceKeys = new Set(owners.flatMap((o) => (o.sources ?? []).map((s) => `${o.id}/${s.id}`)));
   for (const o of owners) for (const s of o.sources ?? []) if ('note' in s) errs.push(`clubs.json: ${o.id}/${s.id} still carries its note`);
+  for (const c of clubs.clubs ?? []) if ('venues' in c) errs.push(...checkVenues(c.venues, `clubs.json: ${c.id}`));
 
   if (ev.version !== 1) errs.push('events.json: version must be 1');
   if (!ev.window || !DATE.test(ev.window.from) || !DATE.test(ev.window.to) || !(ev.window.from < ev.window.to)) errs.push('events.json: window needs from < to as dates');
