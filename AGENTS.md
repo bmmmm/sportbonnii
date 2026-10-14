@@ -81,10 +81,11 @@ store index — run installs unsandboxed.
 - `site/data/` is never committed. The Pages build fetches and reads the last
   good state back from the live site, so a failing source keeps its dates.
 - Output is deterministic: events.json, status.json and the ICS feeds carry
-  no timestamps (DTSTAMP = window start); meta.json is the only file with one.
-  Two fetches on unchanged sources are byte-identical except meta.json.
-  status.json's `changed`, `etag` and `lastModified` move only when the
-  source does (`lastModified` is the server's validator, echoed verbatim).
+  no run timestamp (DTSTAMP = window start); meta.json is the only file with
+  one. Two fetches on unchanged sources are byte-identical except meta.json.
+  status.json's `changed`, `etag` and `lastModified` describe the source, not
+  the run: `lastModified` is the server's validator echoed verbatim, and all
+  three move only when the source does.
 - Only sources with news are re-read: a 304 is honoured only against a state
   the same build produced for the same window, only for single-request
   adapters (`CONDITIONAL = true`: ical, gancio, jsonld — a 304 on TEC page 1

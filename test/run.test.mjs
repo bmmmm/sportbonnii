@@ -270,9 +270,43 @@ test('a multi-request adapter is never asked conditionally', async () => {
   const base = { ...opts(out, reg, conditionalFetch(table, log)), build: 'abc123' };
   const first = await run(base);
   assert.equal(first.status['bsv-test/tec'].state, 'ok');
-  assert.match(first.status['bsv-test/tec'].etag, /^"[0-9a-f]{8}"$/, 'validators are still recorded');
+  assert.equal(first.status['bsv-test/tec'].etag, undefined, 'no validators are kept: page 1 does not describe the source');
   log.length = 0;
   const second = await run({ ...base, now: new Date('2026-10-15T10:00:00Z') });
   assert.equal(log.filter((l) => l.headers['if-none-match']).length, 0);
   assert.match(second.summary, /\| bsv-test\/tec \| ok \| \d+ \| ±0 \| unchanged \|/);
+});
+
+/** fetch that validates with Last-Modified only, like a static file server without ETags. */
+function lastModifiedFetch(table, log = []) {
+  const stamp = 'Mon, 05 Oct 2026 10:00:00 GMT';
+  return async (url, init) => {
+    const key = String(url);
+    log.push({ url: key, headers: init?.headers ?? {} });
+    if (key.endsWith('/robots.txt')) return new Response('', { status: 404 });
+    const body = table[key];
+    if (body === undefined) return new Response('nope', { status: 404 });
+    if (init?.headers?.['if-modified-since'] === stamp) return new Response(null, { status: 304, headers: { 'last-modified': stamp } });
+    return new Response(body, { headers: { 'last-modified': stamp } });
+  };
+}
+
+test('a source that validates with Last-Modified only is asked conditionally too', async () => {
+  const reg = await tempRegistry({
+    clubs: [{ id: 'lm-test', name: 'LM Test', sports: ['rugby'], website: 'https://lm.example/', sources: [{ id: 'kalender', type: 'ical', url: 'https://lm.example/k.ics' }] }],
+    platforms: [],
+  });
+  const out = await mkdtemp(join(tmpdir(), 'sb-lm-'));
+  const table = { 'https://lm.example/k.ics': await fixture('ical/edge-cases.ics') };
+  const log = [];
+  const base = { ...opts(out, reg, lastModifiedFetch(table, log)), build: 'abc123' };
+  const first = await run(base);
+  assert.equal(first.status['lm-test/kalender'].lastModified, 'Mon, 05 Oct 2026 10:00:00 GMT');
+  assert.equal(first.status['lm-test/kalender'].etag, undefined);
+  log.length = 0;
+  const second = await run({ ...base, now: new Date('2026-10-15T10:00:00Z') });
+  assert.deepEqual(log.filter((l) => l.headers['if-modified-since']).map((l) => l.url), ['https://lm.example/k.ics']);
+  assert.equal(log.some((l) => l.headers['if-none-match']), false, 'no ETag, no If-None-Match');
+  assert.match(second.summary, /\| lm-test\/kalender \| ok \| \d+ \| ±0 \| unchanged \(304\) \|/);
+  assert.deepEqual(second.status, first.status);
 });

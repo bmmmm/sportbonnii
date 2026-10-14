@@ -7,13 +7,15 @@
 // Previous state: site/data/ when present, else $PREVIOUS_STATE_URL (the live
 // site); anything that fails the shape check is ignored.
 //
-// Only sources with news are re-read in full: a source whose last ok answer
-// carried an ETag or Last-Modified is asked conditionally and a 304 keeps
-// its previous events untouched. That reuse is allowed only when the previous
-// state was produced by the same build ($BUILD_ID, the commit — set by the
-// Pages workflow, unset locally) with the same window, so a registry or code
-// change always refetches everything. Change detection itself (`changed` in
-// status.json) compares the normalised events with their published version
+// Only sources with news are re-read in full. A single-request adapter
+// (CONDITIONAL: ical, gancio, jsonld) whose last ok answer carried an ETag or
+// Last-Modified is asked conditionally, and a 304 keeps its previous events
+// untouched. That reuse needs a previous state produced by the same build
+// ($BUILD_ID, the commit — set by the Pages workflow, unset locally and on a
+// manual full run) for the same window, and events.json holding the source's
+// whole delivery (a dedup loser is read in full). A registry or code change
+// is a new build and refetches everything. Change detection itself (`changed`
+// in status.json) compares the published events with their previous version
 // and therefore works for servers without validators too.
 //
 // Prints a Markdown summary (the CI job summary) on stdout, warnings on
@@ -185,23 +187,25 @@ export async function run(opts = {}) {
   await pool(interleaveByHost(tasks), MAX_PARALLEL, async ({ key, owner, kind, source }) => {
     const prev = previous?.status[key];
     const box = { validators: null };
+    let conditional = false;
     let r;
     try {
       const adapter = await loadAdapter(source.type);
+      conditional = adapter.CONDITIONAL === true;
       // Ask conditionally only where a 304 can stand for the whole source: a
       // single-request adapter, validators from the last ok answer, and a
       // published state that holds the source's entire delivery (an event
       // that lost a dedup contest is not in events.json and could not be
       // brought back from a 304).
       const complete = prev && prev.count === previous.events.filter((e) => e.source === key).length;
-      const validators = reusable && adapter.CONDITIONAL === true && complete && (prev.etag || prev.lastModified)
+      const validators = reusable && conditional && complete && (prev.etag || prev.lastModified)
         ? { etag: prev.etag, lastModified: prev.lastModified }
         : null;
       r = await adapter.fetchEvents(source, { window, today, get: sourceGet(net.get, validators, box) });
     } catch (e) {
       if (e instanceof NotModified) {
         results.set(key, { state: 'ok', events: [], unchanged: true });
-        log(`${key}: not modified — previous events kept`);
+        log(`${key}: not modified — previous events kept (its normalisation warnings are not re-checked on a 304)`);
         return;
       }
       const blocked = e instanceof NetError && e.kind === 'blocked';
@@ -211,7 +215,8 @@ export async function run(opts = {}) {
     }
     const { events, warnings: sink } = normalizeAll(r, { owner, kind, source, ctx, window });
     for (const w of sink) warnings.push(`${key}: ${w}`);
-    results.set(key, { state: r.partial ? 'partial' : 'ok', events, validators: box.validators, ...(r.partial ? { error: r.partial.reason } : {}) });
+    // Validators are kept only where they can be used: a multi-request adapter's first answer does not describe the source.
+    results.set(key, { state: r.partial ? 'partial' : 'ok', events, validators: conditional ? box.validators : null, ...(r.partial ? { error: r.partial.reason } : {}) });
   });
 
   const known = { sportIds: new Set(registry.sports.map((s) => s.id)), clubIds: new Set(registry.clubs.map((c) => c.id)) };
