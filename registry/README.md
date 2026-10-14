@@ -52,8 +52,9 @@ source of the club with `sports` narrowed to it, its name (or a team name
 such as "SSF Dragons Bonn") an alias of the club. There is never "SSF Bonn",
 "SSF Bonn Tischtennis" and "SSF Bonn Schwimmen" as three clubs.
 
-The validator (`pnpm test`, so every commit and merge) refuses, for every
-pair of clubs and platforms:
+The validator (in `pnpm test`, which CI runs on every push and pull
+request, and before every `pnpm run fetch`) refuses, for every pair of
+clubs and platforms:
 
 - the same name — any name or alias, compared without case, accents, a
   trailing "e.V." or punctuation (hyphens count: "Rugby Bonn-Rhein-Sieg"
@@ -90,6 +91,17 @@ Before adding a club:
 | `aliases` | no | names under which the club appears on platforms, departments and teams included; a platform event whose title or place contains one is assigned to the club. Unique across clubs and platforms (see above) |
 | `active` | no | `false` hides the club from the directory (default `true`) |
 | `sources` | yes | the club's calendars, richest first (on a duplicate date the earlier source wins) |
+| `venues` | no | 1 to 3 places where the club plays or trains, the main one first (fields below) |
+
+## Venue fields
+
+| field | required | meaning |
+| --- | --- | --- |
+| `name` | yes | display name ("Sportpark Pennenfeld") |
+| `address` | no | street, postcode and town |
+| `lat`, `lon` | yes | coordinates as numbers, `lat` 50.6–50.8 and `lon` 7.0–7.3 (around Bonn — catches swapped or mistyped numbers) |
+| `osm` | no | the OpenStreetMap object of the facility itself: `node/<n>`, `way/<n>` or `relation/<n>`; the OpenStreetMap link (`osmUrl` in `site/venue.js`) opens it, else a marker at `lat`/`lon` |
+| `use` | no | `spiel` (matches, competitions) or `training`; leave it out when the place serves both |
 
 ## Source fields
 
@@ -105,6 +117,7 @@ Before adding a club:
 | `exclude` | no | case-insensitive texts; an event whose title or tags contain one is dropped |
 | `params` | no | free-form settings, reserved for league/portal adapters |
 | `expectEmpty` | no | `true` when the source legitimately has no upcoming dates (the live test then accepts zero events) |
+| `kind` | no | `spiel`, `training` or `veranstaltung` — the kind for the source's dates whose title and tags name none (a calendar that only carries trainings, say) |
 
 ## Platforms
 

@@ -18,6 +18,7 @@ import { readFile, readdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ADAPTER_TYPES } from './adapters/index.mjs';
+import { KIND_IDS, VENUE_USES } from '../site/kinds.js';
 
 export const DISTRICTS = ['Bonn', 'Bad Godesberg', 'Beuel', 'Hardtberg'];
 export const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
@@ -26,10 +27,18 @@ const COLOUR = /^#[0-9a-f]{6}$/;
 /** Relative luminance bounds: ≥ 3:1 against both #fff and the dark background #121212. */
 export const LUMINANCE = { min: 0.118, max: 0.3 };
 
-const CLUB_FIELDS = new Set(['id', 'name', 'sports', 'district', 'website', 'aliases', 'active', 'sources']);
+const CLUB_FIELDS = new Set(['id', 'name', 'sports', 'district', 'website', 'aliases', 'active', 'sources', 'venues']);
 const PLATFORM_FIELDS = new Set(['id', 'name', 'website', 'sources']);
-const SOURCE_FIELDS = new Set(['id', 'type', 'url', 'enabled', 'note', 'sports', 'tagMap', 'exclude', 'params', 'expectEmpty']);
+const SOURCE_FIELDS = new Set(['id', 'type', 'url', 'enabled', 'note', 'sports', 'tagMap', 'exclude', 'params', 'expectEmpty', 'kind']);
 const SPORT_FIELDS = new Set(['id', 'label', 'emoji', 'colour', 'keywords']);
+const VENUE_FIELDS = new Set(['name', 'address', 'lat', 'lon', 'osm', 'use']);
+
+/** A club lists at most this many venues; the first is its main one. */
+export const MAX_VENUES = 3;
+/** Venue coordinates must fall in this box around Bonn — a guard against swapped or mistyped numbers. */
+export const VENUE_BOUNDS = { lat: [50.6, 50.8], lon: [7.0, 7.3] };
+/** An OpenStreetMap object: node/<n>, way/<n> or relation/<n>. */
+export const OSM_REF = /^(node|way|relation)\/[1-9]\d*$/;
 
 export const REGISTRY_DIR = fileURLToPath(new URL('../registry/', import.meta.url));
 
@@ -207,6 +216,25 @@ export function validateRegistry({ clubs: clubsDoc, sports: sportsDoc }, { texts
   const clubs = Array.isArray(clubsDoc.clubs) ? clubsDoc.clubs : [];
   const platforms = Array.isArray(clubsDoc.platforms) ? clubsDoc.platforms : [];
 
+  const inBounds = (n, [min, max]) => typeof n === 'number' && Number.isFinite(n) && n >= min && n <= max;
+  const checkVenues = (venues, at) => {
+    if (!Array.isArray(venues)) { err(`${at}: venues must be a list`); return; }
+    if (venues.length === 0 || venues.length > MAX_VENUES) err(`${at}: venues must list 1 to ${MAX_VENUES} venues (the first is the main one)`);
+    for (const [j, v] of venues.entries()) {
+      const vat = `${at}.venues[${j}]`;
+      if (!isObject(v)) { err(`${vat}: expected an object`); continue; }
+      for (const k of Object.keys(v)) if (!VENUE_FIELDS.has(k)) err(`${vat}: unknown field "${k}"`);
+      if (!isText(v.name)) err(`${vat}: name must be non-empty text`);
+      if (v.address !== undefined && !isText(v.address)) err(`${vat}: address must be non-empty text`);
+      for (const axis of ['lat', 'lon']) {
+        const [min, max] = VENUE_BOUNDS[axis];
+        if (!inBounds(v[axis], VENUE_BOUNDS[axis])) err(`${vat}: ${axis} must be a number from ${min} to ${max} (Bonn)`);
+      }
+      if (v.osm !== undefined && !(typeof v.osm === 'string' && OSM_REF.test(v.osm))) err(`${vat}: osm must be node/<n>, way/<n> or relation/<n>`);
+      if (v.use !== undefined && !VENUE_USES.includes(v.use)) err(`${vat}: use must be one of ${VENUE_USES.join(', ')} (leave it out for both)`);
+    }
+  };
+
   const ownerIds = new Set();
   const labels = new Map();
   const checkOwner = (o, i, kind) => {
@@ -233,6 +261,7 @@ export function validateRegistry({ clubs: clubsDoc, sports: sportsDoc }, { texts
       if (o.district !== undefined && !DISTRICTS.includes(o.district)) err(`${at}: district must be one of ${DISTRICTS.join(', ')}`);
       if (o.aliases !== undefined && (!Array.isArray(o.aliases) || !o.aliases.every(isText))) err(`${at}: aliases must be a list of non-empty texts`);
       if (o.active !== undefined && typeof o.active !== 'boolean') err(`${at}: active must be true or false`);
+      if (o.venues !== undefined) checkVenues(o.venues, at);
     }
 
     if (!Array.isArray(o.sources)) { err(`${at}: sources must be an array (empty when the club publishes no calendar)`); return; }
@@ -266,6 +295,7 @@ export function validateRegistry({ clubs: clubsDoc, sports: sportsDoc }, { texts
       }
       if (src.exclude !== undefined && (!Array.isArray(src.exclude) || !src.exclude.every(isText))) err(`${sat}: exclude must be a list of non-empty texts`);
       if (src.params !== undefined && !isObject(src.params)) err(`${sat}: params must be an object`);
+      if (src.kind !== undefined && !KIND_IDS.includes(src.kind)) err(`${sat}: kind must be one of ${KIND_IDS.join(', ')}`);
     }
   };
   clubs.forEach((c, i) => checkOwner(c, i, 'clubs'));

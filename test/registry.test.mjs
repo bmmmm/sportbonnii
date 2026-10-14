@@ -59,6 +59,10 @@ function errorsAfter(mutate) {
 
 /** A minimal club for the one-club-one-entry mutants. */
 const club = (id, name, website = `https://${id}.example/`) => ({ id, name, sports: ['tischtennis'], website, sources: [] });
+/** A venue as the registry takes it (Sportpark Pennenfeld, OSM way). */
+const venue = (extra = {}) => ({ name: 'Sportpark Pennenfeld', address: 'Mallwitzstraße, 53177 Bonn', lat: 50.66885, lon: 7.17342, osm: 'way/26839678', use: 'spiel', ...extra });
+const gamecocks = (c) => c.clubs.find((x) => x.id === 'bonn-gamecocks');
+const VENUE_AT = /clubs\[\d+\] \(bonn-gamecocks\)\.venues\[0\]: /;
 const DEPARTMENT = /clubs\[\d+\] \(ssf-tt\): "SSF Bonn Tischtennis" looks like a department of ssf-bonn \("SSF Bonn"\) — a department is a sport in ssf-bonn's sports/;
 
 test('each rule goes red on its own mutant', () => {
@@ -88,6 +92,22 @@ test('each rule goes red on its own mutant', () => {
     ['department before its club', (c) => { c.clubs.unshift(club('ssf-tt', 'SSF Bonn Tischtennis')); }, DEPARTMENT],
     ['department of a platform', (c) => { c.clubs.push(club('bj-lauf', 'bonn.jetzt Lauftreff')); }, /\(bj-lauf\): "bonn\.jetzt Lauftreff" looks like a department of bonn-jetzt/],
     ['website on a subdomain of a club', (c) => { c.clubs.push(club('lacrosse', 'Lacrosse Bonn', 'https://lacrosse.ssfbonn.de/')); }, /\(lacrosse\): website https:\/\/lacrosse\.ssfbonn\.de\/ is the site of ssf-bonn/],
+    ['four venues', (c) => { gamecocks(c).venues = [venue(), venue(), venue(), venue()]; }, /\(bonn-gamecocks\): venues must list 1 to 3 venues/],
+    ['no venue', (c) => { gamecocks(c).venues = []; }, /\(bonn-gamecocks\): venues must list 1 to 3 venues/],
+    ['venues not a list', (c) => { gamecocks(c).venues = venue(); }, /\(bonn-gamecocks\): venues must be a list/],
+    ['unknown venue field', (c) => { gamecocks(c).venues = [venue({ adress: 'x' })]; }, new RegExp(`${VENUE_AT.source}unknown field "adress"`)],
+    ['venue without a name', (c) => { const { name, ...rest } = venue(); gamecocks(c).venues = [rest]; }, new RegExp(`${VENUE_AT.source}name must be non-empty text`)],
+    ['empty address', (c) => { gamecocks(c).venues = [venue({ address: '' })]; }, new RegExp(`${VENUE_AT.source}address must be non-empty text`)],
+    ['lat north of Bonn', (c) => { gamecocks(c).venues = [venue({ lat: 50.9 })]; }, new RegExp(`${VENUE_AT.source}lat must be a number from 50.6 to 50.8`)],
+    ['lon west of Bonn', (c) => { gamecocks(c).venues = [venue({ lon: 6.9 })]; }, new RegExp(`${VENUE_AT.source}lon must be a number from 7 to 7.3`)],
+    ['lat and lon swapped', (c) => { gamecocks(c).venues = [venue({ lat: 7.17342, lon: 50.66885 })]; }, /lat must be a number[^]*lon must be a number/],
+    ['lat as text', (c) => { gamecocks(c).venues = [venue({ lat: '50.7' })]; }, new RegExp(`${VENUE_AT.source}lat must be a number`)],
+    ['lon missing', (c) => { const { lon, ...rest } = venue(); gamecocks(c).venues = [rest]; }, new RegExp(`${VENUE_AT.source}lon must be a number`)],
+    ['osm id zero', (c) => { gamecocks(c).venues = [venue({ osm: 'way/0' })]; }, new RegExp(`${VENUE_AT.source}osm must be node/<n>, way/<n> or relation/<n>`)],
+    ['osm as a URL', (c) => { gamecocks(c).venues = [venue({ osm: 'https://www.openstreetmap.org/way/26839678' })]; }, /osm must be/],
+    ['osm unknown type', (c) => { gamecocks(c).venues = [venue({ osm: 'area/26839678' })]; }, /osm must be/],
+    ['venue use veranstaltung', (c) => { gamecocks(c).venues = [venue({ use: 'veranstaltung' })]; }, new RegExp(`${VENUE_AT.source}use must be one of spiel, training`)],
+    ['source kind match', (c) => { c.platforms[0].sources[0].kind = 'match'; }, /platforms\[0\] \(bonn-jetzt\)\.sources\[0\] \(sport\): kind must be one of spiel, training, veranstaltung/],
   ];
   for (const [name, mutate, want] of cases) assert.match(errorsAfter(mutate), want, name);
 });
@@ -102,6 +122,14 @@ test('one club, one entry: what stays valid', () => {
   assert.equal(errorsAfter((c) => { c.clubs.push(club('tt-a', 'TT A', 'https://sites.google.com/view/tt-a'), club('tt-b', 'TT B', 'https://sites.google.com/view/tt-b')); }), '');
   // A department with its own words in front is no prefix match.
   assert.equal(errorsAfter((c) => { c.clubs.push(club('tt-ssf', 'Tischtennis SSF Bonn')); }), '');
+});
+
+test('venues and a source kind: what is valid', () => {
+  assert.equal(errorsAfter((c) => {
+    gamecocks(c).venues = [venue(), { name: 'Sportplatz Brüser Berg', lat: 50.7029, lon: 7.04837, use: 'training' }, { name: 'Halle', lat: 50.6, lon: 7.3 }];
+    c.clubs.filter((x) => x.sources.length).forEach((x, i) => { x.sources[0].kind = ['spiel', 'training', 'veranstaltung'][i % 3]; });
+    c.platforms[0].sources[0].kind = 'veranstaltung';
+  }), '');
 });
 
 test('nameKey: accents, ß, case, e.V. and punctuation do not tell names apart', () => {
