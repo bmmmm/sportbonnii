@@ -42,8 +42,13 @@ body:
         - "Handball"
         - "Volleyball"
         - "Hockey"
+        - "Floorball"
         - "American Football"
         - "Rugby"
+        - "Quadball"
+        - "Baseball & Softball"
+        - "Cricket"
+        - "Frisbeesport"
         - "Tennis"
         - "Tischtennis"
         - "Badminton"
@@ -55,6 +60,9 @@ body:
         - "Turnen & Gymnastik"
         - "Radsport"
         - "Kampfsport"
+        - "Fechten"
+        - "Bogenschießen"
+        - "Klettern"
         - "Sonstiges"
     validations:
       required: true

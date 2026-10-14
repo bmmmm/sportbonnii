@@ -48,6 +48,16 @@
       "label": "Hockey"
     },
     {
+      "colour": "#bf2263",
+      "emoji": "🏒",
+      "id": "floorball",
+      "keywords": [
+        "floorball",
+        "unihockey"
+      ],
+      "label": "Floorball"
+    },
+    {
       "colour": "#9b7046",
       "emoji": "🏈",
       "id": "american-football",
@@ -65,6 +75,47 @@
         "rugby"
       ],
       "label": "Rugby"
+    },
+    {
+      "colour": "#358b18",
+      "emoji": "🧹",
+      "id": "quadball",
+      "keywords": [
+        "quadball",
+        "quidditch"
+      ],
+      "label": "Quadball"
+    },
+    {
+      "colour": "#a35229",
+      "emoji": "⚾",
+      "id": "baseball",
+      "keywords": [
+        "baseball",
+        "softball"
+      ],
+      "label": "Baseball & Softball"
+    },
+    {
+      "colour": "#339990",
+      "emoji": "🏏",
+      "id": "cricket",
+      "keywords": [
+        "cricket"
+      ],
+      "label": "Cricket"
+    },
+    {
+      "colour": "#3867a8",
+      "emoji": "🥏",
+      "id": "frisbee",
+      "keywords": [
+        "frisbee",
+        "ultimate",
+        "discgolf",
+        "disc golf"
+      ],
+      "label": "Frisbeesport"
     },
     {
       "colour": "#64821c",
@@ -192,6 +243,36 @@
         "selbstverteidigung"
       ],
       "label": "Kampfsport"
+    },
+    {
+      "colour": "#b222bf",
+      "emoji": "🤺",
+      "id": "fechten",
+      "keywords": [
+        "fecht"
+      ],
+      "label": "Fechten"
+    },
+    {
+      "colour": "#bf7d22",
+      "emoji": "🏹",
+      "id": "bogenschiessen",
+      "keywords": [
+        "bogenschie",
+        "bogenschutz",
+        "bogensport"
+      ],
+      "label": "Bogenschießen"
+    },
+    {
+      "colour": "#a8388c",
+      "emoji": "🧗",
+      "id": "klettern",
+      "keywords": [
+        "kletter",
+        "boulder"
+      ],
+      "label": "Klettern"
     },
     {
       "colour": "#787878",
