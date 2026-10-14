@@ -105,6 +105,29 @@
     {
       "active": true,
       "aliases": [
+        "HSG Geislar-Oberkassel",
+        "HSG Geislar/Oberkassel",
+        "HSG Geislar"
+      ],
+      "district": "Beuel",
+      "id": "hsg-geislar-oberkassel",
+      "name": "HSG Geislar-Oberkassel",
+      "sources": [
+        {
+          "id": "spielplan",
+          "note": "club-wide match schedule, linked as webcal on every team page (all teams, Beuel-Ost and others)",
+          "type": "ical",
+          "url": "https://www.hsg-geislar-oberkassel.de/kalender.ics"
+        }
+      ],
+      "sports": [
+        "handball"
+      ],
+      "website": "https://www.hsg-geislar-oberkassel.de/"
+    },
+    {
+      "active": true,
+      "aliases": [
         "PSV Bonn"
       ],
       "id": "psv-bonn-tischtennis",
