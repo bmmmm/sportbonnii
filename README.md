@@ -1,5 +1,7 @@
 # sportbonnii
 
+**Live: <https://bmmmm.github.io/sportbonnii/>**
+
 One page for sports in Bonn: which sports exist, which clubs offer them, and
 every date those clubs publish — matches, training, camps, club events — in a
 filterable table, a month calendar and a club directory. Sports are the
