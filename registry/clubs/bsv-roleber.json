@@ -9,7 +9,10 @@
   "sources": [
     {
       "id": "tec",
-      "note": "TEC REST API; the ICS export only carries the current list page",
+      "note": "TEC REST API; the ICS export only carries the current list page. No categories, and every date since 2025 is football (checked 2026-10-15), so the source is football",
+      "sports": [
+        "fussball"
+      ],
       "type": "tec",
       "url": "https://bsvroleber.de/wp-json/tribe/events/v1/events"
     }
