@@ -10,6 +10,7 @@ import { renderClubs } from './clubs.js';
 import { serializeFeed } from './ics.js';
 
 const STALE_HOURS = 48;
+const MAX_QUERY = 100;
 const $ = (id) => document.getElementById(id);
 
 let data = null;
@@ -25,6 +26,7 @@ function known() {
 /** Apply a change, mirror it in the address bar, render. */
 function update(patch) {
   const next = { ...state, ...patch };
+  next.q = next.q.slice(0, MAX_QUERY); // the hash keeps no more, so neither may the view
   if (patch.sport || patch.verein !== undefined || patch.q !== undefined || patch.zeit) ui.limit = PAGE;
   if (patch.monat !== undefined && patch.monat !== state.monat) ui.day = null;
   state = next;
@@ -46,8 +48,10 @@ function renderHeader() {
   checked.querySelector('time').dateTime = meta.checkedAt;
   const ageHours = (Date.now() - Date.parse(meta.checkedAt)) / 3_600_000;
   const stale = $('stale');
-  stale.hidden = !(ageHours > STALE_HOURS);
-  if (!stale.hidden) stale.textContent = `Die Termine wurden zuletzt ${when} geprüft – die automatische Aktualisierung hakt gerade. Bitte beim Verein nachsehen, ob ein Termin noch gilt.`;
+  const noneOk = meta.sourcesTotal > 0 && meta.sourcesOk === 0;
+  stale.hidden = !(ageHours > STALE_HOURS) && !noneOk;
+  if (ageHours > STALE_HOURS) stale.textContent = `Die Termine wurden zuletzt ${when} geprüft – die automatische Aktualisierung hakt gerade. Bitte beim Verein nachsehen, ob ein Termin noch gilt.`;
+  else if (noneOk) stale.textContent = 'Beim letzten Abruf hat keine Quelle geantwortet – angezeigt werden die zuletzt bekannten Termine. Bitte beim Verein nachsehen, ob ein Termin noch gilt.';
 }
 
 // --- filters -------------------------------------------------------------------
@@ -104,7 +108,9 @@ function renderZeit() {
 
 function isFiltered() {
   const d = defaultState();
-  return state.sport.length > 0 || state.verein !== d.verein || state.q !== d.q || state.zeit !== d.zeit;
+  // The range only acts on the table; elsewhere it is hidden and must not count.
+  const zeit = state.ansicht === 'tabelle' && state.zeit !== d.zeit;
+  return state.sport.length > 0 || state.verein !== d.verein || state.q !== d.q || zeit;
 }
 
 // --- views ---------------------------------------------------------------------
@@ -154,6 +160,7 @@ function renderTabs() {
 }
 
 function render() {
+  ctx.today = berlinToday(); // a tab left open past midnight moves on to the new day
   renderTabs();
   renderClubField();
   renderZeit();
@@ -230,7 +237,8 @@ function download() {
 function renderClubsView() {
   const upcoming = new Map();
   for (const e of applyFilters(data.events, { ...defaultState() }, ctx)) if (e.club) upcoming.set(e.club, (upcoming.get(e.club) ?? 0) + 1);
-  renderChips(chipCounts(data.events, state, ctx));
+  // Counts of upcoming dates, like the cards ("kommende Termine"); the hidden range does not apply.
+  renderChips(chipCounts(data.events, { ...state, zeit: 'alle' }, ctx));
   const shown = renderClubs($('clubs'), {
     clubs: data.clubs,
     platforms: data.platforms,
