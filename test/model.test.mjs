@@ -21,6 +21,15 @@ const raw = (o) => ({ uid: 'u1', recurrenceId: '', title: 'Training', descriptio
 const asClub = (o, source = clubSource) => normalizeEvent(raw(o), { owner: club, kind: 'club', source, ctx, window: WINDOW });
 const asPlatform = (o) => normalizeEvent(raw(o), { owner: platform, kind: 'platform', source: platform.sources[0], ctx, window: WINDOW });
 
+test('a title that calls the date off marks it cancelled', () => {
+  assert.equal(asClub({ title: 'Training fällt aus' }).status, 'cancelled');
+  assert.equal(asClub({ title: 'Jugendtraining entfällt' }).status, 'cancelled');
+  assert.equal(asClub({ title: 'Turnier ABGESAGT' }).status, 'cancelled');
+  assert.equal(asClub({ title: 'Training' }).status, 'confirmed');
+  assert.equal(asClub({ title: 'Abgesagte Termine nachholen' }).status, 'confirmed', 'whole words only');
+  assert.equal(asClub({ title: 'Training', status: 'cancelled' }).status, 'cancelled', 'the feed\'s own status still counts');
+});
+
 test('timed events: Berlin offset, end before start becomes null', () => {
   const e = asClub({});
   assert.deepEqual(checkEvent(e), []);

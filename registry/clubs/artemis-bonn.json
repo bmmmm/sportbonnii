@@ -8,6 +8,9 @@
   "name": "Artemis Bonn",
   "sources": [
     {
+      "exclude": [
+        "Halle gesperrt"
+      ],
       "id": "termine",
       "note": "Events Manager export of the club site (championships, hall closures); the file also carries every past event",
       "type": "ical",

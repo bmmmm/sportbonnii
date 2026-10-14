@@ -10,6 +10,13 @@
   "name": "Bonner Turnverein 1860",
   "sources": [
     {
+      "exclude": [
+        "Sommerferien",
+        "Herbstferien",
+        "Weihnachtsferien",
+        "Osterferien",
+        "Feiertag"
+      ],
       "id": "termine",
       "note": "WordPress with The Events Calendar (found by detect); gymnastics competitions, meetings and school holidays — the volleyball department has no calendar here",
       "sports": [

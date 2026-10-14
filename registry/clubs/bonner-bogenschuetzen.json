@@ -10,6 +10,13 @@
   "name": "Bonner Bogenschützenclub 1965",
   "sources": [
     {
+      "exclude": [
+        "Sommerferien",
+        "Herbstferien",
+        "Weihnachtsferien",
+        "Osterferien",
+        "Feiertag"
+      ],
       "id": "termine",
       "note": "The Events Manager export of the club site (training, championships, meetings); also lists school holidays and cancelled trainings",
       "type": "ical",

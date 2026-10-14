@@ -187,6 +187,9 @@ export function clubByAlias(ctx, ...texts) {
   return ctx.aliases.find(({ a }) => hasWhole(hay, a))?.club ?? null;
 }
 
+// A title that calls the date off ("Training fällt aus") marks it cancelled; the page strikes it.
+const CANCELLED = ['fallt aus', 'entfallt', 'abgesagt'];
+
 /**
  * One raw adapter event → an events.json entry, or null when it is dropped
  * (excluded, outside the window, unusable). `owner` is the club or platform,
@@ -259,7 +262,7 @@ export function normalizeEvent(raw, { owner, kind: ownerKind, source, ctx, windo
     url,
     description,
     source: sourceKey,
-    status: raw.status === 'cancelled' ? 'cancelled' : 'confirmed',
+    status: raw.status === 'cancelled' || CANCELLED.some((w) => hasWhole(foldedTitle, w)) ? 'cancelled' : 'confirmed',
   };
 }
 
