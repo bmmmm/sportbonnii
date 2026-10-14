@@ -1,5 +1,5 @@
 // Club intake: the issue form "Verein hinzufügen" → a pull request that adds
-// exactly one entry to registry/clubs.json.
+// exactly one file, registry/clubs/<id>.json.
 //
 //   node .github/scripts/club-intake.mjs validate   (no token; the issue text arrives only via env ISSUE_BODY)
 //   node .github/scripts/club-intake.mjs publish    (GH_TOKEN; reads nothing but the validate step's JSON)
@@ -11,9 +11,10 @@
 // 10 s and 2 MB each) and validates the patched
 // registry. It writes $RUNNER_TEMP/intake.json and exits 0 unless it broke.
 //
-// publish rebuilds the branch intake/issue-<n> from main with that one file
-// changed, opens or updates the PR, and comments the result on the issue —
-// user text only ever inside a code fence longer than any backtick run in it.
+// publish rebuilds the branch intake/issue-<n> from main with validate's
+// files (each path checked against PUBLISH_PATH), opens or updates the PR,
+// and comments the result on the issue — user text only ever inside a code
+// fence longer than any backtick run in it.
 // Every gh call is an execFile argument array; nothing reaches a shell.
 //
 // Zero dependencies: it runs on the runner's Node without `pnpm install`.
@@ -22,7 +23,7 @@ import { execFile } from 'node:child_process';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
-import { validateRegistry, canonicalJson, canonicalClubs, DISTRICTS, REGISTRY_DIR } from '../../pipeline/registry.mjs';
+import { validateRegistry, readRegistry, canonicalJson, canonicalClubs, DISTRICTS, REGISTRY_DIR } from '../../pipeline/registry.mjs';
 import { detectSource, sourceSnippet } from '../../pipeline/detect.mjs';
 import { createNet } from '../../pipeline/net.mjs';
 
@@ -175,23 +176,24 @@ export function renderComment(result) {
   return lines.join('\n');
 }
 
-/** The validate step: environment in, intake.json out. */
+/**
+ * The validate step: environment in, intake.json out. `files` holds what the
+ * PR writes — the new club's file (path relative to the repository root).
+ */
 export async function validate({ body, number, registryDir = REGISTRY_DIR, detect }) {
-  const clubsText = await readFile(join(registryDir, 'clubs.json'), 'utf8');
-  const sportsText = await readFile(join(registryDir, 'sports.json'), 'utf8');
-  const clubsDoc = JSON.parse(clubsText);
-  const sportsDoc = JSON.parse(sportsText);
+  const { docs, texts } = await readRegistry(registryDir);
   const form = parseIssueForm(body);
-  const entry = await buildEntry(form, { clubsDoc, sportsDoc, detect });
-  let patched = null;
+  const entry = await buildEntry(form, { clubsDoc: docs.clubs, sportsDoc: docs.sports, detect });
+  let files = null;
   if (!entry.problems.length) {
-    const doc = canonicalClubs({ ...clubsDoc, clubs: [...clubsDoc.clubs, entry.club] });
-    patched = canonicalJson(doc);
-    const errors = validateRegistry({ clubs: doc, sports: sportsDoc }, { texts: { clubs: patched, sports: sportsText } });
+    const file = { path: `clubs/${entry.club.id}.json`, kind: 'clubs', text: canonicalJson(entry.club), doc: entry.club };
+    const clubsDoc = canonicalClubs({ ...docs.clubs, clubs: [...docs.clubs.clubs, entry.club] });
+    const errors = validateRegistry({ clubs: clubsDoc, sports: docs.sports }, { texts: { ...texts, files: [...texts.files, file] } });
     if (errors.length) entry.problems.push(...errors.map((e) => `Der Eintrag passt nicht ins Verzeichnis: ${e}`));
+    else files = [{ path: `registry/${file.path}`, text: file.text }];
   }
   const ok = entry.problems.length === 0;
-  return { ok, number, club: entry.club, problems: entry.problems, detection: entry.detection, clubsJson: ok ? patched : null, comment: renderComment({ ok, ...entry }) };
+  return { ok, number, club: entry.club, problems: entry.problems, detection: entry.detection, files: ok ? files : null, comment: renderComment({ ok, ...entry }) };
 }
 
 // --- publish: GitHub side effects, from the JSON only -------------------------
@@ -205,6 +207,19 @@ async function gh(args, input) {
 }
 const ghJson = async (args, input) => JSON.parse(await gh(args, input));
 
+/** The only paths the bot writes: one club file. The id behind it comes from user text. */
+export const PUBLISH_PATH = /^registry\/clubs\/[a-z0-9]+(-[a-z0-9]+)*\.json$/;
+
+/** validate's files, refused as a whole unless every path matches PUBLISH_PATH and carries text. */
+export function publishableFiles(files) {
+  if (!Array.isArray(files) || files.length === 0) throw new Error('nothing to publish');
+  for (const f of files) {
+    if (typeof f?.path !== 'string' || !PUBLISH_PATH.test(f.path)) throw new Error(`refusing to write ${JSON.stringify(f?.path)}`);
+    if (typeof f.text !== 'string') throw new Error(`no text for ${f.path}`);
+  }
+  return files;
+}
+
 export async function publish(result, { repo }) {
   const n = String(result.number);
   if (!/^\d+$/.test(n)) throw new Error('issue number missing');
@@ -213,11 +228,16 @@ export async function publish(result, { repo }) {
     await gh(['issue', 'edit', n, '--repo', repo, '--add-label', LABEL_NEEDS_INFO]);
     return 'needs-info';
   }
+  const files = publishableFiles(result.files);
   const branch = `intake/issue-${n}`;
   const main = await ghJson(['api', `repos/${repo}/git/ref/heads/main`]);
   const baseCommit = await ghJson(['api', `repos/${repo}/git/commits/${main.object.sha}`]);
-  const blob = await ghJson(['api', `repos/${repo}/git/blobs`, '--input', '-'], JSON.stringify({ content: result.clubsJson, encoding: 'utf-8' }));
-  const tree = await ghJson(['api', `repos/${repo}/git/trees`, '--input', '-'], JSON.stringify({ base_tree: baseCommit.tree.sha, tree: [{ path: 'registry/clubs.json', mode: '100644', type: 'blob', sha: blob.sha }] }));
+  const entries = [];
+  for (const f of files) {
+    const blob = await ghJson(['api', `repos/${repo}/git/blobs`, '--input', '-'], JSON.stringify({ content: f.text, encoding: 'utf-8' }));
+    entries.push({ path: f.path, mode: '100644', type: 'blob', sha: blob.sha });
+  }
+  const tree = await ghJson(['api', `repos/${repo}/git/trees`, '--input', '-'], JSON.stringify({ base_tree: baseCommit.tree.sha, tree: entries }));
   const message = `feat(registry): add ${result.club.name} (Closes #${n})`;
   const commit = await ghJson(['api', `repos/${repo}/git/commits`, '--input', '-'], JSON.stringify({ message, tree: tree.sha, parents: [main.object.sha] }));
   let exists = true;
@@ -228,7 +248,7 @@ export async function publish(result, { repo }) {
   }
   if (exists) await gh(['api', '-X', 'PATCH', `repos/${repo}/git/refs/heads/${branch}`, '--input', '-'], JSON.stringify({ sha: commit.sha, force: true }));
   else await gh(['api', `repos/${repo}/git/refs`, '--input', '-'], JSON.stringify({ ref: `refs/heads/${branch}`, sha: commit.sha }));
-  const prBody = `Adds ${result.club.id} to registry/clubs.json from the issue form.\n\nCloses #${n}`;
+  const prBody = `Adds ${result.club.id} from the issue form: ${files.map((f) => f.path).join(', ')}.\n\nCloses #${n}`;
   try {
     const open = await ghJson(['pr', 'list', '--repo', repo, '--head', branch, '--state', 'open', '--json', 'number']);
     if (open.length) await gh(['pr', 'edit', String(open[0].number), '--repo', repo, '--title', message, '--body', prBody]);

@@ -3,8 +3,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { parseIssueForm, slugify, validate, quoted, renderComment, FIELDS } from '../.github/scripts/club-intake.mjs';
-import { validateRegistry } from '../pipeline/registry.mjs';
+import { cp, mkdtemp, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { parseIssueForm, slugify, validate, quoted, renderComment, publishableFiles, FIELDS } from '../.github/scripts/club-intake.mjs';
+import { loadRegistry, canonicalJson, REGISTRY_DIR } from '../pipeline/registry.mjs';
 
 const fx = (p) => readFileSync(new URL(`./fixtures/intake/${p}`, import.meta.url), 'utf8');
 const sports = JSON.parse(readFileSync(new URL('../registry/sports.json', import.meta.url), 'utf8')).sports;
@@ -29,7 +32,7 @@ test('slugs: umlauts transliterated, e.V. dropped, single hyphens', () => {
   assert.equal(slugify('!!!'), '');
 });
 
-test('a complete suggestion with a calendar becomes one valid, canonical registry entry', async () => {
+test('a complete suggestion with a calendar becomes one new, valid, canonical club file', async () => {
   const r = await validate({ body: fx('new-club.md'), number: 7, detect: icsFound });
   assert.equal(r.ok, true, r.problems.join('; '));
   assert.deepEqual(r.club, {
@@ -37,12 +40,29 @@ test('a complete suggestion with a calendar becomes one valid, canonical registr
     website: 'https://www.tv-kessenich.de/', aliases: ['Turnverein Kessenich 1898 e.V.'], active: true,
     sources: [{ id: 'kalender', type: 'ical', url: 'https://www.tv-kessenich.de/termine.ics' }],
   });
-  const doc = JSON.parse(r.clubsJson);
-  assert.deepEqual(validateRegistry({ clubs: doc, sports: { sports } }, { texts: { clubs: r.clubsJson } }), []);
-  const before = readFileSync(new URL('../registry/clubs.json', import.meta.url), 'utf8');
-  assert.equal(doc.clubs.length, JSON.parse(before).clubs.length + 1, 'exactly one entry added');
-  assert.ok(!r.clubsJson.includes('vorstand@'), 'the contact never reaches the registry');
+  assert.deepEqual(r.files, [{ path: 'registry/clubs/turnverein-kessenich-1898.json', text: canonicalJson(r.club) }]);
+  assert.deepEqual(publishableFiles(r.files), r.files);
+  // Written into a copy of the registry, the files make a valid registry with exactly one more club.
+  const dir = await mkdtemp(join(tmpdir(), 'sb-intake-'));
+  await cp(REGISTRY_DIR, dir, { recursive: true });
+  for (const f of r.files) await writeFile(join(dir, f.path.replace(/^registry\//, '')), f.text, { flag: 'wx' });
+  assert.equal((await loadRegistry(dir)).clubs.length, (await loadRegistry()).clubs.length + 1, 'exactly one entry added');
+  assert.ok(!r.files[0].text.includes('vorstand@'), 'the contact never reaches the registry');
   assert.match(r.comment, /Pull Request/);
+});
+
+test('publish writes nothing but registry/clubs/<slug>.json', () => {
+  const file = (path) => [{ path, text: '{}\n' }];
+  assert.doesNotThrow(() => publishableFiles(file('registry/clubs/tv-kessenich-1898.json')));
+  for (const path of [
+    'registry/clubs/../../.github/workflows/club-intake.yml', 'registry/sports.json', 'registry/platforms/x.json',
+    '.github/workflows/club-intake.yml', 'registry/clubs/TV.json', 'registry/clubs/a--b.json', 'registry/clubs/a.json\n',
+    'registry/clubs/.json', '/registry/clubs/a.json', 'registry/clubs/a.json.bak', 'registry/clubs/a/b.json', undefined,
+  ]) assert.throws(() => publishableFiles(file(path)), /refusing to write/, String(path));
+  assert.throws(() => publishableFiles([...file('registry/clubs/ok.json'), ...file('README.md')]), /refusing to write "README\.md"/, 'one bad path refuses all');
+  assert.throws(() => publishableFiles([]), /nothing to publish/);
+  assert.throws(() => publishableFiles(null), /nothing to publish/);
+  assert.throws(() => publishableFiles([{ path: 'registry/clubs/ok.json' }]), /no text/);
 });
 
 test('without a calendar URL: an entry with no sources, detection not run', async () => {
@@ -56,7 +76,7 @@ test('without a calendar URL: an entry with no sources, detection not run', asyn
 test('an undetectable calendar asks for more information, no PR', async () => {
   const r = await validate({ body: fx('new-club.md'), number: 9, detect: nothing });
   assert.equal(r.ok, false);
-  assert.equal(r.clubsJson, null);
+  assert.equal(r.files, null);
   assert.match(r.problems.join(), /kein lesbarer Kalender/);
   assert.match(r.comment, /fehlt noch etwas/);
 });

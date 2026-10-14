@@ -1,0 +1,29 @@
+{
+  "active": true,
+  "aliases": [
+    "Bonner THV",
+    "BTHV",
+    "Rugby Bonn"
+  ],
+  "id": "bonner-thv",
+  "name": "Bonner THV",
+  "sources": [
+    {
+      "id": "termine",
+      "note": "WordPress in /blog with The Events Calendar (found by detect: meta refresh to /blog, REST root from the api.w.org link); club-wide events are categorised Club",
+      "tagMap": {
+        "Hockey": "hockey",
+        "Rugby": "rugby",
+        "Tennis": "tennis"
+      },
+      "type": "tec",
+      "url": "https://www.bthv.de/blog/wp-json/tribe/events/v1/events"
+    }
+  ],
+  "sports": [
+    "rugby",
+    "hockey",
+    "tennis"
+  ],
+  "website": "https://www.bthv.de/"
+}

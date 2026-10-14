@@ -1,0 +1,14 @@
+{
+  "active": true,
+  "aliases": [
+    "Bonn Gamecocks",
+    "Gamecocks"
+  ],
+  "id": "bonn-gamecocks",
+  "name": "Bonn Gamecocks",
+  "sources": [],
+  "sports": [
+    "american-football"
+  ],
+  "website": "https://gamecocks.de/"
+}

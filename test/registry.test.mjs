@@ -3,20 +3,32 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { cp, mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import {
-  validateRegistry, loadRegistry, canonicalJson, canonicalClubs, relativeLuminance, LUMINANCE, DISTRICTS,
+  validateRegistry, loadRegistry, readRegistry, formatRegistry, canonicalJson, relativeLuminance, LUMINANCE, DISTRICTS, REGISTRY_DIR,
 } from '../pipeline/registry.mjs';
 import { checkSiteData } from '../pipeline/contract.mjs';
 
 const read = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
-const texts = { clubs: read('registry/clubs.json'), sports: read('registry/sports.json') };
-const docs = () => ({ clubs: JSON.parse(texts.clubs), sports: JSON.parse(texts.sports) });
+const committed = await readRegistry();
+const { texts } = committed;
+const docs = () => structuredClone(committed.docs);
+
+/** A scratch copy of the committed registry directory. */
+async function registryCopy() {
+  const dir = await mkdtemp(join(tmpdir(), 'sb-registry-'));
+  await cp(REGISTRY_DIR, dir, { recursive: true });
+  return dir;
+}
 
 test('the committed registry is valid and canonical', async () => {
   assert.deepEqual(validateRegistry(docs(), { texts }), []);
   const reg = await loadRegistry();
   assert.ok(reg.clubs.length >= 9);
   assert.equal(reg.platforms[0].id, 'bonn-jetzt');
+  assert.deepEqual(texts.files.map((f) => f.path), [...reg.clubs.map((c) => `clubs/${c.id}.json`), ...reg.platforms.map((p) => `platforms/${p.id}.json`)]);
 });
 
 test('every sport colour keeps 3:1 against #fff and #121212', () => {
@@ -69,15 +81,59 @@ test('each rule goes red on its own mutant', () => {
   for (const [name, mutate, want] of cases) assert.match(errorsAfter(mutate), want, name);
 });
 
-test('canonical form: unsorted keys or club order are refused, the formatter fixes both', () => {
-  const d = docs();
-  const reordered = { ...d.clubs, clubs: [...d.clubs.clubs].reverse() };
-  const badText = JSON.stringify(reordered, null, 2) + '\n';
-  assert.match(validateRegistry({ clubs: reordered, sports: d.sports }, { texts: { clubs: badText } }).join(), /canonical/);
-  assert.equal(canonicalJson(canonicalClubs(reordered)), texts.clubs);
+test('files: a misnamed or non-canonical club file and unsorted sports keys are refused', () => {
+  const withFile = (i, change) => ({ ...texts, files: texts.files.map((f, j) => (j === i ? { ...f, ...change } : f)) });
+  const i = texts.files.findIndex((f) => f.path === 'clubs/bsv-roleber.json');
+  assert.match(validateRegistry(docs(), { texts: withFile(i, { path: 'clubs/roleber.json' }) }).join(),
+    /clubs\/roleber\.json: the file must be named after its id \(clubs\/bsv-roleber\.json\)/);
+  assert.match(validateRegistry(docs(), { texts: withFile(i, { path: 'platforms/bsv-roleber.json' }) }).join(), /named after its id/);
+  const compact = JSON.stringify(texts.files[i].doc);
+  assert.match(validateRegistry(docs(), { texts: withFile(i, { text: compact }) }).join(), /clubs\/bsv-roleber\.json is not in canonical form/);
   const unsortedKeys = texts.sports.replace('"colour": "#208a44",\n      "emoji": "⚽",', '"emoji": "⚽",\n      "colour": "#208a44",');
   assert.notEqual(unsortedKeys, texts.sports);
   assert.match(validateRegistry(docs(), { texts: { sports: unsortedKeys } }).join(), /sports.json is not in canonical form/);
+});
+
+test('readRegistry: id order (not file names), only *.json, platforms/ optional', async () => {
+  const dir = await registryCopy();
+  const club = (id) => ({ active: true, id, name: `Testverein ${id}`, sources: [], sports: ['rugby'], website: `https://${id}.example/` });
+  // 'bonn-x.json' sorts before 'bonn.json' ('-' < '.'), yet the id 'bonn' comes first.
+  for (const id of ['bonn-x', 'bonn']) await writeFile(join(dir, 'clubs', `${id}.json`), canonicalJson(club(id)));
+  await writeFile(join(dir, 'clubs', 'README.txt'), 'not a club');
+  await rm(join(dir, 'platforms'), { recursive: true });
+  const { docs: d, texts: t } = await readRegistry(dir);
+  const ids = d.clubs.clubs.map((c) => c.id);
+  assert.deepEqual(ids, [...ids].sort());
+  assert.ok(ids.indexOf('bonn') < ids.indexOf('bonn-x'));
+  assert.deepEqual(t.files.map((f) => f.doc.id), ids);
+  assert.deepEqual(d.clubs.platforms, []);
+  const reg = await loadRegistry(dir);
+  assert.equal(reg.clubs.length, docs().clubs.clubs.length + 2);
+});
+
+test('readRegistry: broken JSON names the file; a club id twice across clubs/ and platforms/ is refused', async () => {
+  const broken = await registryCopy();
+  await writeFile(join(broken, 'clubs', 'bsv-roleber.json'), '{ "id": "bsv-roleber", }\n');
+  await assert.rejects(readRegistry(broken), /invalid registry: clubs\/bsv-roleber\.json is not valid JSON/);
+  const twice = await registryCopy();
+  const platform = { id: 'bsv-roleber', name: 'Roleber-Plattform', sources: [], website: 'https://plattform.example/' };
+  await writeFile(join(twice, 'platforms', 'bsv-roleber.json'), canonicalJson(platform));
+  await assert.rejects(loadRegistry(twice), /platforms\[\d+\] \(bsv-roleber\): duplicate id "bsv-roleber"/);
+});
+
+test('registry:fmt rewrites a file canonically in place and never renames one', async () => {
+  const dir = await registryCopy();
+  const path = join(dir, 'clubs', 'bsv-roleber.json');
+  const before = await readFile(path, 'utf8');
+  await writeFile(path, JSON.stringify(JSON.parse(before)));
+  await rename(join(dir, 'clubs', 'ssf-bonn.json'), join(dir, 'clubs', 'ssf.json'));
+  assert.deepEqual(await formatRegistry(dir), ['clubs/bsv-roleber.json']);
+  assert.equal(await readFile(path, 'utf8'), before);
+  await assert.rejects(loadRegistry(dir), (e) => {
+    assert.match(e.message, /clubs\/ssf\.json: the file must be named after its id \(clubs\/ssf-bonn\.json\)/);
+    assert.doesNotMatch(e.message, /bsv-roleber/);
+    return true;
+  });
 });
 
 test('districts are the four Stadtbezirke', () => {

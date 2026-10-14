@@ -1,17 +1,20 @@
 // Club registry: loading, validation and the canonical file form.
 //
-// registry/clubs.json and registry/sports.json are the pipeline's only
-// input. Validation is hand-written (no schema library) and collects every
-// problem instead of stopping at the first, so one run names everything a
-// contributor has to fix. The canonical form — keys sorted at every level,
-// two-space indent, trailing newline, clubs and platforms sorted by id —
-// keeps a bot's diff to exactly one block.
+// registry/clubs/<id>.json (one club per file), registry/platforms/<id>.json
+// (city-wide sources that are not a club) and registry/sports.json are the
+// pipeline's only input. Validation is hand-written (no schema library) and
+// collects every problem instead of stopping at the first, so one run names
+// everything a contributor has to fix. The canonical form — keys sorted at
+// every level, two-space indent, trailing newline, each file named after its
+// id — keeps a bot's change to exactly one new file. Clubs and platforms are
+// ordered by id, never by file name (`bonn-x.json` sorts before `bonn.json`,
+// the id `bonn` before `bonn-x`).
 //
 // Zero dependencies on purpose: the club-intake workflow runs this without
 // `pnpm install`.
 //
-// CLI: node pipeline/registry.mjs [--fmt]   (validate; --fmt rewrites canonically first)
-import { readFile, writeFile } from 'node:fs/promises';
+// CLI: node pipeline/registry.mjs [--fmt]   (validate; --fmt rewrites every file canonically first)
+import { readFile, readdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ADAPTER_TYPES } from './adapters/index.mjs';
@@ -44,9 +47,11 @@ export function canonicalJson(doc) {
   return JSON.stringify(sortKeys(doc), null, 2) + '\n';
 }
 
+const idOf = (o) => (o !== null && typeof o === 'object' && typeof o.id === 'string' ? o.id : '');
+const byId = (a, b) => (idOf(a) < idOf(b) ? -1 : idOf(a) > idOf(b) ? 1 : 0);
+
 /** The clubs document with clubs and platforms in id order (the canonical order). */
 export function canonicalClubs(doc) {
-  const byId = (a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
   return { ...doc, clubs: [...(doc.clubs ?? [])].sort(byId), platforms: [...(doc.platforms ?? [])].sort(byId) };
 }
 
@@ -75,8 +80,9 @@ function httpUrl(value, { httpsOnly }) {
 }
 
 /**
- * Every problem in the two registry documents, as readable lines; [] means valid.
- * `texts` (optional, the raw file contents) adds the canonical-form check.
+ * Every problem in the registry documents, as readable lines; [] means valid.
+ * `texts` (optional, readRegistry's raw file contents: `{ sports, files }`)
+ * adds the file checks — canonical text, file named after its id.
  */
 export function validateRegistry({ clubs: clubsDoc, sports: sportsDoc }, { texts, adapterTypes = ADAPTER_TYPES } = {}) {
   const errors = [];
@@ -113,12 +119,12 @@ export function validateRegistry({ clubs: clubsDoc, sports: sportsDoc }, { texts
 
   // --- clubs and platforms
   if (!isObject(clubsDoc)) {
-    err('clubs.json: expected an object');
+    err('clubs document: expected an object');
     return errors;
   }
-  for (const k of Object.keys(clubsDoc)) if (k !== 'clubs' && k !== 'platforms') err(`clubs.json: unknown top-level field "${k}"`);
-  if (!Array.isArray(clubsDoc.clubs)) err('clubs.json: "clubs" must be an array');
-  if (clubsDoc.platforms !== undefined && !Array.isArray(clubsDoc.platforms)) err('clubs.json: "platforms" must be an array');
+  for (const k of Object.keys(clubsDoc)) if (k !== 'clubs' && k !== 'platforms') err(`clubs document: unknown top-level field "${k}"`);
+  if (!Array.isArray(clubsDoc.clubs)) err('clubs document: "clubs" must be an array');
+  if (clubsDoc.platforms !== undefined && !Array.isArray(clubsDoc.platforms)) err('clubs document: "platforms" must be an array');
   const clubs = Array.isArray(clubsDoc.clubs) ? clubsDoc.clubs : [];
   const platforms = Array.isArray(clubsDoc.platforms) ? clubsDoc.platforms : [];
 
@@ -184,37 +190,88 @@ export function validateRegistry({ clubs: clubsDoc, sports: sportsDoc }, { texts
   clubs.forEach((c, i) => checkOwner(c, i, 'clubs'));
   platforms.forEach((p, i) => checkOwner(p, i, 'platforms'));
 
-  // --- canonical form
+  // --- files: canonical text, one club or platform per file named after its id
   if (texts) {
     if (texts.sports !== undefined && texts.sports !== canonicalJson(sportsDoc)) err('sports.json is not in canonical form — run `pnpm run registry:fmt`');
-    if (texts.clubs !== undefined && texts.clubs !== canonicalJson(canonicalClubs(clubsDoc))) err('clubs.json is not in canonical form (sorted keys, clubs by id) — run `pnpm run registry:fmt`');
+    for (const f of texts.files ?? []) {
+      const id = idOf(f.doc);
+      if (f.path !== `${f.kind}/${id}.json`) err(`${f.path}: the file must be named after its id (${id ? `${f.kind}/${id}.json` : 'no id'})`);
+      if (f.text !== canonicalJson(f.doc)) err(`${f.path} is not in canonical form (sorted keys, 2-space indent) — run \`pnpm run registry:fmt\``);
+    }
   }
   return errors;
 }
 
-/** Reads both registry files; throws one error listing every problem. */
-export async function loadRegistry(dir = REGISTRY_DIR) {
-  const texts = {
-    clubs: await readFile(join(dir, 'clubs.json'), 'utf8'),
-    sports: await readFile(join(dir, 'sports.json'), 'utf8'),
+const OWNER_KINDS = ['clubs', 'platforms'];
+
+/** The sorted `*.json` file names in `dir`; [] when an optional `dir` is missing. */
+async function jsonFiles(dir, { optional }) {
+  let entries;
+  try {
+    entries = await readdir(dir, { withFileTypes: true });
+  } catch (e) {
+    if (optional && e.code === 'ENOENT') return [];
+    throw e;
+  }
+  return entries.filter((e) => e.isFile() && e.name.endsWith('.json')).map((e) => e.name).sort();
+}
+
+function parseFile(path, text) {
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    throw new Error(`invalid registry: ${path} is not valid JSON (${e.message})`);
+  }
+}
+
+/**
+ * Reads the registry without judging it: the documents in validateRegistry's
+ * shape plus the raw texts for its file checks. `files` lists every club and
+ * platform file ({ path: 'clubs/<name>.json', kind, text, doc }); clubs and
+ * platforms come in id order. `platforms/` may be missing. Throws only when a
+ * file cannot be read or parsed, naming the file.
+ */
+export async function readRegistry(dir = REGISTRY_DIR) {
+  const files = [];
+  for (const kind of OWNER_KINDS) {
+    const own = [];
+    for (const name of await jsonFiles(join(dir, kind), { optional: kind === 'platforms' })) {
+      const path = `${kind}/${name}`;
+      const text = await readFile(join(dir, kind, name), 'utf8');
+      own.push({ path, kind, text, doc: parseFile(path, text) });
+    }
+    files.push(...own.sort((a, b) => byId(a.doc, b.doc)));
+  }
+  const sports = await readFile(join(dir, 'sports.json'), 'utf8');
+  const ofKind = (kind) => files.filter((f) => f.kind === kind).map((f) => f.doc);
+  return {
+    docs: { clubs: { clubs: ofKind('clubs'), platforms: ofKind('platforms') }, sports: parseFile('sports.json', sports) },
+    texts: { sports, files },
   };
-  const docs = { clubs: JSON.parse(texts.clubs), sports: JSON.parse(texts.sports) };
+}
+
+/** Reads and validates the registry; throws one error listing every problem. */
+export async function loadRegistry(dir = REGISTRY_DIR) {
+  const { docs, texts } = await readRegistry(dir);
   const errors = validateRegistry(docs, { texts });
   if (errors.length) throw new Error(`invalid registry:\n  ${errors.join('\n  ')}`);
-  return { clubs: docs.clubs.clubs, platforms: docs.clubs.platforms ?? [], sports: docs.sports.sports };
+  return { clubs: docs.clubs.clubs, platforms: docs.clubs.platforms, sports: docs.sports.sports };
+}
+
+/** Rewrites every registry file whose text is not canonical — in place, never renamed. Returns the changed paths. */
+export async function formatRegistry(dir = REGISTRY_DIR) {
+  const { docs, texts } = await readRegistry(dir);
+  const changed = [];
+  for (const f of [{ path: 'sports.json', text: texts.sports, doc: docs.sports }, ...texts.files]) {
+    const canon = canonicalJson(f.doc);
+    if (canon !== f.text) { await writeFile(join(dir, f.path), canon); changed.push(f.path); }
+  }
+  return changed;
 }
 
 async function main(argv) {
-  const fmt = argv.includes('--fmt');
-  if (fmt) {
-    for (const [name, canon] of [['sports.json', (d) => d], ['clubs.json', canonicalClubs]]) {
-      const path = join(REGISTRY_DIR, name);
-      const before = await readFile(path, 'utf8');
-      const after = canonicalJson(canon(JSON.parse(before)));
-      if (after !== before) { await writeFile(path, after); console.log(`rewrote registry/${name}`); }
-    }
-  }
   try {
+    if (argv.includes('--fmt')) for (const path of await formatRegistry()) console.log(`rewrote registry/${path}`);
     const reg = await loadRegistry();
     const sources = [...reg.clubs, ...reg.platforms].flatMap((o) => o.sources);
     console.log(`registry ok: ${reg.clubs.length} clubs, ${reg.platforms.length} platforms, ${sources.length} sources, ${reg.sports.length} sports`);

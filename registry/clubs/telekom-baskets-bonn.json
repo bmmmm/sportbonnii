@@ -1,0 +1,23 @@
+{
+  "active": true,
+  "aliases": [
+    "Telekom Baskets",
+    "Baskets Bonn"
+  ],
+  "district": "Hardtberg",
+  "id": "telekom-baskets-bonn",
+  "name": "Telekom Baskets Bonn",
+  "sources": [
+    {
+      "enabled": false,
+      "id": "spielplan",
+      "note": "calovo issues per-subscriber ICS urls (a token per subscriber, commercial feed); disabled. v2: BBL adapter",
+      "type": "ical",
+      "url": "https://calovo.de/f/telekom-baskets-bonn/spielplan"
+    }
+  ],
+  "sports": [
+    "basketball"
+  ],
+  "website": "https://www.telekom-baskets-bonn.de/"
+}

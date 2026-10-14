@@ -1,0 +1,15 @@
+{
+  "active": true,
+  "aliases": [
+    "Blau-Weiss Bonn",
+    "BWB Kanu"
+  ],
+  "district": "Bonn",
+  "id": "bwb-kanu",
+  "name": "Blau-Weiss Bonn Kanu",
+  "sources": [],
+  "sports": [
+    "kanu"
+  ],
+  "website": "https://bwb-kanu.de/"
+}

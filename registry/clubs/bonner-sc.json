@@ -1,0 +1,23 @@
+{
+  "active": true,
+  "aliases": [
+    "Bonner SC",
+    "Bonner Sport-Club"
+  ],
+  "district": "Bonn",
+  "id": "bonner-sc",
+  "name": "Bonner SC",
+  "sources": [
+    {
+      "enabled": false,
+      "id": "spieltage",
+      "note": "calovo issues per-subscriber ICS urls (a token per subscriber, commercial feed); disabled. v2: fussball.de adapter",
+      "type": "ical",
+      "url": "https://calovo.de/f/bonner-sc/spieltage"
+    }
+  ],
+  "sports": [
+    "fussball"
+  ],
+  "website": "https://www.bonner-sc.de/"
+}

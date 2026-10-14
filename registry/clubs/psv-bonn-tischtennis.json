@@ -1,0 +1,13 @@
+{
+  "active": true,
+  "aliases": [
+    "PSV Bonn"
+  ],
+  "id": "psv-bonn-tischtennis",
+  "name": "PSV Bonn Tischtennis",
+  "sources": [],
+  "sports": [
+    "tischtennis"
+  ],
+  "website": "http://www.psvtt.de/"
+}

@@ -1,0 +1,17 @@
+{
+  "active": true,
+  "aliases": [
+    "SSF Bonn",
+    "Schwimm- und Sportfreunde Bonn"
+  ],
+  "district": "Bonn",
+  "id": "ssf-bonn",
+  "name": "SSF Bonn",
+  "sources": [],
+  "sports": [
+    "schwimmen",
+    "triathlon",
+    "leichtathletik"
+  ],
+  "website": "https://ssfbonn.de/"
+}

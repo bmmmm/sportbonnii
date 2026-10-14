@@ -1,0 +1,24 @@
+{
+  "active": true,
+  "aliases": [
+    "Rugby Club Bonn-Rhein-Sieg",
+    "RC Bonn-Rhein-Sieg",
+    "RCBRS",
+    "Rugby Bonn-Rhein-Sieg"
+  ],
+  "district": "Bad Godesberg",
+  "id": "rc-bonn-rhein-sieg",
+  "name": "Rugby Club Bonn-Rhein-Sieg",
+  "sources": [
+    {
+      "id": "kalender",
+      "note": "public Google Calendar embedded on https://rcbrs.de/en/club-calendar/",
+      "type": "ical",
+      "url": "https://calendar.google.com/calendar/ical/qo6kqa6o5e7l2hm5r92fn16ne4%40group.calendar.google.com/public/basic.ics"
+    }
+  ],
+  "sports": [
+    "rugby"
+  ],
+  "website": "https://rcbrs.de/"
+}

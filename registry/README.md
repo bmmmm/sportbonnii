@@ -1,21 +1,28 @@
 # Registry
 
-The pipeline's only input. `clubs.json` lists the clubs (and city-wide
-platforms such as bonn.jetzt) with their published calendars;
-`sports.json` is the sport taxonomy the page filters by.
+The pipeline's only input:
 
-Both files are kept in **canonical form** — keys sorted at every level,
-two-space indent, clubs and platforms sorted by `id`. After editing, run:
+- `clubs/<id>.json` — one file per club with its published calendars,
+  named after the club's `id` (`clubs/rc-bonn-rhein-sieg.json`);
+- `platforms/<id>.json` — city-wide sources that are not a club
+  (bonn.jetzt), one file each in the same way;
+- `sports.json` — the sport taxonomy the page filters by.
+
+Every file is kept in **canonical form** — keys sorted at every level,
+two-space indent, trailing newline, a club or platform file named
+`<id>.json`. The order of clubs everywhere is the order of their ids, never
+of the file names. After editing, run:
 
 ```sh
-pnpm run registry:fmt   # rewrite canonically
+pnpm run registry:fmt   # rewrite every file canonically (never renames one)
 pnpm test               # validator, taxonomy and form checks
 ```
 
 ## Adding a club — template
 
-Copy this block into `"clubs"` (position does not matter, `registry:fmt`
-sorts it), fill it in, delete the optional lines you do not need:
+Save this as `clubs/<id>.json` — here `clubs/tv-musterstadt.json` — fill
+it in and delete the optional lines you do not need (`registry:fmt` sorts
+the keys):
 
 ```json
 {
@@ -41,7 +48,7 @@ the directory.
 
 | field | required | meaning |
 | --- | --- | --- |
-| `id` | yes | lowercase slug (`a-z`, `0-9`, single hyphens), unique across clubs and platforms; part of every event's source key and of the feed name `verein-<id>.ics` |
+| `id` | yes | lowercase slug (`a-z`, `0-9`, single hyphens), unique across clubs and platforms, equal to the file name; part of every event's source key and of the feed name `verein-<id>.ics` |
 | `name` | yes | display name |
 | `sports` | yes | one or more ids from `sports.json` |
 | `district` | no | Stadtbezirk: `Bonn`, `Bad Godesberg`, `Beuel` or `Hardtberg` |
@@ -67,11 +74,11 @@ the directory.
 
 ## Platforms
 
-`"platforms"` holds city-wide sources that are not a club (bonn.jetzt).
-Fields: `id`, `name`, `website`, `sources`. Their events are assigned to a
-club through the clubs' `aliases`; sports come from the source's `tagMap`,
-then from the sport `keywords` in the title, then from the matched club,
-else `sonstiges`.
+`platforms/<id>.json` holds a city-wide source that is not a club
+(bonn.jetzt). Fields: `id`, `name`, `website`, `sources`. Their events are
+assigned to a club through the clubs' `aliases`; sports come from the
+source's `tagMap`, then from the sport `keywords` in the title, then from
+the matched club, else `sonstiges`.
 
 ## Sports
 

@@ -12,17 +12,20 @@ import { run, normalizeAll } from '../pipeline/run.mjs';
 import { firstPageUrl } from '../pipeline/adapters/tec.mjs';
 import { loadRegistry } from '../pipeline/registry.mjs';
 import { buildContext } from '../pipeline/model.mjs';
-import { canonicalJson, canonicalClubs } from '../pipeline/registry.mjs';
+import { canonicalJson } from '../pipeline/registry.mjs';
 import { checkSiteData } from '../pipeline/contract.mjs';
 
 const fixture = (p) => readFile(new URL(`./fixtures/${p}`, import.meta.url), 'utf8');
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 export const NOW = new Date('2026-10-14T10:23:00Z');
 
-/** A registry directory with the given clubs/platforms and the real taxonomy. */
+/** A registry directory with the given clubs/platforms (one file each) and the real taxonomy. */
 export async function tempRegistry(doc) {
   const dir = await mkdtemp(join(tmpdir(), 'sb-reg-'));
-  await writeFile(join(dir, 'clubs.json'), canonicalJson(canonicalClubs(doc)));
+  for (const kind of ['clubs', 'platforms']) {
+    await mkdir(join(dir, kind));
+    for (const o of doc[kind] ?? []) await writeFile(join(dir, kind, `${o.id}.json`), canonicalJson(o));
+  }
   await copyFile(join(ROOT, 'registry/sports.json'), join(dir, 'sports.json'));
   return dir;
 }
@@ -130,9 +133,9 @@ test('previous state from PREVIOUS_STATE_URL, shape-checked', async () => {
 
 test('an invalid registry stops the run', async () => {
   const dir = await tempRegistry(REG);
-  await writeFile(join(dir, 'clubs.json'), (await readFile(join(dir, 'clubs.json'), 'utf8')).replace('"rc-test"', '"off-test"'));
-  await mkdir(join(dir, 'x'), { recursive: true });
-  await assert.rejects(run(opts(await mkdtemp(join(tmpdir(), 'sb-bad-')), dir, servingFetch({}))), /invalid registry/);
+  // A second file carrying an id that is taken.
+  await writeFile(join(dir, 'clubs', 'zz-test.json'), canonicalJson({ ...REG.clubs[1], id: 'rc-test', name: 'ZZ Test' }));
+  await assert.rejects(run(opts(await mkdtemp(join(tmpdir(), 'sb-bad-')), dir, servingFetch({}))), /invalid registry:[^]*duplicate id "rc-test"/);
 });
 
 test('one hostile item in a feed costs that item, not the run', async () => {

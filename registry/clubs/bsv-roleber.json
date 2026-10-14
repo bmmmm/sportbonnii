@@ -1,0 +1,21 @@
+{
+  "active": true,
+  "aliases": [
+    "BSV Roleber"
+  ],
+  "district": "Beuel",
+  "id": "bsv-roleber",
+  "name": "BSV Roleber",
+  "sources": [
+    {
+      "id": "tec",
+      "note": "TEC REST API; the ICS export only carries the current list page",
+      "type": "tec",
+      "url": "https://bsvroleber.de/wp-json/tribe/events/v1/events"
+    }
+  ],
+  "sports": [
+    "fussball"
+  ],
+  "website": "https://bsvroleber.de/"
+}

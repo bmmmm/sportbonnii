@@ -44,7 +44,7 @@ snapshot, with a frozen clock and the browser set to New York time.
 
 ### Add a club
 
-Add an entry to `registry/clubs.json` (field reference and a fill-in template:
+Add a file `registry/clubs/<id>.json` (field reference and a fill-in template:
 [`registry/README.md`](registry/README.md)), run `pnpm run registry:fmt` and
 `pnpm test`.
 

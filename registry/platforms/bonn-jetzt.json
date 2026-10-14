@@ -1,0 +1,20 @@
+{
+  "id": "bonn-jetzt",
+  "name": "bonn.jetzt",
+  "sources": [
+    {
+      "exclude": [
+        "Demonstration"
+      ],
+      "id": "sport",
+      "note": "Gancio instance for Bonn; only events tagged Sport",
+      "tagMap": {
+        "Fahrrad": "radsport",
+        "Laufen": "leichtathletik"
+      },
+      "type": "gancio",
+      "url": "https://bonn.jetzt/api/events?tags=Sport"
+    }
+  ],
+  "website": "https://bonn.jetzt/"
+}
