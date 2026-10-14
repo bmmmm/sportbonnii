@@ -64,11 +64,12 @@ function hasWordEnd(hay, needle) {
 // "gegen" makes a match only next to a team — after a team word ("Herren gegen …") or before a
 // number or a club abbreviation within two words ("gegen den 1. FC", "gegen Bonner SC");
 // "Yoga gegen Rückenschmerzen" is none.
-const GEGEN_TEAM = /(?:^|\s)gegen\s+(?:\S+\s+)?(?:\d|(?:tus|tsv|tv|sv|fc|vfl|vfb|vfr|sc|sg|hsg|jsg|bsv|btv|esv|ssv|fsv|djk|spvgg|ttc|ttv|rk|rc|thc|hc|bc|mtv)\b)/;
+// A number is no team when it is a time ("gegen 19 Uhr"); an abbreviation is none inside a word ("TV-Spot").
+const GEGEN_TEAM = /(?:^|\s)gegen\s+(?:\S+\s+)?(?:\d(?!\d*(?:[.:]\d+)?\s*uhr)|(?:tus|tsv|tv|sv|fc|vfl|vfb|vfr|sc|sg|hsg|jsg|bsv|btv|esv|ssv|fsv|djk|spvgg|ttc|ttv|rk|rc|thc|hc|bc|mtv|blau-weiss|rot-weiss|grun-weiss|schwarz-weiss|eintracht|borussia|fortuna|union|viktoria|germania|alemannia|concordia)(?![\p{L}\p{N}-]))/u;
 const TEAM_GEGEN = /(?:^|\s)(?:herren|damen|frauen|manner|jugend|mannschaft|team|senioren|u\d{1,2}[mwx]?)\s+gegen\s/;
 
 // A meeting place for a group is a social date, not a training ("Lauftreff" is one).
-const SOCIAL_TREFF = ['jugendtreff', 'seniorentreff'];
+const SOCIAL_TREFF = ['jugendtreff', 'seniorentreff', 'elterntreff'];
 
 // "1. Damen – RTHC Leverkusen": a numbered team, then an opponent after a dash.
 const TEAM_VS = /\b\d\.\s?(damen|herren|frauen|manner|mannschaft)\b.*\s[–-]\s/;
@@ -82,10 +83,10 @@ const TEAM_VS = /\b\d\.\s?(damen|herren|frauen|manner|mannschaft)\b.*\s[–-]\s/
 export function eventKind(title, tags = [], source = null) {
   const t = fold([title, ...tags].join(' \n '));
   if (t.includes('training') || t.includes('practice') || ['gym', 'activate', 'sportshall'].some((w) => hasWhole(t, w))
-    || (hasWordEnd(t, 'treff') && !SOCIAL_TREFF.some((w) => hasWordEnd(t, w)))
+    || (t.match(/\p{L}*treff(?![\p{L}\p{N}])/gu) ?? []).some((w) => !SOCIAL_TREFF.includes(w))
     || hasWordStart(t, 'tryout') || hasWordStart(t, 'try-out')) return 'training';
   // A celebration, a trophy handover or a board game is no match, whatever else the title says.
-  if (hasWordEnd(t, 'feier') || ['ubergabe', 'brettspiel'].some((w) => t.includes(w))) return 'veranstaltung';
+  if (hasWordEnd(t, 'feier') || hasWhole(t, 'feiern') || ['feierstunde', 'ubergabe', 'brettspiel', 'game night'].some((w) => t.includes(w))) return 'veranstaltung';
   if (hasWordEnd(t, 'spiel') || hasWordEnd(t, 'spiele')
     || ['spieltag', 'turnier', 'tourney', 'meisterschaft', 'championship', 'pokal', 'wettkampf', 'regatta', 'ligatermin'].some((w) => t.includes(w))
     || hasWordEnd(t, 'liga') || hasWordEnd(t, 'finale') || ['vs', 'derby', 'cup', 'game', 'match', 'friendly'].some((w) => hasWhole(t, w))
@@ -97,6 +98,8 @@ export function eventKind(title, tags = [], source = null) {
 const BONN_POSTCODE = /\b(5311[13579]|5312[13579]|5317[3579]|5322[579])\b/;
 const POSTCODE = /\b\d{5}\b/;
 const FILLER = /^(der|die|das|dem|den|am|an|im|beim)$/i;
+// "in Kooperation mit …", "in Zusammenarbeit …": an abstract noun names no place.
+const ABSTRACT = /(ung|heit|keit|schaft|arbeit|tion)$/;
 const VENUE_WORD = /(halle|platz|park|stadion|zentrum|schule|arena|hallenbad|freibad|schwimmbad)$/;
 const BONN_PLACES = ['Bonn', 'Bad Godesberg', 'Godesberg', 'Beuel', 'Hardtberg', 'Duisdorf', 'Tannenbusch',
   'Rheinaue', 'Oberkassel', 'Geislar', 'Kessenich', 'Endenich', 'Poppelsdorf', 'Mehlem', 'Plittersdorf',
@@ -138,7 +141,7 @@ export function homeGame(title, location, club, kind) {
       if (BONN_PLACES.some((p) => rest.startsWith(`${p} `) || rest.startsWith(`${p}-`))) return true;
       if (!FILLER.test(ws[i]) && !VENUE_WORD.test(fold(ws[i]))) break;
     }
-    if (/^\p{Lu}/u.test(phrase) && !VENUE_WORD.test(fold(ws[0]))) return false;
+    if (/^\p{Lu}/u.test(phrase) && !VENUE_WORD.test(fold(ws[0])) && !ABSTRACT.test(fold(ws[0]))) return false;
   }
   return null;
 }
@@ -203,6 +206,8 @@ export function clubByAlias(ctx, ...texts) {
 
 // A title that calls the date off ("Training fällt aus") marks it cancelled; the page strikes it.
 const CANCELLED = ['fallt aus', 'entfallt', 'abgesagt'];
+// … unless the title says the opposite or looks back ("entfällt nicht", "Nachholspiel (ursprünglich abgesagt)").
+const calledOff = (t) => CANCELLED.some((w) => hasWhole(t, w)) && !hasWhole(t, 'nicht') && !t.includes('ursprunglich') && !hasWordStart(t, 'nachhol');
 
 /**
  * One raw adapter event → an events.json entry, or null when it is dropped
@@ -280,7 +285,7 @@ export function normalizeEvent(raw, { owner, kind: ownerKind, source, ctx, windo
     url,
     description,
     source: sourceKey,
-    status: raw.status === 'cancelled' || CANCELLED.some((w) => hasWhole(foldedTitle, w)) ? 'cancelled' : 'confirmed',
+    status: raw.status === 'cancelled' || calledOff(foldedTitle) ? 'cancelled' : 'confirmed',
   };
 }
 

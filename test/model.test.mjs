@@ -37,6 +37,9 @@ test('a title that calls the date off marks it cancelled', () => {
   assert.equal(asClub({ title: 'Training' }).status, 'confirmed');
   assert.equal(asClub({ title: 'Abgesagte Termine nachholen' }).status, 'confirmed', 'whole words only');
   assert.equal(asClub({ title: 'Training', status: 'cancelled' }).status, 'cancelled', 'the feed\'s own status still counts');
+  assert.equal(asClub({ title: 'Training entfällt nicht' }).status, 'confirmed', 'negated');
+  assert.equal(asClub({ title: 'Spiel (ursprünglich abgesagt)' }).status, 'confirmed', 'looking back');
+  assert.equal(asClub({ title: 'Nachholspiel: früher abgesagt' }).status, 'confirmed', 'a replay');
 });
 
 test('timed events: Berlin offset, end before start becomes null', () => {
@@ -161,13 +164,15 @@ test('home: the title marker, then the club venue, Bonn, another postcode, a tit
   assert.equal(spiel('Turnier in Beuel: Finale'), true, 'punctuation after the place');
   assert.equal(spiel('Turnier in Beuel/Vilich'), true);
   assert.equal(spiel('Spiel in Köln: Bonn Gamecocks vs Cologne'), false, 'at a colon');
-  assert.equal(spiel('Turnier in Kooperation mit dem TV Beuel'), false, 'at mit');
   assert.equal(spiel('Lauf in der Kölner Südstadt'), null, 'after an article only a Bonn place says');
   assert.equal(spiel('Spiel in der Halle'), null);
   assert.equal(spiel('Turnier in Turnhalle der Gesamtschule Beuel'), true, 'past venue words and articles');
   assert.equal(spiel('Spieltag in Sporthalle am Brüser Berg'), true);
   assert.equal(spiel('Turnier in Rheinaue-Halle'), true, 'a Bonn place inside a venue word');
   assert.equal(spiel('Turnier in Halle 2 Beuel'), null, 'a venue first is no place elsewhere');
+  assert.equal(spiel('Turnier in Kooperation mit dem TV Beuel'), null, 'an abstract noun names no place');
+  assert.equal(spiel('Spieltag in Zusammenarbeit mit dem SC Bonn'), null);
+  assert.equal(spiel('Spiel in Vorbereitung'), null);
   assert.equal(spiel('Spiel in der Halle'), null, 'no capitalised place');
   // nothing says
   assert.equal(spiel('Hockey: 1. Damen – RTHC Leverkusen'), null);

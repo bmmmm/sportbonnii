@@ -52,7 +52,7 @@ store index — run installs unsandboxed.
   keywords → club, club from aliases, ids, `kind` from
   `eventKind`: title/tag rules, training > celebration veto > spiel, else the
   source's `kind`, else veranstaltung; `status` cancelled also from the title
-  („fällt aus", „entfällt", „abgesagt"); `home` from `homeGame` for games only:
+  („fällt aus", „entfällt", „abgesagt" — not negated, not a replay); `home` from `homeGame` for games only:
   the title's own marker („auswärts", Away, Gast bei, Heim, Heimspiel,
   Heimturnier, Home), then the place — a club venue (`venueIndex`) or a Bonn
   postcode is home, another postcode away, else the word Bonn home —, then a
