@@ -1,0 +1,33 @@
+{
+  "active": true,
+  "aliases": [
+    "Beueler Judo-Club",
+    "BJC"
+  ],
+  "district": "Beuel",
+  "id": "beueler-judo-club",
+  "name": "Beueler Judo-Club",
+  "sources": [],
+  "sports": [
+    "kampfsport"
+  ],
+  "venues": [
+    {
+      "address": "Am Magdalenenkreuz 26, 53227 Bonn",
+      "lat": 50.71353,
+      "lon": 7.16365,
+      "name": "Dojo Oberkassel",
+      "osm": "node/10832365855",
+      "use": "training"
+    },
+    {
+      "address": "Gaußstr. 1, 53125 Bonn",
+      "lat": 50.70276,
+      "lon": 7.05248,
+      "name": "Hardtberghalle",
+      "osm": "way/24815531",
+      "use": "training"
+    }
+  ],
+  "website": "https://beueler-judo-club.de/"
+}

@@ -1,0 +1,24 @@
+{
+  "active": true,
+  "aliases": [
+    "Bonn Fire",
+    "Inline Hockey Bonn Fire"
+  ],
+  "district": "Bonn",
+  "id": "bonn-fire",
+  "name": "Bonn Fire",
+  "sources": [],
+  "sports": [
+    "hockey"
+  ],
+  "venues": [
+    {
+      "address": "Schlesienstr. 21–23, 53119 Bonn",
+      "lat": 50.74556,
+      "lon": 7.05342,
+      "name": "Bertolt-Brecht-Sportanlage",
+      "osm": "relation/1851114"
+    }
+  ],
+  "website": "https://bonnfire.de/"
+}

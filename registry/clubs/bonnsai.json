@@ -1,0 +1,31 @@
+{
+  "active": true,
+  "aliases": [
+    "Bonnsai",
+    "Frisbeesport Bonn"
+  ],
+  "district": "Bonn",
+  "id": "bonnsai",
+  "name": "Bonnsai",
+  "sources": [],
+  "sports": [
+    "frisbee"
+  ],
+  "venues": [
+    {
+      "lat": 50.70701,
+      "lon": 7.12124,
+      "name": "BTHV-Anlage (Naturrasen)",
+      "osm": "way/128941575",
+      "use": "training"
+    },
+    {
+      "lat": 50.73302,
+      "lon": 7.12784,
+      "name": "Franz-Elbern-Stadion",
+      "osm": "relation/1460995",
+      "use": "training"
+    }
+  ],
+  "website": "https://www.bonnsai.org/"
+}

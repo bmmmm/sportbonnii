@@ -1,0 +1,31 @@
+{
+  "active": true,
+  "aliases": [
+    "Golden Star Cricket Club Bonn",
+    "GSCC Bonn"
+  ],
+  "district": "Bad Godesberg",
+  "id": "gscc-bonn",
+  "name": "Golden Star Cricket Club Bonn",
+  "sources": [],
+  "sports": [
+    "cricket"
+  ],
+  "venues": [
+    {
+      "address": "Rheinaue, 53175 Bonn",
+      "lat": 50.70688,
+      "lon": 7.16022,
+      "name": "Cricket-Stadion Rheinaue"
+    },
+    {
+      "address": "Adenauerallee 51-53, 53113 Bonn",
+      "lat": 50.7307,
+      "lon": 7.10928,
+      "name": "Sporthalle Beethoven-Gymnasium (Winter)",
+      "osm": "way/126788841",
+      "use": "training"
+    }
+  ],
+  "website": "https://gsccbonn.de/en/"
+}

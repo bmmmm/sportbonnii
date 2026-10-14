@@ -1,0 +1,14 @@
+{
+  "active": true,
+  "aliases": [
+    "Olympischer Fechtclub Bonn",
+    "OFC Bonn"
+  ],
+  "id": "ofc-bonn",
+  "name": "Olympischer Fechtclub Bonn",
+  "sources": [],
+  "sports": [
+    "fechten"
+  ],
+  "website": "https://ofc-bonn.de/"
+}

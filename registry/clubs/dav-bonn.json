@@ -1,0 +1,15 @@
+{
+  "active": true,
+  "aliases": [
+    "DAV Sektion Bonn",
+    "DAV Bonn",
+    "Deutscher Alpenverein Sektion Bonn"
+  ],
+  "id": "dav-bonn",
+  "name": "DAV Sektion Bonn",
+  "sources": [],
+  "sports": [
+    "klettern"
+  ],
+  "website": "https://dav-bonn.de/"
+}

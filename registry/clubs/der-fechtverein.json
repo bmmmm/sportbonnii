@@ -1,0 +1,41 @@
+{
+  "active": true,
+  "aliases": [
+    "Der Fechtverein",
+    "Der Fechtverein Bonn"
+  ],
+  "district": "Bonn",
+  "id": "der-fechtverein",
+  "name": "Der Fechtverein",
+  "sources": [],
+  "sports": [
+    "fechten"
+  ],
+  "venues": [
+    {
+      "address": "Hirschberger Str. 3, 53119 Bonn",
+      "lat": 50.75146,
+      "lon": 7.04303,
+      "name": "Tannenbusch-Gymnasium",
+      "osm": "relation/1690058",
+      "use": "training"
+    },
+    {
+      "address": "Winterstr. 53, 53177 Bonn",
+      "lat": 50.68309,
+      "lon": 7.14732,
+      "name": "Gymnastikhalle Burgschule",
+      "osm": "way/183645183",
+      "use": "training"
+    },
+    {
+      "address": "Adelheidisstr. 56, 53225 Bonn",
+      "lat": 50.75002,
+      "lon": 7.12579,
+      "name": "Sporthalle Realschule Beuel",
+      "osm": "way/50854995",
+      "use": "training"
+    }
+  ],
+  "website": "https://der-fechtverein.de/"
+}

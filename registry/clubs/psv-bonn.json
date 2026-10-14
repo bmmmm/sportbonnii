@@ -1,0 +1,29 @@
+{
+  "active": true,
+  "aliases": [
+    "PSV Bonn",
+    "Polizei-Sportverein Bonn",
+    "Judo PSV Bonn",
+    "PSV Bonn Judo"
+  ],
+  "district": "Hardtberg",
+  "id": "psv-bonn",
+  "name": "PSV Bonn",
+  "sources": [],
+  "sports": [
+    "kampfsport",
+    "volleyball",
+    "sonstiges"
+  ],
+  "venues": [
+    {
+      "address": "René-Schickele-Str. 4, 53123 Bonn",
+      "lat": 50.71408,
+      "lon": 7.03724,
+      "name": "Turnhalle Margot-Barnard-Realschule (Judo)",
+      "osm": "way/30023684",
+      "use": "training"
+    }
+  ],
+  "website": "https://www.psvbonn.de/wp/"
+}

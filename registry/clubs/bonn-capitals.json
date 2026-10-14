@@ -1,0 +1,25 @@
+{
+  "active": true,
+  "aliases": [
+    "Bonn Capitals",
+    "Capitals",
+    "1. Baseball- und Softballclub Bonn Capitals"
+  ],
+  "district": "Bad Godesberg",
+  "id": "bonn-capitals",
+  "name": "Bonn Capitals",
+  "sources": [],
+  "sports": [
+    "baseball"
+  ],
+  "venues": [
+    {
+      "address": "Martin-Luther-King-Straße, 53175 Bonn",
+      "lat": 50.70867,
+      "lon": 7.15236,
+      "name": "Baseballstadion Rheinaue",
+      "osm": "way/1246087726"
+    }
+  ],
+  "website": "https://www.capitals.de/"
+}
