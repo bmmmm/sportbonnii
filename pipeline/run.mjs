@@ -5,7 +5,8 @@
 // Window: the 1st of the previous month up to the 1st of the month 13 months
 // ahead (Berlin), so it moves monthly and two runs in one month agree.
 // Previous state: site/data/ when present, else $PREVIOUS_STATE_URL (the live
-// site); anything that fails the shape check is ignored.
+// site); anything that fails the shape check is ignored. Events published
+// before the `kind` field get one from their title first (upgradeLegacyEvent).
 //
 // Only sources with news are re-read in full. A single-request adapter
 // (CONDITIONAL: ical, gancio, jsonld) whose last ok answer carried an ETag or
@@ -26,9 +27,9 @@ import { fileURLToPath } from 'node:url';
 import { loadRegistry, REGISTRY_DIR } from './registry.mjs';
 import { loadAdapter } from './adapters/index.mjs';
 import { createNet, NetError } from './net.mjs';
-import { buildContext, normalizeEvent } from './model.mjs';
+import { buildContext, normalizeEvent, eventKind } from './model.mjs';
 import { mergeRun } from './merge.mjs';
-import { formatEventsJson, formatJson, checkEvent, STATES } from './contract.mjs';
+import { formatEventsJson, formatJson, checkEvent, EVENT_KEYS, STATES } from './contract.mjs';
 import { addMonths, berlinDate } from './tz.mjs';
 import { serializeFeed } from '../site/ics.js';
 
@@ -42,6 +43,19 @@ export function windowFor(today) {
 }
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
+const LEGACY_KEYS = EVENT_KEYS.filter((k) => k !== 'kind').join();
+
+/**
+ * An event published before events carried a `kind` gets one from its title,
+ * keys in contract order; anything else is returned as it is. Known limit:
+ * tags and the source's `kind` are not in events.json, so on the first run
+ * after the upgrade `changed` moves for a source whose fresh kind needs them.
+ */
+export function upgradeLegacyEvent(e) {
+  if (!e || typeof e !== 'object' || Object.keys(e).join() !== LEGACY_KEYS || typeof e.title !== 'string') return e;
+  const kind = eventKind(e.title, [], null);
+  return Object.fromEntries(EVENT_KEYS.map((k) => [k, k === 'kind' ? kind : e[k]]));
+}
 
 /**
  * Previous events/status if they pass the shape check, else null. The window
@@ -49,7 +63,8 @@ const DATE = /^\d{4}-\d{2}-\d{2}$/;
  */
 export function acceptPrevious(eventsDoc, statusDoc, metaDoc = null) {
   if (!eventsDoc || eventsDoc.version !== 1 || !Array.isArray(eventsDoc.events)) return null;
-  if (eventsDoc.events.some((e) => checkEvent(e).length)) return null;
+  const events = eventsDoc.events.map(upgradeLegacyEvent);
+  if (events.some((e) => checkEvent(e).length)) return null;
   if (!statusDoc || typeof statusDoc !== 'object' || Array.isArray(statusDoc)) return null;
   for (const s of Object.values(statusDoc)) {
     if (!s || !STATES.includes(s.state) || !DATE.test(s.since)) return null;
@@ -57,7 +72,7 @@ export function acceptPrevious(eventsDoc, statusDoc, metaDoc = null) {
   const w = eventsDoc.window;
   const window = w && DATE.test(w.from) && DATE.test(w.to) ? { from: w.from, to: w.to } : null;
   const build = typeof metaDoc?.build === 'string' && metaDoc.build ? metaDoc.build : null;
-  return { events: eventsDoc.events, status: statusDoc, window, build };
+  return { events, status: statusDoc, window, build };
 }
 
 async function readPrevious({ outDir, previousStateUrl, fetchImpl, log }) {

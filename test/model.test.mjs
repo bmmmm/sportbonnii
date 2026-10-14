@@ -86,6 +86,15 @@ test('platform sources: tagMap, then keywords, then the aliased club, else sonst
   assert.deepEqual(neutral.sports, ['sonstiges']);
 });
 
+test('kind: from title and tags, else the source kind, else an event', () => {
+  assert.equal(asClub({ title: 'Training' }).kind, 'training');
+  assert.equal(asClub({ title: 'Hockey: Heimspiel Damen' }).kind, 'spiel');
+  assert.equal(asClub({ title: 'Saisonstart', tags: ['Turnier'] }).kind, 'spiel');
+  assert.equal(asClub({ title: 'Saisonstart' }).kind, 'veranstaltung');
+  assert.equal(asClub({ title: 'Saisonstart' }, { ...clubSource, kind: 'training' }).kind, 'training');
+  assert.equal(asPlatform({ title: 'Lauftreff am Rhein' }).kind, 'training');
+});
+
 test('aliases match whole words, longest first, diacritics folded', () => {
   assert.equal(clubByAlias(ctx, 'Spiel der Telekom Baskets heute')?.id, 'telekom-baskets-bonn');
   assert.equal(clubByAlias(ctx, 'Basketsbonner'), null);

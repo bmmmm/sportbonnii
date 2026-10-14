@@ -97,6 +97,9 @@ store index — run installs unsandboxed.
   the content comparison behind `changed` needs no server support.
   Known limits: a server with volatile validators makes status.json move
   with it, and `changed` also moves when our own normalisation changes.
+  A previous state without `kind` is upgraded from the titles alone
+  (`upgradeLegacyEvent` in run.mjs), so `changed` moves once for a source
+  whose kind needs its tags or the source's `kind`.
 - Times in events.json are Europe/Berlin wall clock with offset; all-day
   events are dates with an exclusive end. The page slices strings and never
   does timezone maths — the browser gate runs it in New York to prove it

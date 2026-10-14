@@ -4,10 +4,13 @@
 // events.json entries; byte-stable: DTSTAMP is the data window's start, not
 // the clock, so unchanged events give an unchanged feed.
 
+import { KINDS } from './kinds.js';
+
 export const PRODID = '-//sportbonnii//Termine Bonner Sportvereine//DE';
 const MAX_LINE_OCTETS = 75;
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
+const KIND_SHORT = new Map(KINDS.map((k) => [k.id, k.short]));
 
 /**
  * TEXT escaping (§3.3.11). Backslashes first, or the backslashes inserted
@@ -66,7 +69,8 @@ function urlValue(url) {
 
 /**
  * The lines of one VEVENT. `labels` maps sport ids to their labels (for
- * CATEGORIES), `clubNames` club ids to names (for the description footer).
+ * CATEGORIES, followed by the kind: Spiel, Training, Veranstaltung),
+ * `clubNames` club ids to names (for the description footer).
  */
 export function veventLines(ev, { dtstamp, labels = {}, clubNames = {} }) {
   const lines = ['BEGIN:VEVENT', `UID:${ev.id}@sportbonnii`, `DTSTAMP:${dtstamp}`, timeProp('DTSTART', ev.start)];
@@ -78,7 +82,7 @@ export function veventLines(ev, { dtstamp, labels = {}, clubNames = {} }) {
   if (ev.location) lines.push(`LOCATION:${escapeText(ev.location)}`);
   const url = ev.url ? urlValue(ev.url) : '';
   if (url) lines.push(`URL:${url}`);
-  const cats = ev.sports.map((s) => labels[s] ?? s);
+  const cats = [...ev.sports.map((s) => labels[s] ?? s), KIND_SHORT.get(ev.kind)].filter(Boolean);
   if (cats.length) lines.push(`CATEGORIES:${cats.map(escapeText).join(',')}`);
   lines.push(`STATUS:${ev.status === 'cancelled' ? 'CANCELLED' : 'CONFIRMED'}`);
   lines.push('END:VEVENT');

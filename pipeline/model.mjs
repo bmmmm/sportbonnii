@@ -6,7 +6,8 @@
 //
 // normalizeEvent applies the contract: Berlin wall-clock times with offset,
 // exclusive all-day ends, caps on text, the source's `exclude` list, sports
-// from tagMap / keywords / club, and the club from the owner or an alias.
+// from tagMap / keywords / club, the club from the owner or an alias, and the
+// kind (match, training, event) from title and tags.
 import { createHash } from 'node:crypto';
 import { MAX_TITLE, MAX_DESCRIPTION } from './contract.mjs';
 import { toBerlinIso, berlinDate, addDays, berlinMidnight } from './tz.mjs';
@@ -48,6 +49,33 @@ function hasWhole(hay, needle) {
     if (!isWordChar(hay[i - 1]) && !isWordChar(hay[i + needle.length])) return true;
   }
   return false;
+}
+
+/** `needle` occurs in `hay` ending at a word end (both already folded). */
+function hasWordEnd(hay, needle) {
+  for (let i = hay.indexOf(needle); i !== -1; i = hay.indexOf(needle, i + 1)) {
+    if (!isWordChar(hay[i + needle.length])) return true;
+  }
+  return false;
+}
+
+// "1. Damen – RTHC Leverkusen": a numbered team, then an opponent after a dash.
+const TEAM_VS = /\b\d\.\s?(damen|herren|frauen|manner|mannschaft)\b.*\s[–-]\s/;
+
+/**
+ * What a date is for — 'training', 'spiel' or 'veranstaltung' (site/kinds.js)
+ * — from its title and tags: a training word wins over a match word; with
+ * neither, the source's own `kind` (a single-purpose feed), else an event.
+ */
+export function eventKind(title, tags = [], source = null) {
+  const t = fold([title, ...tags].join(' \n '));
+  if (t.includes('training') || hasWhole(t, 'gym') || hasWordEnd(t, 'treff')
+    || hasWordStart(t, 'tryout') || hasWordStart(t, 'try-out')) return 'training';
+  if (hasWordEnd(t, 'spiel') || hasWordEnd(t, 'spiele')
+    || ['spieltag', 'turnier', 'tourney', 'meisterschaft', 'championship', 'pokal', 'wettkampf', 'regatta'].some((w) => t.includes(w))
+    || hasWordEnd(t, 'liga') || ['vs', 'derby', 'cup'].some((w) => hasWhole(t, w))
+    || TEAM_VS.test(t)) return 'spiel';
+  return source?.kind ?? 'veranstaltung';
 }
 
 const LOCATION_NOISE = /^(deutschland|germany|nordrhein-westfalen|nrw|stadtbezirk .+|regierungsbezirk .+)$/i;
@@ -113,7 +141,7 @@ export function clubByAlias(ctx, ...texts) {
  * (excluded, outside the window, unusable). `owner` is the club or platform,
  * `kind` 'club' | 'platform', `window` { from, to } as Berlin dates.
  */
-export function normalizeEvent(raw, { owner, kind, source, ctx, window }) {
+export function normalizeEvent(raw, { owner, kind: ownerKind, source, ctx, window }) {
   const sourceKey = `${owner.id}/${source.id}`;
   const title = clip(String(raw.title ?? '').trim(), MAX_TITLE);
   if (!title) return null;
@@ -142,10 +170,10 @@ export function normalizeEvent(raw, { owner, kind, source, ctx, window }) {
   if (lastDay < window.from || firstDay >= window.to) return null;
 
   // --- club and sports
-  let club = kind === 'club' ? owner : clubByAlias(ctx, title, raw.location);
+  let club = ownerKind === 'club' ? owner : clubByAlias(ctx, title, raw.location);
   const textForSports = fold([title, ...tags].join(' \n '));
   let sports;
-  if (kind === 'club') {
+  if (ownerKind === 'club') {
     const candidates = source.sports ?? owner.sports;
     const hits = [...sportsByTags(tags, source.tagMap), ...sportsByKeywords(textForSports, ctx.keywords)].filter((s) => candidates.includes(s));
     sports = candidates.length > 1 && hits.length ? hits : candidates;
@@ -169,6 +197,7 @@ export function normalizeEvent(raw, { owner, kind, source, ctx, window }) {
     id: eventId(sourceKey, String(raw.uid), raw.recurrenceId ?? ''),
     club: club ? club.id : null,
     sports,
+    kind: eventKind(title, tags, source),
     title,
     start,
     end,

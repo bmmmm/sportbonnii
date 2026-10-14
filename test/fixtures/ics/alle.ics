@@ -15,7 +15,7 @@ DTEND:20260912T160000Z
 SUMMARY:Saisonauftakt mit Grillen
 DESCRIPTION:Verein: Rugby Club Bonn-Rhein-Sieg
 LOCATION:Rugbyplatz Rheinaue\, Ludwig-Erhard-Allee\, Bonn
-CATEGORIES:Rugby
+CATEGORIES:Rugby,Veranstaltung
 STATUS:CONFIRMED
 END:VEVENT
 BEGIN:VEVENT
@@ -26,7 +26,7 @@ DTEND:20261006T183000Z
 SUMMARY:Training Herren
 DESCRIPTION:Verein: Rugby Club Bonn-Rhein-Sieg
 LOCATION:Rugbyplatz Rheinaue\, Ludwig-Erhard-Allee\, Bonn
-CATEGORIES:Rugby
+CATEGORIES:Rugby,Training
 STATUS:CONFIRMED
 END:VEVENT
 BEGIN:VEVENT
@@ -37,7 +37,7 @@ DTEND:20261013T183000Z
 SUMMARY:Training Herren
 DESCRIPTION:Verein: Rugby Club Bonn-Rhein-Sieg
 LOCATION:Rugbyplatz Rheinaue\, Ludwig-Erhard-Allee\, Bonn
-CATEGORIES:Rugby
+CATEGORIES:Rugby,Training
 STATUS:CONFIRMED
 END:VEVENT
 BEGIN:VEVENT
@@ -50,7 +50,7 @@ DESCRIPTION:Offener Lauftreff für alle Tempi. Treffpunkt am Japanischen Ga
  rten.
 LOCATION:Rheinauenpark\, Bonn
 URL:https://bonn.jetzt/event/lauftreff-im-rheinauenpark
-CATEGORIES:Leichtathletik & Laufen
+CATEGORIES:Leichtathletik & Laufen,Training
 STATUS:CONFIRMED
 END:VEVENT
 BEGIN:VEVENT
@@ -61,7 +61,7 @@ DTEND:20261017T140000Z
 SUMMARY:Beachvolleyball-Saisonabschluss
 LOCATION:Beachplatz Rheinaue\, Bonn
 URL:https://bonn.jetzt/event/beachvolleyball-saisonabschluss
-CATEGORIES:Volleyball
+CATEGORIES:Volleyball,Veranstaltung
 STATUS:CONFIRMED
 END:VEVENT
 BEGIN:VEVENT
@@ -73,7 +73,7 @@ SUMMARY:Kreisliga A: BSV Roleber – SV Beuel 06
 DESCRIPTION:Verein: BSV Roleber
 LOCATION:Sportplatz Roleber\, Bonn
 URL:https://bsvroleber.de/event/kreisliga-a-sv-beuel/
-CATEGORIES:Fußball
+CATEGORIES:Fußball,Spiel
 STATUS:CONFIRMED
 END:VEVENT
 BEGIN:VEVENT
@@ -85,7 +85,7 @@ SUMMARY:Kreisliga B: BSV Roleber II – TuS Pützchen
 DESCRIPTION:Verein: BSV Roleber
 LOCATION:Sportplatz Roleber\, Bonn
 URL:https://bsvroleber.de/event/kreisliga-b-tus-puetzchen/
-CATEGORIES:Fußball
+CATEGORIES:Fußball,Spiel
 STATUS:CONFIRMED
 END:VEVENT
 BEGIN:VEVENT
@@ -97,7 +97,7 @@ SUMMARY:Heimspiel gegen RK Heusenstamm
 DESCRIPTION:Regionalliga West. Eintritt frei\, Kuchenbuffet vom Fördervere
  in.\n\nVerein: Rugby Club Bonn-Rhein-Sieg
 LOCATION:Rugbyplatz Rheinaue\, Ludwig-Erhard-Allee\, Bonn
-CATEGORIES:Rugby
+CATEGORIES:Rugby,Spiel
 STATUS:CONFIRMED
 END:VEVENT
 BEGIN:VEVENT
@@ -109,7 +109,7 @@ SUMMARY:Gamecocks Probetraining für Einsteiger*innen
 DESCRIPTION:Verein: Bonn Gamecocks
 LOCATION:Sportpark Pennenfeld\, Bonn
 URL:https://bonn.jetzt/event/gamecocks-probetraining
-CATEGORIES:American Football
+CATEGORIES:American Football,Training
 STATUS:CONFIRMED
 END:VEVENT
 BEGIN:VEVENT
@@ -120,7 +120,7 @@ DTEND:20261020T183000Z
 SUMMARY:Training Herren
 DESCRIPTION:Verein: Rugby Club Bonn-Rhein-Sieg
 LOCATION:Rugbyplatz Rheinaue\, Ludwig-Erhard-Allee\, Bonn
-CATEGORIES:Rugby
+CATEGORIES:Rugby,Training
 STATUS:CONFIRMED
 END:VEVENT
 BEGIN:VEVENT
@@ -134,7 +134,7 @@ DESCRIPTION:<b>Anmeldung</b> bis 20.10. – Doppel & Einzel\n\nVerein: PSV
  Bonn Tischtennis
 LOCATION:Sporthalle Ückesdorf\, Bonn
 URL:https://bonn.jetzt/event/psv-open
-CATEGORIES:Tischtennis
+CATEGORIES:Tischtennis,Spiel
 STATUS:CONFIRMED
 END:VEVENT
 BEGIN:VEVENT
@@ -145,7 +145,7 @@ DTEND:20261024T130000Z
 SUMMARY:Jugendturnier U12
 DESCRIPTION:Verein: Rugby Club Bonn-Rhein-Sieg
 LOCATION:Rugbyplatz Rheinaue\, Ludwig-Erhard-Allee\, Bonn
-CATEGORIES:Rugby
+CATEGORIES:Rugby,Spiel
 STATUS:CANCELLED
 END:VEVENT
 BEGIN:VEVENT
@@ -158,7 +158,7 @@ DESCRIPTION:featured by Stegis Kicker. zur Anmeldung: Herbstcamps\n\nVerein
  : BSV Roleber
 LOCATION:Sportplatz Roleber\, Bonn
 URL:https://bsvroleber.de/event/herbst-fussballcamp/
-CATEGORIES:Fußball
+CATEGORIES:Fußball,Veranstaltung
 STATUS:CONFIRMED
 END:VEVENT
 BEGIN:VEVENT
@@ -169,7 +169,7 @@ DTEND:20261027T193000Z
 SUMMARY:Training Herren
 DESCRIPTION:Verein: Rugby Club Bonn-Rhein-Sieg
 LOCATION:Rugbyplatz Rheinaue\, Ludwig-Erhard-Allee\, Bonn
-CATEGORIES:Rugby
+CATEGORIES:Rugby,Training
 STATUS:CONFIRMED
 END:VEVENT
 BEGIN:VEVENT
@@ -179,7 +179,7 @@ DTSTART:20261030T170000Z
 SUMMARY:Critical Mass Bonn
 LOCATION:Kaiserplatz\, Bonn
 URL:https://bonn.jetzt/event/critical-mass-bonn-oktober
-CATEGORIES:Radsport
+CATEGORIES:Radsport,Veranstaltung
 STATUS:CONFIRMED
 END:VEVENT
 BEGIN:VEVENT
@@ -190,7 +190,7 @@ DTEND:20261031T010000Z
 SUMMARY:Mitternachtslauf durch die Rheinaue
 LOCATION:Rheinaue\, Bonn
 URL:https://bonn.jetzt/event/mitternachtslauf
-CATEGORIES:Leichtathletik & Laufen
+CATEGORIES:Leichtathletik & Laufen,Veranstaltung
 STATUS:CONFIRMED
 END:VEVENT
 BEGIN:VEVENT
@@ -201,7 +201,7 @@ DTEND:20261103T193000Z
 SUMMARY:Training Herren
 DESCRIPTION:Verein: Rugby Club Bonn-Rhein-Sieg
 LOCATION:Rugbyplatz Rheinaue\, Ludwig-Erhard-Allee\, Bonn
-CATEGORIES:Rugby
+CATEGORIES:Rugby,Training
 STATUS:CONFIRMED
 END:VEVENT
 BEGIN:VEVENT
@@ -213,7 +213,7 @@ SUMMARY:Jahreshauptversammlung
 DESCRIPTION:Verein: BSV Roleber
 LOCATION:Vereinsheim BSV Roleber\, Bonn
 URL:https://bsvroleber.de/event/jahreshauptversammlung/
-CATEGORIES:Fußball
+CATEGORIES:Fußball,Veranstaltung
 STATUS:CONFIRMED
 END:VEVENT
 BEGIN:VEVENT
@@ -224,7 +224,7 @@ DTEND:20261110T193000Z
 SUMMARY:Training Herren
 DESCRIPTION:Verein: Rugby Club Bonn-Rhein-Sieg
 LOCATION:Rugbyplatz Rheinaue\, Ludwig-Erhard-Allee\, Bonn
-CATEGORIES:Rugby
+CATEGORIES:Rugby,Training
 STATUS:CONFIRMED
 END:VEVENT
 BEGIN:VEVENT
@@ -235,7 +235,7 @@ DTEND;VALUE=DATE:20261122
 SUMMARY:Saisonabschlussfeier
 DESCRIPTION:Verein: Rugby Club Bonn-Rhein-Sieg
 LOCATION:Clubhaus Rheinaue\, Bonn
-CATEGORIES:Rugby
+CATEGORIES:Rugby,Veranstaltung
 STATUS:CONFIRMED
 END:VEVENT
 BEGIN:VEVENT
@@ -246,7 +246,7 @@ DTEND;VALUE=DATE:20261130
 SUMMARY:Trainingslager Jugend
 DESCRIPTION:Verein: Rugby Club Bonn-Rhein-Sieg
 LOCATION:Sportschule Hennef
-CATEGORIES:Rugby
+CATEGORIES:Rugby,Training
 STATUS:CONFIRMED
 END:VEVENT
 BEGIN:VEVENT
@@ -258,7 +258,7 @@ SUMMARY:Weihnachtsfeier der Jugend
 DESCRIPTION:Verein: BSV Roleber
 LOCATION:Vereinsheim BSV Roleber\, Bonn
 URL:https://bsvroleber.de/event/weihnachtsfeier/
-CATEGORIES:Fußball
+CATEGORIES:Fußball,Veranstaltung
 STATUS:CONFIRMED
 END:VEVENT
 BEGIN:VEVENT
@@ -269,7 +269,7 @@ DTEND:20270101T120000Z
 SUMMARY:Neujahrsschwimmen im Rhein
 LOCATION:Rheinufer Beuel\, Bonn
 URL:https://bonn.jetzt/event/neujahrsschwimmen
-CATEGORIES:Schwimmen
+CATEGORIES:Schwimmen,Veranstaltung
 STATUS:CONFIRMED
 END:VEVENT
 END:VCALENDAR
