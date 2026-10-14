@@ -1,0 +1,34 @@
+{
+  "active": true,
+  "aliases": [
+    "Bonner Turnverein 1860",
+    "BTV 1860",
+    "Bonner TV 1860"
+  ],
+  "district": "Bonn",
+  "id": "btv-1860",
+  "name": "Bonner Turnverein 1860",
+  "sources": [
+    {
+      "id": "termine",
+      "note": "WordPress with The Events Calendar (found by detect); competitions, meetings and school holidays",
+      "type": "tec",
+      "url": "https://www.btv1860.de/wp-json/tribe/events/v1/events"
+    }
+  ],
+  "sports": [
+    "turnen",
+    "volleyball"
+  ],
+  "venues": [
+    {
+      "address": "Riesstr. 9, 53113 Bonn",
+      "lat": 50.73007,
+      "lon": 7.10468,
+      "name": "Turnhalle Münsterschule",
+      "osm": "way/106549267",
+      "use": "training"
+    }
+  ],
+  "website": "https://www.btv1860.de/"
+}

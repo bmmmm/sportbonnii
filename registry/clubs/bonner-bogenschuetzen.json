@@ -1,0 +1,32 @@
+{
+  "active": true,
+  "aliases": [
+    "Bonner Bogenschützenclub 1965",
+    "Bonner Bogenschützen",
+    "BBSC 1965"
+  ],
+  "district": "Bonn",
+  "id": "bonner-bogenschuetzen",
+  "name": "Bonner Bogenschützenclub 1965",
+  "sources": [
+    {
+      "id": "termine",
+      "note": "The Events Manager export of the club site (training, championships, meetings); also lists school holidays and cancelled trainings",
+      "type": "ical",
+      "url": "https://bonnerbogensport.de/events/?ical=1"
+    }
+  ],
+  "sports": [
+    "bogenschiessen"
+  ],
+  "venues": [
+    {
+      "address": "Röckumstraße 58a, 53121 Bonn",
+      "lat": 50.72304,
+      "lon": 7.07351,
+      "name": "Josef-Strunck-Halle",
+      "use": "training"
+    }
+  ],
+  "website": "https://bonnerbogensport.de/"
+}

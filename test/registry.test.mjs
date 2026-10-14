@@ -86,7 +86,7 @@ test('each rule goes red on its own mutant', () => {
     ['duplicate sport id', (_, s) => { s.sports[1].id = s.sports[0].id; }, /duplicate sport id/],
     ['catch-all removed', (_, s) => { s.sports = s.sports.filter((x) => x.id !== 'sonstiges'); }, /sonstiges/],
     ['uppercase keyword', (_, s) => { s.sports[0].keywords = ['Fußball']; }, /keywords must be lowercase/],
-    ['alias of another club', (c) => { c.clubs[1].aliases.push(c.clubs[0].aliases[0]); }, /\(bonner-sc\): "Bonn Gamecocks" is also a name of bonn-gamecocks/],
+    ['alias of another club', (c) => { c.clubs.find((x) => x.id === 'bonner-sc').aliases.push(gamecocks(c).aliases[0]); }, /\(bonner-sc\): "Bonn Gamecocks" is also a name of bonn-gamecocks/],
     ['same name but for case, accents and e.V.', (c) => { c.clubs.push(club('ssf-zwei', 'SSF BONN e.V.')); }, /\(ssf-zwei\): "SSF BONN e\.V\." is also a name of ssf-bonn \("SSF Bonn"\)/],
     ['department after its club', (c) => { c.clubs.push(club('ssf-tt', 'SSF Bonn Tischtennis')); }, DEPARTMENT],
     ['department before its club', (c) => { c.clubs.unshift(club('ssf-tt', 'SSF Bonn Tischtennis')); }, DEPARTMENT],

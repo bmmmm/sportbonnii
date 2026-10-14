@@ -1,0 +1,37 @@
+{
+  "active": true,
+  "aliases": [
+    "Artemis Bonn"
+  ],
+  "district": "Bonn",
+  "id": "artemis-bonn",
+  "name": "Artemis Bonn",
+  "sources": [
+    {
+      "id": "termine",
+      "note": "Events Manager export of the club site (championships, hall closures); the file also carries every past event",
+      "type": "ical",
+      "url": "https://artemis-bonn.de/artemis_webseite/?ical=1"
+    }
+  ],
+  "sports": [
+    "bogenschiessen"
+  ],
+  "venues": [
+    {
+      "address": "An der Josefshöhe 52, 53117 Bonn",
+      "lat": 50.75414,
+      "lon": 7.08317,
+      "name": "Außengelände Sportpark Nord (Sommer)",
+      "use": "training"
+    },
+    {
+      "address": "Röckumstraße 58a, 53121 Bonn",
+      "lat": 50.72304,
+      "lon": 7.07351,
+      "name": "Josef-Strunck-Halle (Winter)",
+      "use": "training"
+    }
+  ],
+  "website": "https://artemis-bonn.de/artemis_webseite/"
+}

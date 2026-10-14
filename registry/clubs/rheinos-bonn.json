@@ -1,0 +1,32 @@
+{
+  "active": true,
+  "aliases": [
+    "Rheinos Bonn",
+    "Rheinos"
+  ],
+  "district": "Bonn",
+  "id": "rheinos-bonn",
+  "name": "Rheinos Bonn",
+  "sources": [
+    {
+      "id": "kalender",
+      "note": "public Google Calendar embedded on https://rheinos-bonn.de/calendar (NRW league, tournaments, trainings, trial sessions)",
+      "type": "ical",
+      "url": "https://calendar.google.com/calendar/ical/vrovhj1r322stg9grq02et47es%40group.calendar.google.com/public/basic.ics"
+    }
+  ],
+  "sports": [
+    "quadball"
+  ],
+  "venues": [
+    {
+      "address": "Christian-Miesen-Str. 1, 53129 Bonn",
+      "lat": 50.70701,
+      "lon": 7.12124,
+      "name": "BTHV-Anlage",
+      "osm": "way/128941575",
+      "use": "training"
+    }
+  ],
+  "website": "https://rheinos-bonn.de/"
+}
