@@ -356,6 +356,13 @@ try {
   const panel = await evaluate(`({ title: document.querySelector('.map-panel-title')?.textContent, club: document.querySelector('.map-panel-where [data-club]')?.textContent, dates: [...document.querySelectorAll('.map-dates .card .title')].map((x) => x.textContent), pressed: document.querySelector('#map [data-marker="bsv-roleber/0"]').getAttribute('aria-pressed') })`);
   check(panel.title === 'Sportplatz Roleber' && panel.club === 'BSV Roleber' && panel.pressed === 'true' && panel.dates.length === Math.min(5, roleber.events.length) && panel.dates.every((d, i) => d.startsWith(roleber.events[i].title)),
     `a marker opens its venue with its ${panel.dates.length} next dates`, `panel: ${JSON.stringify({ panel, want: roleber.events.map((e) => e.title) })}`);
+  // Picking a place from the list keeps the keyboard focus on it.
+  await evaluate(`(() => { const b = document.querySelector('#map [data-place="rc-bonn-rhein-sieg/0"]'); b.focus(); b.click(); return true; })()`);
+  await settle();
+  const kept = await evaluate(`({ focus: document.activeElement?.dataset?.place, title: document.querySelector('.map-panel-title')?.textContent })`);
+  check(kept.focus === 'rc-bonn-rhein-sieg/0' && kept.title === 'Rugbyplatz Rheinaue', 'choosing a place in the list keeps the focus on it', `focus after pick: ${JSON.stringify(kept)}`);
+  await evaluate(`document.querySelector('#map [data-marker="bsv-roleber/0"]').click(), true`);
+  await settle();
   // Zoom and drag move the map.
   const zOf = () => evaluate(`Math.max(...[...document.querySelectorAll('#map .map-tile')].map((i) => Number(i.getAttribute('src').split('/').at(-3))))`);
   const z0 = await zOf();

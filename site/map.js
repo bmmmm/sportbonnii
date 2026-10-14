@@ -294,6 +294,10 @@ export function renderMapView(box, opts) {
   }
   st.onSelect = (id) => opts.onSelect(id === opts.selected ? null : id);
   st.onClub = opts.onClub;
+  // Markers and list buttons are rebuilt below; the one a keyboard user just pressed keeps the focus.
+  const active = document.activeElement;
+  const focusMarker = box.contains(active) ? active.dataset?.marker : undefined;
+  const focusPlace = box.contains(active) ? active.dataset?.place : undefined;
   const key = places.map((p) => p.id).join();
   const colour = (club) => ctx.sportsById.get(club.sports.find((s) => !opts.state.sport.length || opts.state.sport.includes(s)) ?? club.sports[0])?.colour ?? '#787878';
   const label = (p) => `${p.venue.name} (${p.club.name}): ${p.events.length === 1 ? '1 Termin' : `${p.events.length} Termine`}`;
@@ -344,7 +348,7 @@ export function renderMapView(box, opts) {
     }
     st.panel.replaceChildren(head, sel.events.length ? dates : el('p', 'map-hint', 'Hier stehen für diese Auswahl keine Termine an.'));
     if (sel.events.length > MAX_DATES) {
-      const more = el('button', 'button button-quiet', `Alle ${sel.events.length} Termine in der Tabelle`);
+      const more = el('button', 'button button-quiet', `Alle Termine von ${sel.club.name} in der Tabelle`);
       more.type = 'button';
       more.dataset.club = sel.club.id;
       st.panel.append(more);
@@ -355,6 +359,7 @@ export function renderMapView(box, opts) {
     const b = el('button', 'map-list-item');
     b.type = 'button';
     b.setAttribute('aria-pressed', String(p.id === opts.selected));
+    b.dataset.place = p.id;
     b.style.setProperty('--sport', colour(p.club));
     b.append(el('span', 'map-list-name', p.venue.name), el('span', 'map-list-club', p.club.name), el('span', 'count', String(p.events.length)));
     b.addEventListener('click', () => st.onSelect(p.id));
@@ -362,6 +367,9 @@ export function renderMapView(box, opts) {
     li.append(b);
     return li;
   }));
+  const refocus = [...box.querySelectorAll('[data-marker], [data-place]')]
+    .find((n) => (focusMarker && n.dataset.marker === focusMarker) || (focusPlace && n.dataset.place === focusPlace));
+  refocus?.focus();
   return located;
 }
 
