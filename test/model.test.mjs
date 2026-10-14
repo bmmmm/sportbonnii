@@ -116,12 +116,24 @@ test('home: the title marker, then the club venue, Bonn, another postcode, a tit
   assert.equal(spiel('Liga vs. Köln', 'Halle Ost, 53229'), true, 'a Bonn postcode');
   // 4. another postcode
   assert.equal(spiel('Touch Rugby German Championship', 'Oeserstraße 84, 65934 Frankfurt am Main'), false);
+  assert.equal(spiel('Liga', 'Rugby Club Bonn-Rhein-Sieg e.V., Oeserstraße 84, 65934 Frankfurt'), false, 'a postcode beats the word Bonn');
+  assert.equal(spiel('Liga', 'Sportpark Bonn-Rhein-Sieg, 53229 Bonn'), true, 'a Bonn postcode with the word');
   // 5. a place in the title
   assert.equal(spiel("Women's Bundesliga 7s Tourney in Darmstadt"), false);
   assert.equal(spiel('Deutsche Mehrkampfmeisterschaften in Heide', 'Heide'), false);
   assert.equal(spiel('E-team in Bonn - Freundschaftsspiele', 'Sportplatz Schulzentrum Tannenbusch'), true);
   assert.equal(spiel('Turnier in Bad Godesberg'), true);
   assert.equal(spiel('Turnier in Bad Honnef'), false);
+  assert.equal(spiel('Turnier in Sporthalle Beuel'), true, 'a Bonn place anywhere in the phrase');
+  assert.equal(spiel('Turnier in Lessenich'), true);
+  assert.equal(spiel('Spieltag in Schwarzrheindorf'), true);
+  assert.equal(spiel('Spiel in Köln - Bonn Gamecocks'), false, 'the phrase ends at a dash');
+  assert.equal(spiel('Spiel in Köln, Bonn II'), false, 'at a comma');
+  assert.equal(spiel('Spiel in Köln (Bonn II)'), false, 'at a bracket');
+  assert.equal(spiel('Spiel in Köln vs. Bonn'), false, 'at vs');
+  assert.equal(spiel('Spiel in Köln gegen Bonn'), false, 'at gegen');
+  assert.equal(spiel('Lauf in Hardthöhe und Ennert'), true);
+  assert.equal(spiel('Spiel in der Halle'), null, 'no capitalised place');
   // nothing says
   assert.equal(spiel('Hockey: 1. Damen – RTHC Leverkusen'), null);
   assert.equal(spiel('E-team Freundschaftsspiele', 'Sportplatz Schulzentrum Tannenbusch'), null);

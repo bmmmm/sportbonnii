@@ -32,5 +32,10 @@ test('venueIndex: the venue a location names, by name or street with number', ()
   assert.equal(venueIndex('Martin-Luther-King-Straße, Bonn', venues), -1, 'a street without number names no venue');
   assert.equal(venueIndex('Siegburger Straße 321', venues), 0);
   assert.equal(venueIndex(null, venues), -1);
+  const artemis = [{ name: 'Außengelände Sportpark Nord (Sommer)', address: 'An der Josefshöhe 52, 53117 Bonn' }, { name: 'Josef-Strunck-Halle (Winter)', address: 'Röckumstraße 58a, 53121 Bonn' }];
+  assert.equal(venueIndex('Röckumstr. 58 a, Bonn', artemis), 1, 'a house number and its letter, apart or joined');
+  assert.equal(venueIndex('Josef-Strunck-Halle, Bonn', artemis), 1, 'the name without its "(…)"');
+  assert.equal(venueIndex('Josef-Strunck-Halle, Röckumstr. 58 a, Bonn', artemis), 1, 'the live location');
+  assert.equal(venueIndex('Röckumstr. 58, Bonn', artemis), -1, 'another house number');
   assert.equal(venueIndex('Sporthalle Beuel-Ost', undefined), -1);
 });

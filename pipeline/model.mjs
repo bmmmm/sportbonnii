@@ -87,13 +87,18 @@ const BONN_PLACES = ['Bonn', 'Bad Godesberg', 'Godesberg', 'Beuel', 'Hardtberg',
   'Rheinaue', 'Oberkassel', 'Geislar', 'Kessenich', 'Endenich', 'Poppelsdorf', 'Mehlem', 'Plittersdorf',
   'Friesdorf', 'Dottendorf', 'Lengsdorf', 'Ippendorf', 'Röttgen', 'Venusberg', 'Holzlar', 'Pützchen', 'Vilich',
   'Ramersdorf', 'Limperich', 'Küdinghoven', 'Lannesdorf', 'Muffendorf', 'Pennenfeld', 'Brüser Berg', 'Auerberg',
-  'Graurheindorf', 'Buschdorf', 'Dransdorf', 'Medinghoven'].map(fold);
+  'Graurheindorf', 'Buschdorf', 'Dransdorf', 'Medinghoven',
+  // the rest of Bonn's 51 Ortsteile (Hauptsatzung § 3, as listed by LVR KuLaDig), and the Ennert
+  'Heiderhof', 'Hochkreuz', 'Rüngsdorf', 'Schweinheim', 'Hoholz', 'Holtorf', 'Bechlinghoven', 'Schwarzrheindorf',
+  'Vilich-Rheindorf', 'Castell', 'Gronau', 'Lessenich', 'Meßdorf', 'Nordstadt', 'Südstadt', 'Weststadt', 'Ückesdorf',
+  'Hardthöhe', 'Ennert'].map(fold);
 
 /**
  * Whether a match is a home game: true, false, or null when nothing says.
  * Only games have one. The title's own word wins ("(auswärts)" in a Bonn hall
- * is still away), then the place: one of the club's venues or anywhere in
- * Bonn is home, another postcode is away; last, a title "… in <Ort>".
+ * is still away), then the place: one of the club's venues or a Bonn postcode
+ * is home, another postcode is away, else the word Bonn is home; last, a title
+ * "… in <Ort>"
  */
 export function homeGame(title, location, club, kind) {
   if (kind !== 'spiel') return null;
@@ -103,11 +108,18 @@ export function homeGame(title, location, club, kind) {
   if (location) {
     if (venueIndex(location, club?.venues) >= 0) return true;
     const l = fold(location);
-    if (hasWhole(l, 'bonn') || BONN_POSTCODE.test(l)) return true;
+    if (BONN_POSTCODE.test(l)) return true;
     if (POSTCODE.test(l)) return false;
+    if (hasWhole(l, 'bonn')) return true;
   }
-  const place = /(?:^|\s)in\s+((?:Bad\s+|Brüser\s+)?\p{Lu}[\p{L}-]*)/u.exec(title)?.[1];
-  if (place) return BONN_PLACES.includes(fold(place).split('-')[0]);
+  // "… in <Ort>": a Bonn place anywhere in that phrase (up to a dash, comma, bracket, vs or gegen),
+  // else a capitalised word there is a place elsewhere.
+  const phrase = /(?:^|\s)in\s+(.+)/u.exec(title)?.[1].split(/\s[-–]\s|[,(]|\s(?:vs\.?|gegen)\s/u)[0];
+  if (phrase) {
+    const f = fold(phrase);
+    if (BONN_PLACES.some((p) => hasWhole(f, p))) return true;
+    if (/^\p{Lu}/u.test(phrase)) return false;
+  }
   return null;
 }
 
