@@ -11,11 +11,8 @@
   "sources": [
     {
       "exclude": [
-        "Sommerferien",
-        "Herbstferien",
-        "Weihnachtsferien",
-        "Osterferien",
-        "Feiertag"
+        "=Feiertag",
+        "=Ferien"
       ],
       "id": "termine",
       "note": "The Events Manager export of the club site (training, championships, meetings); also lists school holidays and cancelled trainings",

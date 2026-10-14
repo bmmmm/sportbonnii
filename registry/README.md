@@ -116,7 +116,7 @@ Before adding a club:
 | `note` | no | why the source looks the way it does; never shipped to the page |
 | `sports` | no | narrows the source to some of the club's sports (a department calendar) |
 | `tagMap` | no | `{ "<upstream tag>": "<sport id>" }` — assigns sports from the source's own categories |
-| `exclude` | no | case-insensitive texts; an event whose title or tags contain one is dropped |
+| `exclude` | no | case-insensitive texts; an event whose title or tags contain one is dropped — or, written `=Text`, whose whole title or one whole tag is that text (`=Ferien` drops the category „Ferien", not „Ferienprogramm") |
 | `params` | no | free-form settings, reserved for league/portal adapters |
 | `expectEmpty` | no | `true` when the source legitimately has no upcoming dates (the live test then accepts zero events) |
 | `kind` | no | `spiel`, `training` or `veranstaltung` — the kind for the source's dates whose title and tags name none (a calendar that only carries trainings, say) |

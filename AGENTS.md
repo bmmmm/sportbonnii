@@ -48,9 +48,11 @@ store index — run installs unsandboxed.
   `CONDITIONAL` (true only when one request stands for the source). A v2
   portal adapter is one file plus one entry in `ADAPTER_TYPES`.
 - `pipeline/model.mjs` — raw → events.json entry (Berlin times, caps,
-  `exclude`, sports from tagMap → keywords → club, club from aliases, ids,
-  `kind` from `eventKind`: title/tag rules, training > spiel, else the
-  source's `kind`, else veranstaltung; `home` from `homeGame` for games only:
+  `exclude` (substring, or `=` for a whole title/tag), sports from tagMap →
+  keywords → club, club from aliases, ids, `kind` from
+  `eventKind`: title/tag rules, training > celebration veto > spiel, else the
+  source's `kind`, else veranstaltung; `status` cancelled also from the title
+  („fällt aus", „entfällt", „abgesagt"); `home` from `homeGame` for games only:
   the title's own marker („auswärts", Away, Gast bei, Heim, Heimspiel,
   Heimturnier, Home), then the place — a club venue (`venueIndex`) or a Bonn
   postcode is home, another postcode away, else the word Bonn home —, then a

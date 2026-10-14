@@ -11,11 +11,10 @@
   "sources": [
     {
       "exclude": [
-        "Sommerferien",
-        "Herbstferien",
-        "Weihnachtsferien",
-        "Osterferien",
-        "Feiertag"
+        "=Herbstferien",
+        "=Osterferien",
+        "=Sommerferien",
+        "=Weihnachtsferien"
       ],
       "id": "termine",
       "note": "WordPress with The Events Calendar (found by detect); gymnastics competitions, meetings and school holidays — the volleyball department has no calendar here",

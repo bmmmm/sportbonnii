@@ -61,6 +61,10 @@ function hasWordEnd(hay, needle) {
   return false;
 }
 
+// "gegen" makes a match only before a team: a number ("den 1. FC") or a club abbreviation —
+// "Yoga gegen Rückenschmerzen" is none.
+const GEGEN_TEAM = /(?:^|\s)gegen\s+(?:(?:den|die|das)\s+)?(?:\d|(?:tus|tsv|tv|sv|fc|vfl|vfb|vfr|sc|sg|hsg|jsg|bsv|ssv|fsv|djk|spvgg|ttc|ttv|rk|rc|thc|hc|bc|mtv)\b)/;
+
 // A meeting place for a group is a social date, not a training ("Lauftreff" is one).
 const SOCIAL_TREFF = ['jugendtreff', 'seniorentreff'];
 
@@ -69,8 +73,9 @@ const TEAM_VS = /\b\d\.\s?(damen|herren|frauen|manner|mannschaft)\b.*\s[–-]\s/
 
 /**
  * What a date is for — 'training', 'spiel' or 'veranstaltung' (site/kinds.js)
- * — from its title and tags: a training word wins over a match word; with
- * neither, the source's own `kind` (a single-purpose feed), else an event.
+ * — from its title and tags: a training word wins over a match word, a
+ * celebration, trophy handover or board game is an event; with neither, the
+ * source's own `kind` (a single-purpose feed), else an event.
  */
 export function eventKind(title, tags = [], source = null) {
   const t = fold([title, ...tags].join(' \n '));
@@ -78,17 +83,19 @@ export function eventKind(title, tags = [], source = null) {
     || (hasWordEnd(t, 'treff') && !SOCIAL_TREFF.some((w) => hasWordEnd(t, w)))
     || hasWordStart(t, 'tryout') || hasWordStart(t, 'try-out')) return 'training';
   // A celebration, a trophy handover or a board game is no match, whatever else the title says.
-  if (['feier', 'ubergabe', 'brettspiel'].some((w) => t.includes(w))) return source?.kind ?? 'veranstaltung';
+  if (hasWordEnd(t, 'feier') || ['ubergabe', 'brettspiel'].some((w) => t.includes(w))) return 'veranstaltung';
   if (hasWordEnd(t, 'spiel') || hasWordEnd(t, 'spiele')
     || ['spieltag', 'turnier', 'tourney', 'meisterschaft', 'championship', 'pokal', 'wettkampf', 'regatta', 'ligatermin'].some((w) => t.includes(w))
-    || hasWordEnd(t, 'liga') || hasWordEnd(t, 'finale') || ['vs', 'derby', 'cup', 'game', 'match', 'gegen'].some((w) => hasWhole(t, w))
-    || TEAM_VS.test(t)) return 'spiel';
+    || hasWordEnd(t, 'liga') || hasWordEnd(t, 'finale') || ['vs', 'derby', 'cup', 'game', 'match'].some((w) => hasWhole(t, w))
+    || TEAM_VS.test(t) || GEGEN_TEAM.test(t)) return 'spiel';
   return source?.kind ?? 'veranstaltung';
 }
 
 // Bonn's postcodes, and the city with the districts a title may name ("Turnier in Beuel").
 const BONN_POSTCODE = /\b(5311[13579]|5312[13579]|5317[3579]|5322[579])\b/;
 const POSTCODE = /\b\d{5}\b/;
+const ARTICLE = /^(der|die|das|dem|den)$/i;
+const VENUE_WORD = /(halle|platz|park|stadion|zentrum|schule|arena|bad)$/;
 const BONN_PLACES = ['Bonn', 'Bad Godesberg', 'Godesberg', 'Beuel', 'Hardtberg', 'Duisdorf', 'Tannenbusch',
   'Rheinaue', 'Oberkassel', 'Geislar', 'Kessenich', 'Endenich', 'Poppelsdorf', 'Mehlem', 'Plittersdorf',
   'Friesdorf', 'Dottendorf', 'Lengsdorf', 'Ippendorf', 'Röttgen', 'Venusberg', 'Holzlar', 'Pützchen', 'Vilich',
@@ -118,12 +125,16 @@ export function homeGame(title, location, club, kind) {
     if (POSTCODE.test(l)) return false;
     if (hasWhole(l, 'bonn')) return true;
   }
-  // "… in <Ort>": a Bonn place anywhere in that phrase (up to a dash, comma, bracket, vs or gegen),
-  // else a capitalised word there is a place elsewhere.
-  const phrase = /(?:^|\s)in\s+(.+)/u.exec(title)?.[1].split(/\s[-–]\s|[,(]|\s(?:vs\.?|gegen)\s/u)[0];
+  // "… in <Ort>": past an article and venue words ("in der Sporthalle Beuel") the text starts with
+  // a Bonn place — home ("Bonn-Beuel" too, "Köln-Südstadt" not); a capitalised word right after
+  // "in" is a place elsewhere.
+  const phrase = /(?:^|\s)in\s+(.+)/u.exec(title)?.[1];
   if (phrase) {
-    const f = fold(phrase);
-    if (BONN_PLACES.some((p) => hasWhole(f, p))) return true;
+    const ws = phrase.split(/\s+/);
+    let i = ARTICLE.test(ws[0]) ? 1 : 0;
+    while (i < ws.length && VENUE_WORD.test(fold(ws[i]))) i++;
+    const rest = `${fold(ws.slice(i).join(' ')).replace(/[^\p{L}\p{N}\s-]/gu, ' ')} `;
+    if (BONN_PLACES.some((p) => rest.startsWith(`${p} `) || rest.startsWith(`${p}-`))) return true;
     if (/^\p{Lu}/u.test(phrase)) return false;
   }
   return null;
@@ -202,6 +213,10 @@ export function normalizeEvent(raw, { owner, kind: ownerKind, source, ctx, windo
   const tags = (raw.tags ?? []).map((t) => String(t).trim()).filter(Boolean);
   const foldedTitle = fold(title);
   if ((source.exclude ?? []).some((x) => {
+    if (x.startsWith('=')) {
+      const fx = fold(x.slice(1).trim());
+      return foldedTitle === fx || tags.some((t) => fold(t) === fx);
+    }
     const fx = fold(x);
     return foldedTitle.includes(fx) || tags.some((t) => fold(t).includes(fx));
   })) return null;

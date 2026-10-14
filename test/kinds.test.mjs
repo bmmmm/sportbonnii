@@ -45,7 +45,13 @@ const TITLES = [
   ['Brettspiele-Abend', 'veranstaltung'],
   ['Pokalübergabe im Rathaus', 'veranstaltung'],
   ['Meisterschaftsfeier der 1. Herren', 'veranstaltung'],
-  ['Saisonabschlussfeier mit Spielen', 'veranstaltung'],
+  ['Saisonabschlussfeier mit Turnier', 'veranstaltung'],
+  ['Feierabendliga Spieltag', 'spiel'],
+  ['Feiertagsturnier', 'spiel'],
+  ['Feierabend-Cup', 'spiel'],
+  ['Yoga gegen Rückenschmerzen', 'veranstaltung'],
+  ['Sport gegen Gewalt', 'veranstaltung'],
+  ['Damen gegen den 1. FC Köln', 'spiel'],
   ['U14 Game Day', 'spiel'],
   ['Match: Bonn Gamecocks – Cologne Falcons', 'spiel'],
   ['Herren gegen TuS Pützchen', 'spiel'],
@@ -59,6 +65,11 @@ test('eventKind: real titles', () => {
   const wrong = TITLES.filter(([title, kind]) => eventKind(title) !== kind).map(([title, kind]) => `${title}: ${eventKind(title)}, want ${kind}`);
   assert.deepEqual(wrong, []);
   for (const [, kind] of TITLES) assert.ok(KIND_IDS.includes(kind));
+});
+
+test('eventKind: the celebration veto beats a source kind', () => {
+  assert.equal(eventKind('Weihnachtsfeier', [], { kind: 'spiel' }), 'veranstaltung');
+  assert.equal(eventKind('Saisonabschluss', [], { kind: 'spiel' }), 'spiel', 'no veto word: the source kind');
 });
 
 test('eventKind: training beats a match word; tags count like the title', () => {

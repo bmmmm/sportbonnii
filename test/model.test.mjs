@@ -21,6 +21,15 @@ const raw = (o) => ({ uid: 'u1', recurrenceId: '', title: 'Training', descriptio
 const asClub = (o, source = clubSource) => normalizeEvent(raw(o), { owner: club, kind: 'club', source, ctx, window: WINDOW });
 const asPlatform = (o) => normalizeEvent(raw(o), { owner: platform, kind: 'platform', source: platform.sources[0], ctx, window: WINDOW });
 
+test('exclude: a text anywhere, or =text for a whole title or tag', () => {
+  const src = (exclude) => ({ ...clubSource, exclude });
+  assert.equal(asClub({ title: 'Halle gesperrt 27.-29.11.' }, src(['Halle gesperrt'])), null);
+  assert.equal(asClub({ title: 'Sommerferien', tags: ['Ferien'] }, src(['=Ferien'])), null, 'a whole tag');
+  assert.equal(asClub({ title: 'Herbstferien' }, src(['=herbstferien'])), null, 'a whole title, case folded');
+  assert.ok(asClub({ title: 'Training in den Sommerferien', tags: ['Training'] }, src(['=Ferien', '=Sommerferien'])), 'not a part of the title');
+  assert.ok(asClub({ title: 'Camp', tags: ['Ferienprogramm'] }, src(['=Ferien'])), 'not a part of a tag');
+});
+
 test('a title that calls the date off marks it cancelled', () => {
   assert.equal(asClub({ title: 'Training fällt aus' }).status, 'cancelled');
   assert.equal(asClub({ title: 'Jugendtraining entfällt' }).status, 'cancelled');
@@ -141,7 +150,20 @@ test('home: the title marker, then the club venue, Bonn, another postcode, a tit
   assert.equal(spiel('Spiel in Köln (Bonn II)'), false, 'at a bracket');
   assert.equal(spiel('Spiel in Köln vs. Bonn'), false, 'at vs');
   assert.equal(spiel('Spiel in Köln gegen Bonn'), false, 'at gegen');
-  assert.equal(spiel('Lauf in Hardthöhe und Ennert'), true);
+  assert.equal(spiel('Lauf in Hardthöhe und Ennert'), true, 'the phrase ends at und');
+  assert.equal(spiel('Waldlauf in Ennert'), true);
+  assert.equal(spiel('Turnier in der Sporthalle Beuel'), true, 'past an article and a venue word');
+  assert.equal(spiel('Turnier in Bonn-Beuel'), true);
+  assert.equal(spiel('Turnier in Hallenbad Beuel'), true);
+  assert.equal(spiel('Spiel in Köln-Südstadt'), false, 'a Bonn name as the second part of another place');
+  assert.equal(spiel('Spiel in Düsseldorf-Oberkassel'), false);
+  assert.equal(spiel('Turnier in Siegburg/Bonn'), false, 'only the start of the phrase counts');
+  assert.equal(spiel('Turnier in Beuel: Finale'), true, 'punctuation after the place');
+  assert.equal(spiel('Turnier in Beuel/Vilich'), true);
+  assert.equal(spiel('Spiel in Köln: Bonn Gamecocks vs Cologne'), false, 'at a colon');
+  assert.equal(spiel('Turnier in Kooperation mit dem TV Beuel'), false, 'at mit');
+  assert.equal(spiel('Lauf in der Kölner Südstadt'), null, 'after an article only a Bonn place says');
+  assert.equal(spiel('Spiel in der Halle'), null);
   assert.equal(spiel('Spiel in der Halle'), null, 'no capitalised place');
   // nothing says
   assert.equal(spiel('Hockey: 1. Damen – RTHC Leverkusen'), null);
