@@ -58,9 +58,11 @@ store index — run installs unsandboxed.
   the browser gate (frozen clock 2026-10-14, browser in America/New_York).
 - `.github/scripts/club-intake.mjs` + `.github/workflows/club-intake.yml` +
   `.github/ISSUE_TEMPLATE/verein-hinzufuegen.yml` — issue form → one-file PR.
-  Dormant until the GitHub repository variable `INTAKE_ENABLED=true` is set
-  (after "Allow GitHub Actions to create and approve pull requests" and the
-  labels `verein-vorschlag`, `needs-info`).
+  Live on GitHub (`INTAKE_ENABLED=true`, Actions may create PRs, labels
+  `verein-vorschlag` / `needs-info`). A bot PR's tests/Security runs wait for
+  approval (GitHub's guard for Actions-made PRs) — merge locally like
+  dependabot-adopt: fetch the PR head from `github`, merge, `pnpm test`,
+  push both remotes.
 - `test/` — `node:test`; captured live payloads under `test/fixtures/<adapter>/`,
   the page snapshot under `test/fixtures/site-data/`, the pinned feed
   `test/fixtures/ics/alle.ics`.

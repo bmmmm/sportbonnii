@@ -3,10 +3,12 @@ name: club intake
 # Issue form "Verein hinzufügen" → a pull request adding one registry entry.
 # Two steps with separate trust: validate reads the issue text (only through
 # the environment, never interpolated into a command) with no token at all;
-# publish holds the token and reads nothing but validate's JSON. Events made
-# with GITHUB_TOKEN never trigger workflows, so the bot's own labels, pushes
-# and PRs cannot loop (and tests.yml does not run on its PRs — validate
-# already checked the registry). Switched on by the repository variable
+# publish holds the token and reads nothing but validate's JSON. The bot's
+# own labels, pushes and PRs cannot loop. GitHub holds tests.yml and
+# security.yml on a PR the bot opened for approval ("action required"; after
+# the branch is rebuilt the held runs show as failed without a job) — the
+# validate step already checked the registry, and the merge happens locally
+# after `pnpm test` anyway. Switched on by the repository variable
 # INTAKE_ENABLED=true, set once "Allow GitHub Actions to create and approve
 # pull requests" is on and the labels verein-vorschlag and needs-info exist.
 # `labeled` is not a trigger: the form's own label would start a second run.
