@@ -13,12 +13,14 @@
 // Zero dependencies on purpose: the club-intake workflow runs this without
 // `pnpm install`.
 //
-// CLI: node pipeline/registry.mjs [--fmt]   (validate; --fmt rewrites every file canonically first)
-import { readFile, readdir, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+// CLI: node pipeline/registry.mjs [--fmt]   (validate; --fmt rewrites every file canonically first and,
+// once the registry is valid, regenerates docs/vereine.md)
+import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ADAPTER_TYPES } from './adapters/index.mjs';
 import { KIND_IDS, VENUE_USES } from '../site/kinds.js';
+import { renderOverview } from './overview.mjs';
 
 export const DISTRICTS = ['Bonn', 'Bad Godesberg', 'Beuel', 'Hardtberg'];
 export const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
@@ -41,6 +43,8 @@ export const VENUE_BOUNDS = { lat: [50.6, 50.8], lon: [7.0, 7.3] };
 export const OSM_REF = /^(node|way|relation)\/[1-9]\d*$/;
 
 export const REGISTRY_DIR = fileURLToPath(new URL('../registry/', import.meta.url));
+/** The generated club overview (pipeline/overview.mjs). */
+export const OVERVIEW_PATH = fileURLToPath(new URL('../docs/vereine.md', import.meta.url));
 
 /** Keys sorted at every level; arrays keep their order. */
 function sortKeys(value) {
@@ -397,10 +401,22 @@ export async function formatRegistry(dir = REGISTRY_DIR) {
   return changed;
 }
 
+/** Writes the overview of `reg` (loadRegistry's result) to `file` when its text differs. Returns whether it wrote. */
+export async function writeOverview(reg, file = OVERVIEW_PATH) {
+  const text = renderOverview(reg);
+  const current = await readFile(file, 'utf8').catch((e) => { if (e.code === 'ENOENT') return null; throw e; });
+  if (current === text) return false;
+  await mkdir(dirname(file), { recursive: true });
+  await writeFile(file, text);
+  return true;
+}
+
 async function main(argv) {
   try {
-    if (argv.includes('--fmt')) for (const path of await formatRegistry()) console.log(`rewrote registry/${path}`);
+    const fmt = argv.includes('--fmt');
+    if (fmt) for (const path of await formatRegistry()) console.log(`rewrote registry/${path}`);
     const reg = await loadRegistry();
+    if (fmt && await writeOverview(reg)) console.log('rewrote docs/vereine.md');
     const sources = [...reg.clubs, ...reg.platforms].flatMap((o) => o.sources);
     console.log(`registry ok: ${reg.clubs.length} clubs, ${reg.platforms.length} platforms, ${sources.length} sources, ${reg.sports.length} sports`);
   } catch (e) {

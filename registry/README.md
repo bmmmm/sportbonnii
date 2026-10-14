@@ -72,7 +72,9 @@ listed into an entry for that club.
 
 Before adding a club:
 
-1. Look for it under every name it goes by: `ls registry/clubs/` and
+1. Look for it under every name it goes by: the generated overview
+   [`docs/vereine.md`](../docs/vereine.md) (one row per club;
+   `pnpm run registry:fmt` rewrites it), `ls registry/clubs/` and
    `rg -i '<part of the name>' registry/`.
 2. Is it a department? Check the imprint, statutes or "Abteilung" on its
    site; if so, find the main club and add the sport (and the calendar, as
