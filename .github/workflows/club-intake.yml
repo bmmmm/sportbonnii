@@ -1,0 +1,49 @@
+name: club intake
+
+# Issue form "Verein hinzufügen" → a pull request adding one registry entry.
+# Two steps with separate trust: validate reads the issue text (only through
+# the environment, never interpolated into a command) with no token at all;
+# publish holds the token and reads nothing but validate's JSON. Events made
+# with GITHUB_TOKEN never trigger workflows, so the bot's own labels, pushes
+# and PRs cannot loop (and tests.yml does not run on its PRs — validate
+# already checked the registry). Switched on by the repository variable
+# INTAKE_ENABLED=true, set once "Allow GitHub Actions to create and approve
+# pull requests" is on and the labels verein-vorschlag and needs-info exist.
+# `labeled` is not a trigger: the form's own label would start a second run.
+
+on:
+  issues:
+    types: [opened, edited]
+
+permissions: {}
+
+concurrency:
+  group: club-intake-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
+jobs:
+  intake:
+    if: vars.INTAKE_ENABLED == 'true' && github.event.issue.state == 'open' && contains(github.event.issue.labels.*.name, 'verein-vorschlag')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    steps:
+      # No setup-node and no install: the intake script has no dependencies.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validate the suggestion
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: node .github/scripts/club-intake.mjs validate
+
+      - name: Open the pull request or ask for more
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: node .github/scripts/club-intake.mjs publish

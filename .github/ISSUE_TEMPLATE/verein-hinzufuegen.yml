@@ -1,0 +1,98 @@
+name: Verein hinzufügen
+description: Einen Bonner Sportverein und – wenn vorhanden – seinen Online-Kalender vorschlagen
+title: "Verein: "
+labels: [verein-vorschlag]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Alles, was du hier einträgst, ist öffentlich** – auch die Kontaktangabe.
+        Aus dem Formular entsteht automatisch ein Pull Request mit dem Eintrag für
+        das Vereinsverzeichnis; das Projekt prüft ihn und übernimmt ihn von Hand.
+
+        Hat der Verein einen Online-Kalender (iCal/Google-Kalender, WordPress-Veranstaltungen,
+        Gancio), trag die Seite ein, auf der er zu sehen ist – die Adresse dahinter wird
+        automatisch gesucht.
+
+  - type: input
+    id: name
+    attributes:
+      label: "Vereinsname"
+      placeholder: TV Musterstadt 1890 e.V.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: sports
+    attributes:
+      label: "Sportart(en)"
+      description: Mehrfachauswahl möglich.
+      multiple: true
+      options:
+        - "Fußball"
+        - "Basketball"
+        - "Handball"
+        - "Volleyball"
+        - "Hockey"
+        - "American Football"
+        - "Rugby"
+        - "Tennis"
+        - "Tischtennis"
+        - "Badminton"
+        - "Schwimmen"
+        - "Triathlon"
+        - "Kanu"
+        - "Rudern"
+        - "Leichtathletik & Laufen"
+        - "Turnen & Gymnastik"
+        - "Radsport"
+        - "Kampfsport"
+        - "Sonstiges"
+    validations:
+      required: true
+
+  - type: input
+    id: website
+    attributes:
+      label: Website
+      placeholder: https://www.tv-musterstadt.de/
+    validations:
+      required: true
+
+  - type: input
+    id: calendar
+    attributes:
+      label: Kalender-/Termin-URL
+      description: Die Seite mit den Terminen oder direkt die Kalender-Adresse (.ics, webcal://). Leer lassen, wenn es keine gibt.
+      placeholder: https://www.tv-musterstadt.de/termine/
+    validations:
+      required: false
+
+  - type: dropdown
+    id: district
+    attributes:
+      label: Stadtbezirk
+      options:
+        - Weiß nicht
+        - Bonn
+        - Bad Godesberg
+        - Beuel
+        - Hardtberg
+    validations:
+      required: false
+
+  - type: input
+    id: contact
+    attributes:
+      label: Kontakt
+      description: Optional und öffentlich sichtbar – für Rückfragen. Landet nicht im Verzeichnis.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: consent
+    attributes:
+      label: Bestätigung
+      options:
+        - label: Ich bin berechtigt, den Verein einzutragen (Mitglied, Vorstand oder mit dessen Einverständnis).
+          required: true
