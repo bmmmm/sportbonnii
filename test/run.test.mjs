@@ -6,8 +6,10 @@ import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, readFile, readdir, writeFile, copyFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { run, normalizeAll } from '../pipeline/run.mjs';
+import { firstPageUrl } from '../pipeline/adapters/tec.mjs';
 import { loadRegistry } from '../pipeline/registry.mjs';
 import { buildContext } from '../pipeline/model.mjs';
 import { canonicalJson, canonicalClubs } from '../pipeline/registry.mjs';
@@ -49,7 +51,7 @@ const REG = {
 };
 const opts = (outDir, registryDir, fetchImpl) => ({
   registryDir, outDir, now: NOW, fetchImpl, lookupImpl: async () => [{ address: '93.184.216.34', family: 4 }],
-  sleep: async () => {}, minGapMs: 0, previousStateUrl: undefined, log: () => {},
+  sleep: async () => {}, minGapMs: 0, previousStateUrl: undefined, build: null, log: () => {},
 });
 
 async function readOut(dir) {
@@ -157,4 +159,120 @@ test('normalizeAll: an item that throws is skipped with a warning, duplicates co
   assert.deepEqual(r.events.map((e) => e.title), ['Training']);
   assert.equal(r.warnings[0], 'w0');
   assert.match(r.warnings[1], /skipped an event \(b\)/);
+});
+
+/** fetch over a url → body table that tags every body with an ETag and answers 304 to a matching If-None-Match. */
+function conditionalFetch(table, log = []) {
+  return async (url, init) => {
+    const key = String(url);
+    log.push({ url: key, headers: init?.headers ?? {} });
+    if (key.endsWith('/robots.txt')) return new Response('', { status: 404 });
+    const body = table[key];
+    if (body === undefined) return new Response('nope', { status: 404 });
+    const etag = `"${createHash('sha256').update(body).digest('hex').slice(0, 8)}"`;
+    if (init?.headers?.['if-none-match'] === etag) return new Response(null, { status: 304, headers: { etag } });
+    return new Response(body, { headers: { etag } });
+  };
+}
+
+test('a 304 keeps a source untouched; validators are reused only for the same build and window', async () => {
+  const reg = await tempRegistry(REG);
+  const out = await mkdtemp(join(tmpdir(), 'sb-cond-'));
+  const table = { 'https://rc.example/k.ics': await fixture('ical/edge-cases.ics'), 'https://other.example/z.ics': await fixture('ical/vtimezone.ics') };
+  const log = [];
+  const base = { ...opts(out, reg, conditionalFetch(table, log)), build: 'abc123' };
+  const conditional = () => log.filter((l) => l.headers['if-none-match']).map((l) => l.url).sort();
+
+  const first = await run(base);
+  const files1 = await readOut(out);
+  assert.deepEqual(checkSiteData(files1), []);
+  assert.equal(JSON.parse(files1['meta.json']).build, 'abc123');
+  assert.match(first.status['rc-test/kalender'].etag, /^"[0-9a-f]{8}"$/);
+  assert.equal(first.status['rc-test/kalender'].changed, '2026-10-14');
+  assert.match(first.summary, /\| rc-test\/kalender \| ok \| \d+ \| new \| \d+ new, 0 modified \|/);
+  // zweit shares two dates with kalender and loses them to dedup: its delivery is not fully published.
+  const published = (res, key) => res.events.filter((e) => e.source === key).length;
+  assert.ok(published(first, 'rc-test/zweit') < first.status['rc-test/zweit'].count, 'the fixture pair must produce a dedup loser');
+  assert.equal(published(first, 'rc-test/kalender'), first.status['rc-test/kalender'].count);
+
+  // Same build, same window, next day: kalender is asked conditionally and answers 304;
+  // zweit is read in full (a 304 could not bring its dropped copies back) and is still not news.
+  log.length = 0;
+  const second = await run({ ...base, now: new Date('2026-10-15T10:00:00Z') });
+  assert.deepEqual(conditional(), ['https://rc.example/k.ics']);
+  assert.deepEqual(second.status, first.status, 'nothing moves in status.json — not even for the dedup loser');
+  assert.equal(second.events.length, first.events.length);
+  assert.match(second.summary, /\| rc-test\/kalender \| ok \| \d+ \| ±0 \| unchanged \(304\) \|/);
+  assert.match(second.summary, /\| rc-test\/zweit \| ok \| \d+ \| ±0 \| unchanged \|/);
+  assert.match(second.summary, /2 of 2 fetched source\(s\) without news/);
+  const files2 = await readOut(out);
+  for (const name of Object.keys(files1)) if (name !== 'meta.json') assert.equal(files2[name], files1[name], `${name} changed on a run without news`);
+
+  // The feed changes: the ETag no longer matches, the modified event moves `changed`.
+  log.length = 0;
+  const edited = { ...table, 'https://rc.example/k.ics': table['https://rc.example/k.ics'].replace('SUMMARY:', 'SUMMARY:Neu – ') };
+  const third = await run({ ...base, fetchImpl: conditionalFetch(edited, log), now: new Date('2026-10-15T16:00:00Z') });
+  assert.deepEqual(conditional(), ['https://rc.example/k.ics']);
+  assert.equal(third.status['rc-test/kalender'].changed, '2026-10-15');
+  assert.equal(third.status['rc-test/zweit'].changed, '2026-10-14', 'the untouched feed keeps its date');
+  assert.notEqual(third.status['rc-test/kalender'].etag, first.status['rc-test/kalender'].etag);
+  assert.match(third.summary, /\| rc-test\/kalender \| ok \| \d+ \| ±0 \| 0 new, [1-9]\d* modified \|/);
+
+  // Another build (a push): a full fetch, no validators sent, identical content is not news.
+  log.length = 0;
+  const fourth = await run({ ...base, fetchImpl: conditionalFetch(edited, log), build: 'def456', now: new Date('2026-10-15T22:00:00Z') });
+  assert.deepEqual(conditional(), []);
+  assert.equal(fourth.status['rc-test/kalender'].changed, '2026-10-15');
+  assert.match(fourth.summary, /\| rc-test\/kalender \| ok \| \d+ \| ±0 \| unchanged \|/);
+
+  // Same build, but the window moved (a new month): a full fetch (the window-extension rule for `changed` is pinned in merge.test).
+  log.length = 0;
+  await run({ ...base, fetchImpl: conditionalFetch(edited, log), build: 'def456', now: new Date('2026-11-02T10:00:00Z') });
+  assert.deepEqual(conditional(), []);
+
+  // No build known (a local run): never conditional, also not against a previous local run.
+  log.length = 0;
+  await run({ ...base, fetchImpl: conditionalFetch(edited, log), build: null, now: new Date('2026-11-02T16:00:00Z') });
+  assert.deepEqual(conditional(), []);
+  assert.equal(JSON.parse((await readOut(out))['meta.json']).build, undefined);
+  log.length = 0;
+  await run({ ...base, fetchImpl: conditionalFetch(edited, log), build: null, now: new Date('2026-11-02T22:00:00Z') });
+  assert.deepEqual(conditional(), []);
+});
+
+test('validators from the live site (PREVIOUS_STATE_URL) are reused on the same build', async () => {
+  const reg = await tempRegistry(REG);
+  const site = await mkdtemp(join(tmpdir(), 'sb-live-site-'));
+  const table = { 'https://rc.example/k.ics': await fixture('ical/edge-cases.ics'), 'https://other.example/z.ics': await fixture('ical/vtimezone.ics') };
+  await run({ ...opts(site, reg, conditionalFetch(table)), build: 'abc123' });
+  const live = {};
+  for (const n of ['events.json', 'status.json', 'meta.json']) live[`https://live.example/data/${n}`] = await readFile(join(site, n), 'utf8');
+  const log = [];
+  const fresh = await mkdtemp(join(tmpdir(), 'sb-live-fresh-'));
+  const conditional = () => log.filter((l) => l.headers['if-none-match']).map((l) => l.url);
+  const same = await run({ ...opts(fresh, reg, conditionalFetch({ ...table, ...live }, log)), previousStateUrl: 'https://live.example/data/', build: 'abc123', now: new Date('2026-10-15T10:00:00Z') });
+  assert.deepEqual(conditional(), ['https://rc.example/k.ics']);
+  assert.match(same.summary, /\| rc-test\/kalender \| ok \| \d+ \| ±0 \| unchanged \(304\) \|/);
+  log.length = 0;
+  const other = await mkdtemp(join(tmpdir(), 'sb-live-other-'));
+  await run({ ...opts(other, reg, conditionalFetch({ ...table, ...live }, log)), previousStateUrl: 'https://live.example/data/', build: 'def456', now: new Date('2026-10-15T10:00:00Z') });
+  assert.deepEqual(conditional(), [], 'another build reads everything again');
+});
+
+test('a multi-request adapter is never asked conditionally', async () => {
+  const reg = await tempRegistry({
+    clubs: [{ id: 'bsv-test', name: 'BSV Test', sports: ['fussball'], website: 'https://bsv.example/', sources: [{ id: 'tec', type: 'tec', url: 'https://bsv.example/wp-json/tribe/events/v1/events' }] }],
+    platforms: [],
+  });
+  const out = await mkdtemp(join(tmpdir(), 'sb-tec-'));
+  const table = { [firstPageUrl('https://bsv.example/wp-json/tribe/events/v1/events', { from: '2026-09-01', to: '2027-11-01' })]: await fixture('tec/bsvroleber.json') };
+  const log = [];
+  const base = { ...opts(out, reg, conditionalFetch(table, log)), build: 'abc123' };
+  const first = await run(base);
+  assert.equal(first.status['bsv-test/tec'].state, 'ok');
+  assert.match(first.status['bsv-test/tec'].etag, /^"[0-9a-f]{8}"$/, 'validators are still recorded');
+  log.length = 0;
+  const second = await run({ ...base, now: new Date('2026-10-15T10:00:00Z') });
+  assert.equal(log.filter((l) => l.headers['if-none-match']).length, 0);
+  assert.match(second.summary, /\| bsv-test\/tec \| ok \| \d+ \| ±0 \| unchanged \|/);
 });

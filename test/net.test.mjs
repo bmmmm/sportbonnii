@@ -179,3 +179,32 @@ test('the request budget counts get() calls, not robots.txt or redirect hops', a
   assert.equal((await net.get('https://b.example/b')).body, 'two');
   await assert.rejects(net.get('https://b.example/b'), /budget of 2 exhausted/);
 });
+
+test('conditional requests: validators are sent, a 304 is "not modified", a 200 carries the new validators', async () => {
+  const log = [];
+  const routes = {
+    'https://club.example/feed.ics': (init) => (init.headers['if-none-match'] === '"v1"'
+      ? new Response(null, { status: 304, headers: { etag: '"v1"' } })
+      : new Response('BEGIN:VCALENDAR', { headers: { etag: '"v1"', 'last-modified': 'Wed, 14 Oct 2026 07:58:42 GMT' } })),
+    'https://club.example/odd.ics': new Response(null, { status: 304 }),
+  };
+  const net = createNet(quiet({ fetchImpl: fakeFetch(routes, log) }));
+  const full = await net.get('https://club.example/feed.ics', { robots: false });
+  assert.equal(full.body, 'BEGIN:VCALENDAR');
+  assert.equal(full.etag, '"v1"');
+  assert.equal(full.lastModified, 'Wed, 14 Oct 2026 07:58:42 GMT');
+  assert.equal(full.notModified, undefined);
+  assert.equal(log.at(-1).init.headers['if-none-match'], undefined, 'no validators → no conditional headers');
+  const again = await net.get('https://club.example/feed.ics', { robots: false, ifNoneMatch: full.etag, ifModifiedSince: full.lastModified });
+  assert.equal(again.notModified, true);
+  assert.equal(again.status, 304);
+  assert.equal(again.body, null);
+  assert.equal(again.etag, '"v1"');
+  assert.equal(log.at(-1).init.headers['if-none-match'], '"v1"');
+  assert.equal(log.at(-1).init.headers['if-modified-since'], 'Wed, 14 Oct 2026 07:58:42 GMT');
+  // Node's default cache mode would add "Cache-Control: no-cache" to a conditional request, and Express then never answers 304.
+  assert.equal(log.at(-1).init.cache, 'no-cache');
+  assert.equal(log.at(-2).init.cache, undefined, 'a plain request keeps the default cache mode');
+  // A 304 nobody asked for is a broken server, not "unchanged".
+  await assert.rejects(net.get('https://club.example/odd.ics', { robots: false }), /HTTP 304 without a conditional request/);
+});

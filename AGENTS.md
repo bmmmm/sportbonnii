@@ -32,18 +32,27 @@ store index — run installs unsandboxed.
 - `pipeline/net.mjs` — the only network door: private-address check on every
   redirect hop, robots.txt for crawl requests (a source's own subscription
   feed is fetched like a calendar client — `get(url, { robots: false })`),
-  one request per host ≥ 1 s apart, 20 s / 10 MB / 5 redirects.
+  one request per host ≥ 1 s apart, 20 s / 10 MB / 5 redirects. Every answer
+  carries `etag`/`lastModified`; `get(url, { ifNoneMatch, ifModifiedSince })`
+  is conditional and resolves to `{ notModified: true }` on 304.
 - `pipeline/adapters/{ical,tec,gancio,jsonld,rss}.mjs` + `index.mjs` —
   `fetchEvents(source, ctx) → { events, warnings, partial? }` with raw events
-  (`startMs`/`endMs` UTC or `startDate`/`endDate` for all-day). A v2 portal
-  adapter is one file plus one entry in `ADAPTER_TYPES`.
+  (`startMs`/`endMs` UTC or `startDate`/`endDate` for all-day), plus
+  `CONDITIONAL` (true only when one request stands for the source). A v2
+  portal adapter is one file plus one entry in `ADAPTER_TYPES`.
 - `pipeline/model.mjs` — raw → events.json entry (Berlin times, caps,
   `exclude`, sports from tagMap → keywords → club, club from aliases, ids).
-- `pipeline/merge.mjs` — per-source state rules (ok / partial / error /
-  blocked / disabled, 7-day retention, drop-to-zero, all-failed) and
+- `pipeline/merge.mjs` — per-source state rules (ok / unchanged on 304 /
+  partial / error / blocked / disabled, 7-day retention, drop-to-zero,
+  all-failed), `changed` = the last run with a new or modified event (a
+  removal alone does not count), validators kept for ok answers, and
   cross-source dedup (own club source > platform, earlier > later).
 - `pipeline/run.mjs` — window (1st of last month … 1st of month +13),
-  previous state (local or `$PREVIOUS_STATE_URL`), outputs.
+  previous state (local or `$PREVIOUS_STATE_URL`, with meta.json's `build`),
+  conditional requests, outputs. The first request of a source carries the
+  previous validators only when `$BUILD_ID` (pages.yml: `github.sha`) equals
+  the previous build and the window is unchanged; a 304 keeps the source's
+  previous events. Locally `BUILD_ID` is unset, so every run fetches in full.
 - `pipeline/contract.mjs` — the exact text form of `site/data/*.json` and
   `checkSiteData`; `pipeline/tz.mjs` — Berlin wall clock via Intl;
   `pipeline/detect.mjs` — detection ladder + CLI.
@@ -74,6 +83,19 @@ store index — run installs unsandboxed.
 - Output is deterministic: events.json, status.json and the ICS feeds carry
   no timestamps (DTSTAMP = window start); meta.json is the only file with one.
   Two fetches on unchanged sources are byte-identical except meta.json.
+  status.json's `changed`, `etag` and `lastModified` move only when the
+  source does (`lastModified` is the server's validator, echoed verbatim).
+- Only sources with news are re-read: a 304 is honoured only against a state
+  the same build produced for the same window, only for single-request
+  adapters (`CONDITIONAL = true`: ical, gancio, jsonld — a 304 on TEC page 1
+  or an RSS feed would hide changes behind it), and only when events.json
+  holds the source's whole delivery (a dedup loser is read in full). A push
+  (new commit) refetches everything; so does a manual run with `full`.
+  Measured 2026-10-14: of the four live sources only bonn.jetzt sends an
+  ETag, and it answers 304 only with fetch's cache mode `no-cache` (net.mjs);
+  the content comparison behind `changed` needs no server support.
+  Known limits: a server with volatile validators makes status.json move
+  with it, and `changed` also moves when our own normalisation changes.
 - Times in events.json are Europe/Berlin wall clock with offset; all-day
   events are dates with an exclusive end. The page slices strings and never
   does timezone maths — the browser gate runs it in New York to prove it

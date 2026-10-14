@@ -91,6 +91,10 @@ test('the site-data snapshot honours the data contract', () => {
   // A timestamp anywhere but meta.json breaks byte-stable output.
   const stamped = { ...files, 'status.json': files['status.json'].replace('{\n', '{\n  "generatedAt": "2026-10-14",\n') };
   assert.match(checkSiteData(stamped).join(), /timestamp/);
+  // A disabled source has no news date and no validators.
+  const disabled = { ...files, 'status.json': files['status.json'].replace('"bonner-sc/spieltage": {\n', '"bonner-sc/spieltage": {\n    "changed": "2026-10-01",\n') };
+  assert.notEqual(disabled['status.json'], files['status.json']);
+  assert.match(checkSiteData(disabled).join(), /disabled but carries/);
   // Order is part of the contract.
   const lines = files['events.json'].split('\n');
   const swapped = [lines[0], lines[2].replace(/,$/, ''), lines[1].replace(/,$/, ''), ...lines.slice(3)];

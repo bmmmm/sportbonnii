@@ -7,6 +7,15 @@
 // Previous state: site/data/ when present, else $PREVIOUS_STATE_URL (the live
 // site); anything that fails the shape check is ignored.
 //
+// Only sources with news are re-read in full: a source whose last ok answer
+// carried an ETag or Last-Modified is asked conditionally and a 304 keeps
+// its previous events untouched. That reuse is allowed only when the previous
+// state was produced by the same build ($BUILD_ID, the commit — set by the
+// Pages workflow, unset locally) with the same window, so a registry or code
+// change always refetches everything. Change detection itself (`changed` in
+// status.json) compares the normalised events with their published version
+// and therefore works for servers without validators too.
+//
 // Prints a Markdown summary (the CI job summary) on stdout, warnings on
 // stderr. Exits non-zero only for an invalid registry or a write error.
 import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
@@ -30,22 +39,32 @@ export function windowFor(today) {
   return { from: addMonths(today, -1), to: addMonths(today, 13) };
 }
 
-/** Previous events/status if they pass the shape check, else null. */
-export function acceptPrevious(eventsDoc, statusDoc) {
+const DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Previous events/status if they pass the shape check, else null. The window
+ * and the build (meta.json, optional) decide whether validators may be reused.
+ */
+export function acceptPrevious(eventsDoc, statusDoc, metaDoc = null) {
   if (!eventsDoc || eventsDoc.version !== 1 || !Array.isArray(eventsDoc.events)) return null;
   if (eventsDoc.events.some((e) => checkEvent(e).length)) return null;
   if (!statusDoc || typeof statusDoc !== 'object' || Array.isArray(statusDoc)) return null;
   for (const s of Object.values(statusDoc)) {
-    if (!s || !STATES.includes(s.state) || !/^\d{4}-\d{2}-\d{2}$/.test(s.since)) return null;
+    if (!s || !STATES.includes(s.state) || !DATE.test(s.since)) return null;
   }
-  return { events: eventsDoc.events, status: statusDoc };
+  const w = eventsDoc.window;
+  const window = w && DATE.test(w.from) && DATE.test(w.to) ? { from: w.from, to: w.to } : null;
+  const build = typeof metaDoc?.build === 'string' && metaDoc.build ? metaDoc.build : null;
+  return { events: eventsDoc.events, status: statusDoc, window, build };
 }
 
 async function readPrevious({ outDir, previousStateUrl, fetchImpl, log }) {
+  const parse = async (name) => JSON.parse(await readFile(join(outDir, name), 'utf8'));
   try {
-    const ev = JSON.parse(await readFile(join(outDir, 'events.json'), 'utf8'));
-    const st = JSON.parse(await readFile(join(outDir, 'status.json'), 'utf8'));
-    const ok = acceptPrevious(ev, st);
+    const ev = await parse('events.json');
+    const st = await parse('status.json');
+    const meta = await parse('meta.json').catch(() => null);
+    const ok = acceptPrevious(ev, st, meta);
     if (ok) return { ...ok, from: 'local' };
     log(`previous state in ${outDir} failed the shape check — ignored`);
   } catch {
@@ -59,13 +78,38 @@ async function readPrevious({ outDir, previousStateUrl, fetchImpl, log }) {
       if (!r.ok) throw new Error(`HTTP ${r.status} for ${name}`);
       return r.json();
     };
-    const ok = acceptPrevious(await get('events.json'), await get('status.json'));
+    const ok = acceptPrevious(await get('events.json'), await get('status.json'), await get('meta.json').catch(() => null));
     if (ok) return { ...ok, from: base };
     log(`previous state at ${base} failed the shape check — ignored`);
   } catch (e) {
     log(`previous state not available (${e.message})`);
   }
   return null;
+}
+
+/** Thrown by a source's first request when the server answered 304 to our validators. */
+class NotModified extends Error {
+  constructor() {
+    super('not modified');
+    this.name = 'NotModified';
+  }
+}
+
+/**
+ * A `get` for one source: its first request carries the previous validators
+ * when `validators` is set and throws NotModified on a 304; the validators of
+ * the first answer are recorded in `box.validators` for the next run.
+ */
+function sourceGet(get, validators, box) {
+  let first = true;
+  return async (url, opts = {}) => {
+    if (!first) return get(url, opts);
+    first = false;
+    const res = await get(url, { ...opts, ...(validators ? { ifNoneMatch: validators.etag, ifModifiedSince: validators.lastModified } : {}) });
+    if (res.notModified) throw new NotModified();
+    box.validators = { etag: res.etag, lastModified: res.lastModified };
+    return res;
+  };
 }
 
 /** Interleave tasks by host so the parallel slots hit different hosts. */
@@ -94,8 +138,9 @@ async function pool(items, limit, fn) {
 
 /**
  * Run the pipeline. Options (all optional): registryDir, outDir, now (Date),
- * fetchImpl, lookupImpl, sleep, minGapMs, previousStateUrl, log, out.
- * Returns { events, status, summary, warnings }.
+ * fetchImpl, lookupImpl, sleep, minGapMs, previousStateUrl, build (the
+ * commit producing this data; default $BUILD_ID), log.
+ * Returns { events, status, summary, warnings, window }.
  */
 export async function run(opts = {}) {
   const {
@@ -104,6 +149,7 @@ export async function run(opts = {}) {
     now = new Date(),
     fetchImpl = globalThis.fetch,
     previousStateUrl = process.env.PREVIOUS_STATE_URL,
+    build = process.env.BUILD_ID || null,
     log = (m) => console.error(m),
   } = opts;
   const registry = await loadRegistry(registryDir);
@@ -113,6 +159,10 @@ export async function run(opts = {}) {
   const ctx = buildContext(registry);
   const previous = await readPrevious({ outDir, previousStateUrl, fetchImpl, log });
   log(previous ? `previous state: ${previous.events.length} events from ${previous.from}` : 'previous state: none (first run)');
+  // Validators may be reused only against a state the very same build produced for the same window.
+  const reusable = Boolean(build && previous && previous.build === build && previous.window
+    && previous.window.from === window.from && previous.window.to === window.to);
+  log(`conditional requests: ${reusable ? 'on' : 'off'} (build ${build ?? 'unknown'}, previous ${previous?.build ?? 'unknown'}, window ${previous?.window ? `${previous.window.from}…${previous.window.to}` : 'unknown'} → ${window.from}…${window.to})`);
 
   const owners = [
     ...registry.clubs.map((o) => ({ owner: o, kind: 'club' })),
@@ -133,11 +183,27 @@ export async function run(opts = {}) {
   }
 
   await pool(interleaveByHost(tasks), MAX_PARALLEL, async ({ key, owner, kind, source }) => {
+    const prev = previous?.status[key];
+    const box = { validators: null };
     let r;
     try {
       const adapter = await loadAdapter(source.type);
-      r = await adapter.fetchEvents(source, { window, today, get: net.get });
+      // Ask conditionally only where a 304 can stand for the whole source: a
+      // single-request adapter, validators from the last ok answer, and a
+      // published state that holds the source's entire delivery (an event
+      // that lost a dedup contest is not in events.json and could not be
+      // brought back from a 304).
+      const complete = prev && prev.count === previous.events.filter((e) => e.source === key).length;
+      const validators = reusable && adapter.CONDITIONAL === true && complete && (prev.etag || prev.lastModified)
+        ? { etag: prev.etag, lastModified: prev.lastModified }
+        : null;
+      r = await adapter.fetchEvents(source, { window, today, get: sourceGet(net.get, validators, box) });
     } catch (e) {
+      if (e instanceof NotModified) {
+        results.set(key, { state: 'ok', events: [], unchanged: true });
+        log(`${key}: not modified — previous events kept`);
+        return;
+      }
       const blocked = e instanceof NetError && e.kind === 'blocked';
       results.set(key, { state: blocked ? 'blocked' : 'error', events: [], error: e.message });
       log(`${key}: ${blocked ? 'blocked' : 'error'} — ${e.message}`);
@@ -145,7 +211,7 @@ export async function run(opts = {}) {
     }
     const { events, warnings: sink } = normalizeAll(r, { owner, kind, source, ctx, window });
     for (const w of sink) warnings.push(`${key}: ${w}`);
-    results.set(key, { state: r.partial ? 'partial' : 'ok', events, ...(r.partial ? { error: r.partial.reason } : {}) });
+    results.set(key, { state: r.partial ? 'partial' : 'ok', events, validators: box.validators, ...(r.partial ? { error: r.partial.reason } : {}) });
   });
 
   const known = { sportIds: new Set(registry.sports.map((s) => s.id)), clubIds: new Set(registry.clubs.map((c) => c.id)) };
@@ -153,7 +219,7 @@ export async function run(opts = {}) {
   warnings.push(...merged.warnings);
   if (merged.events.length > WARN_ABOVE) warnings.push(`${merged.events.length} events — above ${WARN_ABOVE}, the table starts to get heavy`);
 
-  await writeOutputs({ outDir, registry, window, events: merged.events, status: merged.status, now });
+  await writeOutputs({ outDir, registry, window, events: merged.events, status: merged.status, now, build });
   const summary = summarize({ results, merged, previous, order });
   for (const w of warnings) log(`warning: ${w}`);
   return { events: merged.events, status: merged.status, summary, warnings, window };
@@ -188,7 +254,7 @@ export function publicRegistry(registry) {
   return { clubs: registry.clubs.map(strip), platforms: registry.platforms.map(strip) };
 }
 
-async function writeOutputs({ outDir, registry, window, events, status, now }) {
+async function writeOutputs({ outDir, registry, window, events, status, now, build }) {
   const icsDir = join(outDir, 'ics');
   await mkdir(icsDir, { recursive: true });
   for (const f of await readdir(icsDir)) if (f.endsWith('.ics')) await rm(join(icsDir, f));
@@ -202,6 +268,7 @@ async function writeOutputs({ outDir, registry, window, events, status, now }) {
       checkedAt: now.toISOString(),
       sourcesOk: enabled.filter((s) => s.state === 'ok' || s.state === 'partial').length,
       sourcesTotal: enabled.length,
+      ...(build ? { build } : {}),
     }),
   };
   for (const [name, text] of Object.entries(files)) await writeFile(join(outDir, name), text);
@@ -219,27 +286,31 @@ async function writeOutputs({ outDir, registry, window, events, status, now }) {
 }
 
 function summarize({ results, merged, previous, order }) {
-  const prevCount = new Map();
-  for (const e of previous?.events ?? []) prevCount.set(e.source, (prevCount.get(e.source) ?? 0) + 1);
+  let unchanged = 0;
   const rows = [...order.keys()].map((key) => {
     const s = merged.status[key];
-    const before = prevCount.get(key) ?? 0;
+    // Delivered count against delivered count (events.json holds the dedup survivors only).
+    const before = previous?.status[key]?.count ?? 0;
     const delta = s.count - before;
     const sign = delta > 0 ? `+${delta}` : delta < 0 ? `−${-delta}` : '±0';
+    const n = merged.news[key];
+    const news = !n ? '' : n.unchanged ? 'unchanged (304)' : n.added || n.modified ? `${n.added} new, ${n.modified} modified` : 'unchanged';
+    if (n && !n.added && !n.modified) unchanged++;
     // Foreign error text goes into the CI job summary: code-quote it so it cannot become markup.
     const note = String(s.error ?? results.get(key)?.error ?? '').replace(/[`|\r\n]/g, ' ').slice(0, 200);
-    return `| ${key} | ${s.state} | ${s.count} | ${previous ? sign : 'new'} | ${note ? `\`${note}\`` : ''} |`;
+    return `| ${key} | ${s.state} | ${s.count} | ${previous ? sign : 'new'} | ${news} | ${note ? `\`${note}\`` : ''} |`;
   });
   const total = merged.events.length;
   const before = previous?.events.length ?? 0;
+  const fetched = Object.values(merged.status).filter((s) => s.state !== 'disabled').length;
   return [
     `## sportbonnii fetch — ${total} events${previous ? ` (${total - before >= 0 ? '+' : '−'}${Math.abs(total - before)})` : ''}`,
     '',
-    '| source | state | events | change | note |',
-    '| --- | --- | --- | --- | --- |',
+    '| source | state | events | change | news | note |',
+    '| --- | --- | --- | --- | --- | --- |',
     ...rows,
     '',
-    `${merged.dropped} cross-source duplicate(s) dropped${merged.allFailed ? ' · ALL SOURCES FAILED — previous events kept' : ''}`,
+    `${merged.dropped} cross-source duplicate(s) dropped · ${unchanged} of ${fetched} fetched source(s) without news${merged.allFailed ? ' · ALL SOURCES FAILED — previous events kept' : ''}`,
   ].join('\n');
 }
 

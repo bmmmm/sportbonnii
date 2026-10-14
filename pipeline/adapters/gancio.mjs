@@ -75,3 +75,6 @@ export async function fetchEvents(source, ctx) {
   const res = await ctx.get(requestUrl(source.url, ctx.window), { accept: 'application/json' });
   return parseGancio(res.body, new URL(source.url).origin);
 }
+
+/** One request per fetch: a 304 on it means the whole source is unchanged (run.mjs may ask conditionally). */
+export const CONDITIONAL = true;

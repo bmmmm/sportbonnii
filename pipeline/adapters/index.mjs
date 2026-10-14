@@ -5,7 +5,11 @@
 
 export const ADAPTER_TYPES = ['ical', 'tec', 'gancio', 'jsonld', 'rss'];
 
-/** The adapter module for `type`: `{ fetchEvents(source, ctx) → { events, warnings, partial? } }`. */
+/**
+ * The adapter module for `type`: `{ fetchEvents(source, ctx) → { events,
+ * warnings, partial? }, CONDITIONAL }` — CONDITIONAL is true only for
+ * single-request adapters, where a 304 on that request stands for the source.
+ */
 export async function loadAdapter(type) {
   if (!ADAPTER_TYPES.includes(type)) throw new Error(`unknown source type "${type}"`);
   return import(`./${type}.mjs`);

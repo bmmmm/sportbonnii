@@ -275,10 +275,14 @@ function describe(err, timeoutMs) {
 // --- the client --------------------------------------------------------------
 
 /**
- * A network client. `get(url, { accept, robots = true, timeoutMs, maxBytes })`
- * resolves to `{ body, url, status, contentType }` (url = after redirects) or
- * rejects with a NetError. Options: fetchImpl, lookupImpl, sleep, now,
- * minGapMs, timeoutMs, maxBytes, maxRedirects, httpsOnly, maxRequests.
+ * A network client. `get(url, { accept, robots = true, timeoutMs, maxBytes,
+ * ifNoneMatch, ifModifiedSince })` resolves to `{ body, url, status,
+ * contentType, etag, lastModified }` (url = after redirects; the validators
+ * are the response headers or null) or rejects with a NetError. With
+ * ifNoneMatch / ifModifiedSince the request is conditional and a 304 resolves
+ * to `{ notModified: true, status: 304, etag, lastModified, body: null }`.
+ * Options: fetchImpl, lookupImpl, sleep, now, minGapMs, timeoutMs, maxBytes,
+ * maxRedirects, httpsOnly, maxRequests.
  */
 export function createNet(opts = {}) {
   const {
@@ -315,19 +319,23 @@ export function createNet(opts = {}) {
    * One HTTP exchange (no redirect handling), body included: the host slot is
    * held until the body is read, so two requests to one host never overlap.
    */
-  async function exchange(url, { accept, clock, maxBytes, timeoutMs, truncate }) {
+  async function exchange(url, { accept, clock, maxBytes, timeoutMs, truncate, conditional }) {
     return onHost(new URL(url).host, async () => {
       // The timeout runs from the first moment this request holds a slot, not
       // from when it joined a queue behind other sources on the same host.
       clock.deadline ??= now() + timeoutMs;
       const deadline = clock.deadline;
+      const headers = { 'user-agent': USER_AGENT, accept };
+      if (conditional?.ifNoneMatch) headers['if-none-match'] = conditional.ifNoneMatch;
+      if (conditional?.ifModifiedSince) headers['if-modified-since'] = conditional.ifModifiedSince;
+      // A request carrying If-None-Match puts Node's fetch into cache mode
+      // "no-store", which adds "Cache-Control: no-cache" — and Express's
+      // fresh() reads that as "never answer 304" (measured on bonn.jetzt).
+      // Mode "no-cache" sends "max-age=0" instead and the 304 comes through.
+      const cache = conditional ? { cache: 'no-cache' } : {};
       let res;
       try {
-        res = await fetchImpl(url, {
-          redirect: 'manual',
-          headers: { 'user-agent': USER_AGENT, accept },
-          signal: AbortSignal.timeout(Math.max(1, deadline - now())),
-        });
+        res = await fetchImpl(url, { redirect: 'manual', headers, ...cache, signal: AbortSignal.timeout(Math.max(1, deadline - now())) });
       } catch (e) {
         throw new NetError(describe(e, timeoutMs));
       }
@@ -336,12 +344,19 @@ export function createNet(opts = {}) {
         void res.body?.cancel().catch(() => {});
         return { status: res.status, location };
       }
+      const validators = { etag: res.headers.get('etag'), lastModified: res.headers.get('last-modified') };
+      if (res.status === 304) {
+        void res.body?.cancel().catch(() => {});
+        // Only an answer to our own validators means "unchanged"; an unsolicited 304 is a broken server.
+        if (headers['if-none-match'] || headers['if-modified-since']) return { status: 304, notModified: true, ...validators };
+        throw new NetError('HTTP 304 without a conditional request');
+      }
       if (!res.ok) {
         void res.body?.cancel().catch(() => {});
         throw new NetError(`HTTP ${res.status}${res.statusText ? ` ${res.statusText}` : ''}`);
       }
       try {
-        return { status: res.status, body: await readCapped(res, maxBytes, truncate), contentType: res.headers.get('content-type') };
+        return { status: res.status, body: await readCapped(res, maxBytes, truncate), contentType: res.headers.get('content-type'), ...validators };
       } catch (e) {
         throw e instanceof NetError ? e : new NetError(describe(e, timeoutMs));
       }
@@ -349,14 +364,17 @@ export function createNet(opts = {}) {
   }
 
   /** GET following redirects by hand, every hop vetted. */
-  async function rawGet(url, { accept, timeoutMs = cfg.timeoutMs, maxBytes = cfg.maxBytes, robots, truncate = false }) {
+  async function rawGet(url, { accept, timeoutMs = cfg.timeoutMs, maxBytes = cfg.maxBytes, robots, truncate = false, conditional }) {
     const clock = { deadline: null };
     let current = url;
     for (let hop = 0; ; hop++) {
       await checkTarget(current, { lookupImpl, httpsOnly });
       if (robots) await assertRobots(current);
-      const res = await exchange(current, { accept, clock, maxBytes, timeoutMs, truncate });
-      if (res.location === undefined) return { body: res.body, url: current, status: res.status, contentType: res.contentType };
+      const res = await exchange(current, { accept, clock, maxBytes, timeoutMs, truncate, conditional });
+      if (res.notModified) return { notModified: true, body: null, url: current, status: 304, contentType: null, etag: res.etag, lastModified: res.lastModified };
+      if (res.location === undefined) {
+        return { body: res.body, url: current, status: res.status, contentType: res.contentType, etag: res.etag, lastModified: res.lastModified };
+      }
       if (hop >= cfg.maxRedirects) throw new NetError(`more than ${cfg.maxRedirects} redirects from ${url}`);
       try {
         current = new URL(res.location, current).toString();
@@ -385,9 +403,10 @@ export function createNet(opts = {}) {
   }
 
   return {
-    get(url, { accept = '*/*', robots = true, timeoutMs, maxBytes } = {}) {
+    get(url, { accept = '*/*', robots = true, timeoutMs, maxBytes, ifNoneMatch, ifModifiedSince } = {}) {
       if (++requests > maxRequests) return Promise.reject(new NetError(`request budget of ${maxRequests} exhausted`));
-      return rawGet(url, { accept, robots, timeoutMs, maxBytes });
+      const conditional = ifNoneMatch || ifModifiedSince ? { ifNoneMatch, ifModifiedSince } : undefined;
+      return rawGet(url, { accept, robots, timeoutMs, maxBytes, conditional });
     },
     get requestCount() {
       return requests;

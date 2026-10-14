@@ -77,7 +77,7 @@ function sourcesTable(owners, status, ctx) {
   const table = el('table', 'sources');
   const thead = el('thead');
   const hr = el('tr');
-  for (const h of ['Quelle', 'Art', 'Zustand', 'seit', 'Termine']) {
+  for (const h of ['Quelle', 'Art', 'Zustand', 'seit', 'Neues zuletzt', 'Termine']) {
     const th = el('th', null, h);
     th.scope = 'col';
     hr.append(th);
@@ -99,7 +99,9 @@ function sourcesTable(owners, status, ctx) {
       state.append(el('span', `state state-${st?.state === 'blocked' ? 'error' : st?.state ?? 'none'}`, words[st?.state] ?? '–'));
       if (st?.error) state.title = st.error;
       tr.append(name, el('td', 'muted', TYPE_LABEL[s.type] ?? s.type), state,
-        el('td', 'muted', st ? formatShortDate(st.since, refYear) : '–'), el('td', 'num', st ? String(st.count) : '–'));
+        el('td', 'muted', st ? formatShortDate(st.since, refYear) : '–'),
+        el('td', 'muted', st?.changed ? formatShortDate(st.changed, refYear) : '–'),
+        el('td', 'num', st ? String(st.count) : '–'));
       tbody.append(tr);
     }
   }

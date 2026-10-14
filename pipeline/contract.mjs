@@ -9,6 +9,9 @@ export const STATES = ['ok', 'partial', 'error', 'blocked', 'disabled'];
 export const STATUSES = ['confirmed', 'cancelled'];
 export const MAX_TITLE = 200;
 export const MAX_DESCRIPTION = 400;
+// status.json validators (response headers kept verbatim for the next conditional request).
+export const MAX_ETAG = 200;
+export const MAX_LAST_MODIFIED = 64;
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const DATETIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/;
@@ -131,16 +134,24 @@ export function checkSiteData(texts) {
     if (!Number.isInteger(s.count) || s.count < 0) errs.push(`status.json: ${key} count must be a non-negative integer`);
     if ('error' in s && (typeof s.error !== 'string' || s.error === '')) errs.push(`status.json: ${key} error must be text`);
     if ((s.state === 'error' || s.state === 'blocked') && !s.error) errs.push(`status.json: ${key} is ${s.state} without an error text`);
+    // Optional: the last run that brought news, and the validators for the next conditional request.
+    if ('changed' in s && !DATE.test(s.changed)) errs.push(`status.json: ${key} changed must be a date`);
+    if ('etag' in s && (typeof s.etag !== 'string' || s.etag === '' || s.etag.length > MAX_ETAG)) errs.push(`status.json: ${key} etag must be 1–${MAX_ETAG} characters`);
+    if ('lastModified' in s && (typeof s.lastModified !== 'string' || s.lastModified === '' || s.lastModified.length > MAX_LAST_MODIFIED)) errs.push(`status.json: ${key} lastModified must be 1–${MAX_LAST_MODIFIED} characters`);
+    if (s.state === 'disabled' && ('changed' in s || 'etag' in s || 'lastModified' in s)) errs.push(`status.json: ${key} is disabled but carries changed/etag/lastModified`);
   }
   for (const key of sourceKeys) if (!(key in status)) errs.push(`status.json: no entry for ${key}`);
 
   if (typeof meta.checkedAt !== 'string' || Number.isNaN(Date.parse(meta.checkedAt)) || !meta.checkedAt.endsWith('Z')) errs.push('meta.json: checkedAt must be a UTC ISO timestamp');
   if (!Number.isInteger(meta.sourcesOk) || !Number.isInteger(meta.sourcesTotal) || meta.sourcesOk > meta.sourcesTotal) errs.push('meta.json: sourcesOk ≤ sourcesTotal, both integers');
+  if ('build' in meta && (typeof meta.build !== 'string' || !/^[A-Za-z0-9._-]{1,64}$/.test(meta.build))) errs.push('meta.json: build must be a short identifier (the commit that produced the data)');
 
   for (const [name, doc] of [['status.json', status], ['clubs.json', clubs], ['sports.json', sports], ['meta.json', meta]]) {
     if (texts[name] !== formatJson(doc)) errs.push(`${name}: text is not in canonical form (sorted keys, 2-space indent)`);
   }
-  // Only meta.json may carry a timestamp: the other files must be byte-stable across runs.
+  // Only meta.json may carry a timestamp: the other files must be byte-stable
+  // across runs. (status.json's lastModified is a source's own validator,
+  // echoed verbatim — it moves only when that source changes.)
   for (const name of ['events.json', 'status.json', 'clubs.json', 'sports.json']) {
     if (/"(generatedAt|checkedAt|fetchedAt|updatedAt|timestamp)"/.test(texts[name])) errs.push(`${name}: carries a timestamp field (only meta.json may)`);
   }

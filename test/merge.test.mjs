@@ -2,7 +2,7 @@
 // cross-source dedup precedence.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mergeRun, dedupe, tokenOverlap, titleTokens } from '../pipeline/merge.mjs';
+import { mergeRun, dedupe, tokenOverlap, titleTokens, newsOf } from '../pipeline/merge.mjs';
 import { eventId } from '../pipeline/model.mjs';
 
 const WINDOW = { from: '2026-09-01', to: '2027-11-01' };
@@ -21,8 +21,49 @@ test('ok replaces, disabled is empty, since moves only on transitions', () => {
   const prev = { events: [ev(A, 'old')], status: { [A]: { state: 'ok', since: '2026-10-01', count: 1 } } };
   const r = run([[A, { state: 'ok', events: [ev(A, 'new')] }], [P, { state: 'disabled', events: [] }]], prev);
   assert.deepEqual(r.events.map((e) => e.id), [eventId(A, 'new')]);
-  assert.deepEqual(r.status[A], { state: 'ok', since: '2026-10-01', count: 1 });
+  assert.deepEqual(r.status[A], { state: 'ok', since: '2026-10-01', count: 1, changed: '2026-10-14' });
   assert.deepEqual(r.status[P], { state: 'disabled', since: '2026-10-14', count: 0 });
+});
+
+test('unchanged (304) keeps the previous events, since, changed and validators', () => {
+  const prev = {
+    events: [ev(A, 'x'), ev(B, 'y', { start: '2026-10-18T15:00:00+02:00' })],
+    status: {
+      [A]: { state: 'ok', since: '2026-10-01', count: 1, changed: '2026-10-03', etag: '"v1"', lastModified: 'Mon, 05 Oct 2026 10:00:00 GMT' },
+      [B]: { state: 'ok', since: '2026-10-01', count: 1, changed: '2026-10-03' },
+    },
+  };
+  const r = run([
+    [A, { state: 'ok', events: [], unchanged: true }],
+    [B, { state: 'ok', events: [ev(B, 'y', { start: '2026-10-18T15:00:00+02:00' })], validators: { etag: '"v2"', lastModified: null } }],
+  ], prev);
+  assert.deepEqual(r.status[A], { state: 'ok', since: '2026-10-01', count: 1, changed: '2026-10-03', etag: '"v1"', lastModified: 'Mon, 05 Oct 2026 10:00:00 GMT' });
+  assert.deepEqual(r.status[B], { state: 'ok', since: '2026-10-01', count: 1, changed: '2026-10-03', etag: '"v2"' });
+  assert.deepEqual(r.news[A], { added: 0, modified: 0, unchanged: true });
+  assert.deepEqual(r.news[B], { added: 0, modified: 0 });
+  assert.deepEqual(r.events.map((e) => e.id).sort(), [eventId(A, 'x'), eventId(B, 'y')].sort());
+});
+
+test('changed moves on a new or modified event, not on a removal; validators only from an ok fetch', () => {
+  const prev = { events: [ev(A, 'x'), ev(A, 'gone')], status: { [A]: { state: 'ok', since: '2026-10-01', count: 2, changed: '2026-10-03', etag: '"old"' } } };
+  const removed = run([[A, { state: 'ok', events: [ev(A, 'x')] }]], prev);
+  assert.equal(removed.status[A].changed, '2026-10-03', 'a removal alone is not news');
+  assert.equal(removed.status[A].etag, undefined, 'validators are never carried from the previous run');
+  assert.deepEqual(removed.news[A], { added: 0, modified: 0 });
+  const edited = run([[A, { state: 'ok', events: [ev(A, 'x', { title: 'Heimspiel (neu)' })] }]], prev);
+  assert.equal(edited.status[A].changed, '2026-10-14');
+  assert.deepEqual(edited.news[A], { added: 0, modified: 1 });
+  const added = run([[A, { state: 'partial', events: [ev(A, 'z', { start: '2026-10-19T15:00:00+02:00' })], error: 'page cap', validators: { etag: '"p"' } }]], prev);
+  assert.equal(added.status[A].changed, '2026-10-14');
+  assert.deepEqual(added.news[A], { added: 1, modified: 0 });
+  assert.equal(added.status[A].etag, undefined, 'a partial answer leaves no validators');
+  const failed = run([[A, { state: 'error', events: [], error: 'HTTP 500' }]], prev);
+  assert.equal(failed.status[A].changed, '2026-10-03', 'a failure carries changed');
+  assert.equal(failed.news[A], undefined);
+  const oversized = run([[A, { state: 'ok', events: [ev(A, 'x')], validators: { etag: 'x'.repeat(201), lastModified: 'y'.repeat(65) } }]], prev);
+  assert.equal(oversized.status[A].etag, undefined);
+  assert.equal(oversized.status[A].lastModified, undefined);
+  assert.deepEqual(newsOf([ev(A, 'x'), ev(A, 'n')], [ev(A, 'x', { title: 'alt' })]), { added: 1, modified: 1 });
 });
 
 test('partial merges with the previous events, the new version wins', () => {
@@ -131,4 +172,27 @@ test('a retained multi-day event that began before the window stays while it las
   const prev = { events: [camp], status: { [A]: { state: 'ok', since: '2026-08-01', count: 1 } } };
   const r = run([[A, { state: 'error', events: [], error: 'down' }], [B, { state: 'ok', events: [] }]], prev);
   assert.deepEqual(r.events.map((e) => e.id), [camp.id]);
+});
+
+test('a date that only entered the window this month is not news; a disabled source carries no changed', () => {
+  const future = ev(A, 'f', { start: '2027-11-05T15:00:00+01:00' });
+  assert.deepEqual(newsOf([ev(A, 'x'), future], [ev(A, 'x')], '2027-11-01'), { added: 0, modified: 0 });
+  assert.deepEqual(newsOf([ev(A, 'x'), future], [ev(A, 'x')]), { added: 1, modified: 0 });
+  const prev = { events: [ev(A, 'x')], status: { [A]: { state: 'ok', since: '2026-10-01', count: 1, changed: '2026-10-03' }, [P]: { state: 'ok', since: '2026-10-01', count: 0, changed: '2026-10-03' } }, window: { from: '2026-09-01', to: '2027-11-01' } };
+  const moved = mergeRun({ results: new Map([[A, { state: 'ok', events: [ev(A, 'x'), future] }], [P, { state: 'disabled', events: [] }]]), previous: prev, order, window: { from: '2026-10-01', to: '2027-12-01' }, today: '2026-11-02' });
+  assert.equal(moved.status[A].changed, '2026-10-03');
+  assert.deepEqual(moved.status[P], { state: 'disabled', since: '2026-11-02', count: 0 });
+});
+
+test('news is measured on the published events: a copy that loses dedup every run is never new', () => {
+  const own = ev(A, 'own', { title: 'Heimspiel gegen Köln' });
+  const copy = ev(P, 'copy', { club: 'rc-bonn-rhein-sieg', title: 'Heimspiel gegen Köln' });
+  const first = run([[A, { state: 'ok', events: [own] }], [P, { state: 'ok', events: [copy] }]], null);
+  assert.equal(first.dropped, 1);
+  assert.deepEqual(first.events.map((e) => e.source), [A]);
+  const prev = { events: first.events, status: first.status };
+  const second = mergeRun({ results: new Map([[A, { state: 'ok', events: [own] }], [P, { state: 'ok', events: [copy] }]]), previous: prev, order, window: WINDOW, today: '2026-10-15' });
+  assert.deepEqual(second.news[P], { added: 0, modified: 0 });
+  assert.equal(second.status[P].changed, '2026-10-14');
+  assert.deepEqual(second.status, first.status);
 });

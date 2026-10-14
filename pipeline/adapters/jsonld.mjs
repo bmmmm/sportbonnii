@@ -169,3 +169,6 @@ export async function fetchEvents(source, ctx) {
   const res = await ctx.get(source.url, { accept: 'text/html,application/xhtml+xml' });
   return extractJsonLdEvents(res.body, res.url);
 }
+
+/** One request per fetch: a 304 on it means the whole source is unchanged (run.mjs may ask conditionally). */
+export const CONDITIONAL = true;

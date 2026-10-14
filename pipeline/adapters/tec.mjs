@@ -166,3 +166,6 @@ export async function fetchEvents(source, ctx) {
   }
   return { events, warnings: warnings.list(), ...(partial ? { partial } : {}) };
 }
+
+/** Several requests per fetch (pages or item pages): a 304 on the first would hide changes behind it, so run.mjs never asks conditionally. */
+export const CONDITIONAL = false;

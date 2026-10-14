@@ -1,6 +1,8 @@
 {
   "bonn-jetzt/sport": {
+    "changed": "2026-10-12",
     "count": 7,
+    "etag": "W/\"3e3-//WH2G5iOjs2XkubknPN3dZvIuc\"",
     "since": "2026-10-01",
     "state": "ok"
   },
@@ -10,11 +12,13 @@
     "state": "disabled"
   },
   "bsv-roleber/tec": {
+    "changed": "2026-10-01",
     "count": 5,
     "since": "2026-10-01",
     "state": "ok"
   },
   "rc-bonn-rhein-sieg/kalender": {
+    "changed": "2026-10-13",
     "count": 11,
     "since": "2026-10-01",
     "state": "ok"

@@ -11,6 +11,11 @@ on:
   schedule:
     - cron: '23 4,10,16,22 * * *'
   workflow_dispatch:
+    inputs:
+      full:
+        description: 'Full fetch: ignore the stored validators, read every source again'
+        type: boolean
+        default: false
 
 permissions: {}
 
@@ -42,7 +47,15 @@ jobs:
       - name: Fetch club calendars
         env:
           PREVIOUS_STATE_URL: https://bmmmm.github.io/sportbonnii/data/
-        run: pnpm run fetch >> "$GITHUB_STEP_SUMMARY"
+          # The commit producing this data: a scheduled run on the same commit
+          # may ask the sources conditionally and keep what answered 304.
+          # A manual run with "full" drops the build id, so every source is
+          # read again (and the next scheduled run, seeing no build, too).
+          BUILD_ID: ${{ github.sha }}
+          FULL_FETCH: ${{ inputs.full }}
+        run: |
+          if [ "$FULL_FETCH" = "true" ]; then unset BUILD_ID; fi
+          pnpm run fetch >> "$GITHUB_STEP_SUMMARY"
       - run: pnpm run smoke
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0

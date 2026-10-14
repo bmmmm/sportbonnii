@@ -303,3 +303,6 @@ export async function fetchEvents(source, ctx) {
   if (!/^\s*BEGIN:VCALENDAR/i.test(body)) throw new Error('response is not an iCalendar document (no BEGIN:VCALENDAR)');
   return parseIcal(body, windowMs(ctx.window));
 }
+
+/** One request per fetch: a 304 on it means the whole source is unchanged (run.mjs may ask conditionally). */
+export const CONDITIONAL = true;

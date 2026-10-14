@@ -245,6 +245,10 @@ try {
   await open('#ansicht=vereine');
   const dirInfo = await evaluate(`({ result: document.getElementById('result').textContent, cards: document.querySelectorAll('.club').length, sources: document.querySelectorAll('table.sources tbody tr').length, zeit: document.getElementById('zeit-field').hidden, actions: document.getElementById('view-actions').hidden })`);
   check(dirInfo.result === `${clubs.length} Vereine` && dirInfo.cards >= clubs.length && dirInfo.sources === 5 && dirInfo.zeit && dirInfo.actions, `club directory: ${clubs.length} clubs, 5 sources listed`, `clubs: ${JSON.stringify(dirInfo)}`);
+  // The "Neues zuletzt" column shows status.json's `changed` as a short date, a dash without one (the two disabled sources).
+  const newsCol = await evaluate(`(() => { const th = [...document.querySelectorAll('table.sources thead th')].map((t) => t.textContent); const i = th.indexOf('Neues zuletzt'); return { i, cells: [...document.querySelectorAll('table.sources tbody tr')].map((tr) => [tr.children[0].textContent, tr.children[i]?.textContent]) }; })()`);
+  const jetzt = newsCol.cells.find(([name]) => name === 'bonn.jetzt')?.[1];
+  check(newsCol.i === 4 && jetzt === 'Mo., 12. Okt.' && newsCol.cells.filter(([, c]) => c === '–').length === 2 && newsCol.cells.filter(([, c]) => /^\w{2}\., \d{1,2}\. /.test(c)).length === 3, 'sources table: "Neues zuletzt" shows the changed date (bonn.jetzt: Mo., 12. Okt.), a dash for disabled sources', `news column: ${JSON.stringify(newsCol)}`);
   await evaluate(`document.querySelector('[data-show-club="bsv-roleber"]').click(), true`);
   await settle();
   check(await evaluate(`location.hash === '#verein=bsv-roleber' && document.getElementById('f-club').value === 'BSV Roleber'`) && await rows() === expectRows({ verein: 'bsv-roleber' }), '"Termine" on a club card filters the table to it', `club jump: ${await evaluate('location.hash')}`);

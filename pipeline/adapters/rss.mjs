@@ -99,3 +99,6 @@ export async function fetchEvents(source, ctx) {
   if (toFetch.length && !pagesWithEvents) warnings.push(`none of the ${toFetch.length} item pages carries schema.org Event JSON-LD`);
   return { events, warnings: warnings.list(), ...(partial ? { partial } : {}) };
 }
+
+/** Several requests per fetch (pages or item pages): a 304 on the first would hide changes behind it, so run.mjs never asks conditionally. */
+export const CONDITIONAL = false;
