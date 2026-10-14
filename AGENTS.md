@@ -16,7 +16,7 @@ pnpm run smoke            # scripts/web-smoke.mjs (site/data/ if present, else t
 pnpm run serve            # python3 scripts/serve.py 8765 site → http://127.0.0.1:8765/
 pnpm run gate:browser     # headless Chrome over CDP on the fixture snapshot — local, unsandboxed
 pnpm run detect <url>     # prints a registry source entry for any club URL — unsandboxed
-pnpm run registry:fmt     # rewrite registry/*.json canonically, then validate
+pnpm run registry:fmt     # rewrite registry/**/*.json canonically, validate, regenerate docs/vereine.md
 ```
 
 pnpm only (preinstall guard); `pnpm add <pkg>@latest`; the 3-day release
@@ -25,10 +25,17 @@ store index — run installs unsandboxed.
 
 ## Map
 
-- `registry/clubs.json`, `registry/sports.json` — the only input;
-  `registry/README.md` documents every field and has the fill-in template.
-- `pipeline/registry.mjs` — validator + canonical form (zero dependencies:
-  the intake bot runs it without install).
+- `registry/clubs/<id>.json` (one club each, optional `venues` ≤ 3 with
+  OSM ref/coordinates and `use`), `registry/platforms/<id>.json`,
+  `registry/sports.json` — the only input; a source may carry a fallback
+  `kind`. `registry/README.md` documents every field and has the fill-in
+  template.
+- `pipeline/registry.mjs` — `readRegistry`, validator, canonical form,
+  department guard (`nameKey`, `sameSite`, `departmentConflict`), `--fmt`
+  (zero dependencies: the intake bot runs it without install).
+- `pipeline/overview.mjs` → `docs/vereine.md` — the generated club overview
+  (one row per club: departments, district, venues, calendars, website);
+  a test pins it to the registry.
 - `pipeline/net.mjs` — the only network door: private-address check on every
   redirect hop, robots.txt for crawl requests (a source's own subscription
   feed is fetched like a calendar client — `get(url, { robots: false })`),
@@ -41,7 +48,9 @@ store index — run installs unsandboxed.
   `CONDITIONAL` (true only when one request stands for the source). A v2
   portal adapter is one file plus one entry in `ADAPTER_TYPES`.
 - `pipeline/model.mjs` — raw → events.json entry (Berlin times, caps,
-  `exclude`, sports from tagMap → keywords → club, club from aliases, ids).
+  `exclude`, sports from tagMap → keywords → club, club from aliases, ids,
+  `kind` from `eventKind`: title/tag rules, training > spiel, else the
+  source's `kind`, else veranstaltung).
 - `pipeline/merge.mjs` — per-source state rules (ok / unchanged on 304 /
   partial / error / blocked / disabled, 7-day retention, drop-to-zero,
   all-failed), `changed` = the last run with a new or modified event (a
@@ -60,13 +69,16 @@ store index — run installs unsandboxed.
   `app.js` (wiring), `data.js` (the only `fetch`), `state.js` (hash codec,
   filters, chip counts, the only `history.replaceState`), `dates.js`
   (string-part dates), `table.js`, `calendar.js` (calqrii's `monthGrid`),
-  `clubs.js`, `ics.js` (feed writer shared with the pipeline), favicon,
+  `clubs.js`, `ics.js` (feed writer shared with the pipeline), `kinds.js`
+  (event kinds and venue uses, shared with the pipeline), `venue.js`
+  (OpenStreetMap link), favicon,
   robots, sitemap. `site/data/` is generated and gitignored.
 - `scripts/web-smoke.mjs` — static gate; `PAGE_GRAPH` pins the module set
   (a new import is a one-line change there). `scripts/browser-gate/run.mjs` —
   the browser gate (frozen clock 2026-10-14, browser in America/New_York).
 - `.github/scripts/club-intake.mjs` + `.github/workflows/club-intake.yml` +
-  `.github/ISSUE_TEMPLATE/verein-hinzufuegen.yml` — issue form → one-file PR.
+  `.github/ISSUE_TEMPLATE/verein-hinzufuegen.yml` — issue form → PR with the
+  club file and the regenerated overview (path allowlist in `publishableFiles`).
   Live on GitHub (`INTAKE_ENABLED=true`, Actions may create PRs, labels
   `verein-vorschlag` / `needs-info`). A bot PR's tests/Security runs wait for
   approval (GitHub's guard for Actions-made PRs) — merge locally like
@@ -113,7 +125,14 @@ store index — run installs unsandboxed.
   snapshot under `test/fixtures/site-data/` and the pinned feed together.
 - The issue-form sport options equal the taxonomy labels (test-pinned); a
   label must not contain ", ".
-- UI copy is German; code, comments, commits and docs are English.
+- A department lives inside its club: a sport in the club's `sports` (a
+  department calendar is a source with `sports`), never an entry of its own.
+  The validator refuses equal names/aliases, a name that starts with another
+  club's name, and the same website (subdomains included); the intake bot
+  answers such a suggestion with needs-info. A merge conflict in
+  `docs/vereine.md`: take either side, then `pnpm run registry:fmt`.
+- UI copy is German (the generated `docs/vereine.md` counts as UI copy);
+  code, comments, commits and other docs are English.
 - No machine-local paths and no private hostnames in any tracked file
   (`test/repo.test.mjs`).
 - License GPL-3.0-or-later.
