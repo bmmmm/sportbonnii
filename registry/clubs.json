@@ -105,6 +105,26 @@
     {
       "active": true,
       "aliases": [
+        "Intake-Test (bitte ignorieren)"
+      ],
+      "id": "intake-test-bitte-ignorieren",
+      "name": "Intake-Test (bitte ignorieren)",
+      "sources": [
+        {
+          "id": "termine",
+          "type": "gancio",
+          "url": "https://bonn.jetzt/api/events"
+        }
+      ],
+      "sports": [
+        "radsport",
+        "leichtathletik"
+      ],
+      "website": "https://example.org/sportbonnii-intake-test"
+    },
+    {
+      "active": true,
+      "aliases": [
         "PSV Bonn"
       ],
       "id": "psv-bonn-tischtennis",
