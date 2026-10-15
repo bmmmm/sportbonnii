@@ -54,7 +54,8 @@ test('day mapping never uses the machine zone: 00:30 in Bonn is still the day be
     const { eventDays, formatShortDate } = await import('${dates}');
     const e = { start: '2026-10-31T00:30:00+01:00', end: '2026-10-31T02:00:00+01:00', allDay: false };
     const map = eventsByDay([e], ['2026-10-30', '2026-10-31']);
-    console.log(eventDays(e).join(' '), map.get('2026-10-30').length, map.get('2026-10-31').length, formatShortDate(eventDays(e)[0], 2026));`;
+    // One string: console.log colours numbers when the runner passes FORCE_COLOR down (a terminal run), never a string.
+    console.log([eventDays(e).join(' '), map.get('2026-10-30').length, map.get('2026-10-31').length, formatShortDate(eventDays(e)[0], 2026)].join(' '));`;
   for (const tz of ['America/New_York', 'UTC', 'Pacific/Honolulu', 'Asia/Tokyo']) {
     const out = execFileSync(process.execPath, ['--input-type=module', '-e', probe], { env: { ...process.env, TZ: tz } }).toString().trim();
     assert.equal(out, '2026-10-31 2026-10-31 0 1 Sa., 31. Okt.', tz);

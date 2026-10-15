@@ -18,9 +18,12 @@ view, once it is opened.
 ## Use
 
 - **Filter** by sport (chips), kind of date, home or away games, club, free
-  text and time range. The filter lives in the address
+  text and time range. The page opens on this week's home games; the
+  filter lives in the address
   (`#ansicht=karte&sport=rugby&ort=alle&zeit=monat`), so a view can be
-  shared as a link.
+  shared as a link. The choices of sport, kind, home/away and range are
+  also kept in the visitor's browser (nothing leaves the device), so a
+  bare address opens on them the next time.
 - **Subscribe** to all dates, one sport or one club as an `.ics` feed, or
   download the current filter as a file.
 - **Suggest a club** through the issue form *Verein hinzufügen*; a workflow

@@ -18,20 +18,30 @@ const sports = json('sports.json').sports;
 const ctx = { today: '2026-10-14', clubsById: new Map(clubs.map((c) => [c.id, c])), sportsById: new Map(sports.map((s) => [s.id, s])) };
 const known = { sportIds: new Set(sports.map((s) => s.id)), clubIds: new Set(clubs.map((c) => c.id)) };
 const state = (o) => ({ ...defaultState(), ...o });
-// Every date: no kind filter, home and away games — the baseline of the filter tests.
-const every = (o) => state({ art: [], ort: 'alle', ...o });
+// Every date: no kind filter, home and away games, from today on — the baseline of the filter tests.
+const every = (o) => state({ art: [], ort: 'alle', zeit: 'alle', ...o });
 const titles = (list) => list.map((e) => e.title);
 
 test('hash round trip keeps every field', () => {
-  const s = state({ ansicht: 'kalender', sport: ['fussball', 'tennis'], art: ['training', 'spiel'], ort: 'alle', verein: 'bsv-roleber', q: 'Camp & Spiel', zeit: 'woche', monat: '2026-11' });
+  const s = state({ ansicht: 'kalender', sport: ['fussball', 'tennis'], art: ['training', 'spiel'], ort: 'alle', verein: 'bsv-roleber', q: 'Camp & Spiel', zeit: 'monat', monat: '2026-11' });
   const hash = formatHash(s);
-  assert.equal(hash, '#ansicht=kalender&sport=fussball,tennis&art=training,spiel&ort=alle&verein=bsv-roleber&q=Camp%20%26%20Spiel&zeit=woche&monat=2026-11');
+  assert.equal(hash, '#ansicht=kalender&sport=fussball,tennis&art=training,spiel&ort=alle&verein=bsv-roleber&q=Camp%20%26%20Spiel&zeit=monat&monat=2026-11');
   assert.deepEqual(parseHash(hash, known), s);
   assert.equal(formatHash(defaultState()), '', 'defaults leave no hash');
-  assert.deepEqual([defaultState().art, defaultState().ort], [['spiel'], 'heim'], 'the page opens on home games');
-  assert.equal(formatHash(every({})), '#art=alle&ort=alle', 'no kind filter is spelled out');
+  assert.deepEqual([defaultState().art, defaultState().ort, defaultState().zeit], [['spiel'], 'heim', 'woche'], 'the page opens on this week\'s home games');
+  assert.equal(formatHash(every({})), '#art=alle&ort=alle&zeit=alle', 'no kind filter and no range are spelled out');
   assert.deepEqual(parseHash('#art=alle&ort=auswaerts', known), state({ art: [], ort: 'auswaerts' }));
   assert.deepEqual(parseHash(formatHash(every({})), known), every({}));
+});
+
+test('the default range is this week: "alle" is spelled out, a link without a range gets the week', () => {
+  assert.equal(formatHash(state({ zeit: 'alle' })), '#zeit=alle');
+  assert.equal(formatHash(state({ zeit: 'woche' })), '', 'the default range leaves no hash');
+  assert.equal(parseHash('#zeit=alle', known).zeit, 'alle');
+  assert.equal(parseHash('#sport=rugby', known).zeit, 'woche', 'old links open on this week too (accepted)');
+  const view = applyFilters(events, state({}), ctx);
+  assert.deepEqual(titles(view).sort(), ['Heimspiel gegen RK Heusenstamm', 'Kreisliga A: BSV Roleber – SV Beuel 06', 'Kreisliga B: BSV Roleber II – TuS Pützchen'], 'the default view: this week\'s home games');
+  assert.ok(view.every((e) => eventDays(e)[0] <= '2026-10-18'));
 });
 
 test('hash parsing drops what it does not know', () => {
@@ -93,7 +103,7 @@ test('home/away: only games, home includes the unknown, away only the recognised
   const training = applyFilters(events, every({ art: ['training'] }), ctx).length;
   assert.ok(training > 0);
   for (const ort of ['heim', 'auswaerts']) assert.equal(applyFilters(events, every({ art: ['training'], ort }), ctx).length, training, `${ort} leaves trainings alone`);
-  assert.deepEqual(applyFilters(events, state({}), ctx), applyFilters(events, every({ art: ['spiel'], ort: 'heim' }), ctx), 'the default view');
+  assert.deepEqual(applyFilters(events, state({}), ctx), applyFilters(events, every({ art: ['spiel'], ort: 'heim', zeit: 'woche' }), ctx), 'the default view');
   assert.equal(kindCounts(events, every({ ort: 'auswaerts' }), ctx).get('spiel'), away.length, 'the games chip counts the chosen side');
 });
 

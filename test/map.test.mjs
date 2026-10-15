@@ -94,7 +94,7 @@ test('venues: the place a date names, else the only fitting venue — never for 
 });
 
 test('places: venues of the clubs the filters leave, with their dates', () => {
-  const every = { ...defaultState(), art: [], ort: 'alle' };
+  const every = { ...defaultState(), art: [], ort: 'alle', zeit: 'alle' };
   const shown = applyFilters(events, every, ctx);
   const { places, elsewhere } = mapPlaces(shown, clubs, every);
   const withVenues = clubs.filter((c) => c.venues?.length);

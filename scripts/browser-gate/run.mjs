@@ -4,8 +4,10 @@
 // America/New_York — the page must still show Bonn dates and times.
 //
 // Checks: rows per sport chip and per kind chip equal what state.js computes
-// in Node, with the kind badges; the page opens on home games and "Auswärts"
-// shows the away games; a club the filters empty offers its whole calendar,
+// in Node, with the kind badges; the page opens on this week's home games and
+// "Auswärts" shows the away games; the visitor's filter choices come back on a
+// bare address, a link decides alone, a club link and a tampered value leave
+// them be; a club the filters empty offers its whole calendar,
 // a club link opens it unfiltered; a title opens its detail with a one-event
 // .ics, a place at a club venue opens the map there; the hash restores a view after a reload; the
 // weekly training after the DST end lands on Tuesday 19:00; 390 px shows
@@ -149,7 +151,9 @@ try {
   const ready = `document.body.classList.contains('is-ready')`;
   let loads = 0;
   // A fresh query per load: navigating to the same document with another hash would only fire hashchange.
-  async function open(hash = '') {
+  // The kept filter choices belong to the browser profile, not to a load: each load starts with none unless it is about them (`keep`).
+  async function open(hash = '', { keep = false } = {}) {
+    if (!keep) await evaluate(`try { localStorage.clear(); } catch {} true`);
     await t.send('Page.navigate', { url: `${BASE}index.html?load=${++loads}${hash}` });
     await sleep(150);
     if (!await waitFor(ready, 8000)) {
@@ -227,23 +231,23 @@ try {
   check((await ortInfo()).hidden, 'the home/away switch hides while games are not among the kinds', 'ort field shown for trainings only');
   // --- 2c. a club's whole calendar is never out of reach
   // The Gamecocks publish one training: the default view (home games) shows nothing, and says how to see it.
-  // With a range chosen too, the all-dates button lifts it as well; no button of its own.
-  await open('#verein=bonn-gamecocks&zeit=woche');
-  const gcAll = expectRows({ verein: 'bonn-gamecocks', art: [], ort: 'alle' });
+  // The default range (this week) is lifted by the all-dates button as well; no button of its own.
+  await open('#verein=bonn-gamecocks');
+  const gcAll = expectRows({ verein: 'bonn-gamecocks', art: [], ort: 'alle', zeit: 'alle' });
   const gcEmpty = await evaluate(`({ rows: document.querySelectorAll('#table tbody tr').length, hidden: document.querySelector('#table .empty-hidden')?.textContent, button: document.querySelector('#table [data-unfiltered]')?.textContent, actions: [...document.querySelectorAll('#table .empty-actions button')].map((b) => b.textContent) })`);
   check(gcAll === 1 && gcEmpty.rows === 0 && gcEmpty.hidden === '1 Termin ist durch Filter ausgeblendet.' && gcEmpty.button === '1 Termin von Bonn Gamecocks zeigen'
     && gcEmpty.actions.join('|') === '1 Termin von Bonn Gamecocks zeigen|Filter zurücksetzen',
     'a club view the filters empty says how many dates they hide and offers them (two buttons: all dates, reset)', `empty club view: ${JSON.stringify({ gcEmpty, gcAll })}`);
   await evaluate(`document.querySelector('#table [data-unfiltered]').click(), true`);
   await settle();
-  check(await evaluate('location.hash') === '#art=alle&ort=alle&verein=bonn-gamecocks' && await rows() === gcAll && await evaluate(`document.activeElement?.id`) === 'result',
-    'its button shows the club\'s whole calendar (#art=alle&ort=alle), focus on the count', `unfiltered: ${await evaluate('location.hash')} / ${await rows()} / ${await evaluate('document.activeElement?.id')}`);
+  check(await evaluate('location.hash') === '#art=alle&ort=alle&verein=bonn-gamecocks&zeit=alle' && await rows() === gcAll && await evaluate(`document.activeElement?.id`) === 'result',
+    'its button shows the club\'s whole calendar (#art=alle&ort=alle&zeit=alle), focus on the count', `unfiltered: ${await evaluate('location.hash')} / ${await rows()} / ${await evaluate('document.activeElement?.id')}`);
   // A club name in the table opens all of that club's dates, whatever the filters were.
-  await open('#sport=rugby&q=heim&zeit=woche');
+  await open('#sport=rugby&q=heim');
   await evaluate(`document.querySelector('#table tbody [data-club="rc-bonn-rhein-sieg"]').click(), true`);
   await settle();
-  const rcAll = expectRows({ verein: 'rc-bonn-rhein-sieg', art: [], ort: 'alle' });
-  check(await evaluate('location.hash') === '#art=alle&ort=alle&verein=rc-bonn-rhein-sieg' && await rows() === rcAll && rcAll > expectRows({ verein: 'rc-bonn-rhein-sieg' }) && await evaluate(`document.getElementById('f-q').value`) === ''
+  const rcAll = expectRows({ verein: 'rc-bonn-rhein-sieg', art: [], ort: 'alle', zeit: 'alle' });
+  check(await evaluate('location.hash') === '#art=alle&ort=alle&verein=rc-bonn-rhein-sieg&zeit=alle' && await rows() === rcAll && rcAll > expectRows({ verein: 'rc-bonn-rhein-sieg' }) && await evaluate(`document.getElementById('f-q').value`) === ''
     && await evaluate(`document.activeElement?.id`) === 'result',
     `a club name in the table opens all ${rcAll} of its dates (sport, search and range cleared, focus on the count)`, `club button: ${await evaluate('location.hash')} / ${await rows()}`);
 
@@ -282,8 +286,9 @@ try {
   })()`);
   check(one.vevents === 1 && one.summary && one.name === 'sportbonnii-heimspiel-gegen-rk-heusenstamm.ics', '"In meinen Kalender" saves exactly that one date', `one-event ics: ${JSON.stringify(one)}`);
   // A place that is no club venue stays text; one that is opens the Karte with that venue selected.
+  await open('#art=alle');
   const places2 = await evaluate(`[...document.querySelectorAll('#table tbody tr:not(.detail-row) .col-ort')].map((td) => [td.textContent, td.querySelector('[data-place]')?.dataset.place ?? null])`);
-  const wantPlaces = applyFilters(events, defaultState(), ctx).map((e) => [e.location, eventVenue(e, ctx.clubsById.get(e.club)) === -1 ? null : `${e.club}/${eventVenue(e, ctx.clubsById.get(e.club))}`]);
+  const wantPlaces = applyFilters(events, { ...defaultState(), art: [] }, ctx).map((e) => [e.location, eventVenue(e, ctx.clubsById.get(e.club)) === -1 ? null : `${e.club}/${eventVenue(e, ctx.clubsById.get(e.club))}`]);
   check(JSON.stringify(places2.map(([, id]) => id).sort()) === JSON.stringify(wantPlaces.map(([, id]) => id).sort()) && places2.some(([, id]) => id === null) && places2.some(([, id]) => id),
     'a place is a map button exactly where map.js finds a club venue', `places: ${JSON.stringify({ places2, wantPlaces })}`);
   await open();
@@ -295,14 +300,14 @@ try {
   await settle();
   await evaluate(`document.querySelector('#kind-chips [data-kind="training"]').click(), true`);
   await settle();
-  await evaluate(`document.querySelector('#f-zeit [data-zeit="woche"]').click(), true`);
+  await evaluate(`document.querySelector('#f-zeit [data-zeit="monat"]').click(), true`);
   await settle();
   await evaluate(`document.getElementById('tab-kalender').click(), true`);
   await settle();
   await evaluate(`document.querySelector('.cal-nav [data-nav]:not(:disabled)[aria-label^="Nächster"]').click(), true`);
   await settle();
   const hash = await evaluate('location.hash');
-  check(hash === '#ansicht=kalender&sport=rugby&art=training&zeit=woche&monat=2026-11', `filters write the hash (${hash})`, `hash after clicks: ${hash}`);
+  check(hash === '#ansicht=kalender&sport=rugby&art=training&zeit=monat&monat=2026-11', `filters write the hash (${hash})`, `hash after clicks: ${hash}`);
   await t.send('Page.reload', { ignoreCache: true });
   await sleep(150);
   await waitFor(ready, 8000);
@@ -312,6 +317,47 @@ try {
   'a reload restores view, month, sport and kind chips from the hash; the calendar marks the trainings', `after reload: ${JSON.stringify(restored)}`);
   await open('#ansicht=kalender&sport=quidditch&art=foo&monat=1999-01&verein=nope');
   check(await evaluate(`location.hash === '#ansicht=kalender&monat=1999-01' && document.querySelector('.cal-title').textContent === 'September 2026'`), 'unknown hash values are dropped, an out-of-window month clamps to the data', `stale link gives ${await evaluate('location.hash')} / ${await evaluate(`document.querySelector('.cal-title').textContent`)}`);
+
+  // --- 3b. the visitor's choices are kept in this browser; a bare address opens on them, a link decides alone
+  const KEPT_KEY = 'sportbonnii:auswahl';
+  const stored = () => evaluate(`localStorage.getItem(${JSON.stringify(KEPT_KEY)})`);
+  const choices = () => evaluate(`({ hash: location.hash, tab: document.querySelector('[role=tab][aria-selected=true]').dataset.view, zeit: document.querySelector('#f-zeit [aria-pressed=true]')?.dataset.zeit, ort: document.querySelector('#f-ort [aria-pressed=true]')?.dataset.ort, sports: [...document.querySelectorAll('#sport-chips [aria-pressed=true]')].map((b) => b.dataset.sport), rows: document.querySelectorAll('#table tbody tr').length, reset: !document.getElementById('reset').hidden })`);
+  await open();
+  const first = await choices();
+  check(first.zeit === 'woche' && first.hash === '' && first.rows === expectRows({}) && await stored() === null, 'a first visit opens on this week and keeps nothing', `first visit: ${JSON.stringify({ first, stored: await stored() })}`);
+  await evaluate(`document.querySelector('#f-zeit [data-zeit="monat"]').click(), true`);
+  await evaluate(`document.querySelector('#f-ort [data-ort="alle"]').click(), true`);
+  await settle();
+  const keptText = await stored();
+  check(keptText === '#ort=alle&zeit=monat', 'a chosen range and side are kept under one key', `kept: ${keptText}`);
+  await open('', { keep: true });
+  const back = await choices();
+  check(back.hash === '#ort=alle&zeit=monat' && back.zeit === 'monat' && back.ort === 'alle' && back.tab === 'tabelle' && back.rows === expectRows({ ort: 'alle', zeit: 'monat' }) && back.reset,
+    'a bare address opens on the kept choices and spells them out in the address', `return visit: ${JSON.stringify(back)}`);
+  await open('#sport=rugby', { keep: true });
+  const link = await choices();
+  check(link.hash === '#sport=rugby' && link.zeit === 'woche' && link.ort === 'heim' && link.sports.join() === 'rugby' && await stored() === keptText,
+    'a link decides alone: it ignores the kept choices and does not overwrite them', `link visit: ${JSON.stringify({ link, stored: await stored() })}`);
+  await open('', { keep: true });
+  await evaluate(`document.querySelector('#table tbody [data-club]').click(), true`);
+  await settle();
+  check(await evaluate('location.hash').then((h) => h.includes('&verein=') && h.includes('&zeit=alle')) && await stored() === keptText,
+    'a club link is a shortcut, not a choice: the kept choices stay', `after club link: ${await evaluate('location.hash')} / ${await stored()}`);
+  await open('', { keep: true });
+  await evaluate(`document.getElementById('reset').click(), true`);
+  await settle();
+  check(await stored() === null && await evaluate('location.hash') === '', '"Filter zurücksetzen" forgets the kept choices', `after reset: ${await stored()} / ${await evaluate('location.hash')}`);
+  await evaluate(`document.querySelector('#f-zeit [data-zeit="alle"]').click(), true`);
+  await settle();
+  const wide = await stored();
+  await evaluate(`document.querySelector('.brand').click(), true`);
+  await settle();
+  check(wide === '#zeit=alle' && await stored() === null && await evaluate('location.hash') === '', 'a click on the page name returns to the default and forgets too', `brand: ${wide} → ${await stored()} / ${await evaluate('location.hash')}`);
+  await evaluate(`localStorage.setItem(${JSON.stringify(KEPT_KEY)}, '#ansicht=karte&sport=quidditch&q=x&verein=nope&zeit=jahr'), true`);
+  await open('', { keep: true });
+  const tampered = await choices();
+  check(tampered.hash === '' && tampered.tab === 'tabelle' && tampered.zeit === 'woche' && !tampered.sports.length && requests.filter(isTile).length === 0,
+    'a tampered value gives the default: no view, search, club or unknown id is taken from it, no map tile loads', `tampered: ${JSON.stringify({ tampered, tiles: requests.filter(isTile).length })}`);
 
   // --- 4. the DST end: the Tuesday training stays on Tuesday 19:00
   await open('#ansicht=kalender&sport=rugby&art=alle');
@@ -327,7 +373,7 @@ try {
     const at = (d) => [...document.querySelectorAll('[data-date="' + d + '"] .cal-ev')].map((c) => c.textContent).filter((x) => x.includes('Mitternachtslauf'));
     return { d30: at('2026-10-30'), d31: at('2026-10-31') };
   })()`);
-  await open('#q=Mitternachtslauf&art=alle');
+  await open('#q=Mitternachtslauf&art=alle&zeit=alle');
   const nightRow = await evaluate(`({ date: document.querySelector('#table tbody tr .col-datum .date')?.textContent, time: document.querySelector('#table tbody tr .col-zeit .time')?.textContent })`);
   check(night.d30.length === 0 && night.d31.join() === '00:30Mitternachtslauf durch die Rheinaue' && nightRow.date === 'Sa., 31. Okt.' && nightRow.time === '00:30–02:00',
     'a 00:30 Bonn date stays on its Bonn day in New York (calendar and table)', `night probe: ${JSON.stringify({ night, nightRow })}`);
@@ -342,7 +388,7 @@ try {
   check(dayList.title === 'Montag, 26. Oktober 2026' && dayList.items.some((x) => x.startsWith('Herbst: Fußballcamp')), 'a day click lists that day (the camp on its first day)', `day list: ${JSON.stringify(dayList)}`);
 
   // --- 5. foreign text stays text
-  await open('#q=PSV');
+  await open('#q=PSV&zeit=alle');
   const xss = await evaluate(`({ text: document.querySelector('#table .col-titel .title')?.textContent ?? '', imgs: document.querySelectorAll('#table img, .cards img').length, alerts: globalThis.__alerts })`);
   check(xss.text.startsWith('<img src=x onerror=alert(1)>') && xss.imgs === 0 && xss.alerts === 0, 'an <img onerror> title renders as text, nothing executes', `xss probe: ${JSON.stringify(xss)}`);
 
@@ -401,7 +447,7 @@ try {
   check(newsCol.i === 4 && jetzt === 'Mo., 12. Okt.' && newsCol.cells.filter(([, c]) => c === '–').length === 2 && newsCol.cells.filter(([, c]) => /^\w{2}\., \d{1,2}\. /.test(c)).length === 3, 'sources table: "Neues zuletzt" shows the changed date (bonn.jetzt: Mo., 12. Okt.), a dash for disabled sources', `news column: ${JSON.stringify(newsCol)}`);
   await evaluate(`document.querySelector('[data-show-club="bsv-roleber"]').click(), true`);
   await settle();
-  check(await evaluate(`location.hash === '#art=alle&ort=alle&verein=bsv-roleber' && document.getElementById('f-club').value === 'BSV Roleber'`) && await rows() === expectRows({ verein: 'bsv-roleber', art: [], ort: 'alle' }), '"Termine" on a club card filters the table to all its dates', `club jump: ${await evaluate('location.hash')}`);
+  check(await evaluate(`location.hash === '#art=alle&ort=alle&verein=bsv-roleber&zeit=alle' && document.getElementById('f-club').value === 'BSV Roleber'`) && await rows() === expectRows({ verein: 'bsv-roleber', art: [], ort: 'alle', zeit: 'alle' }), '"Termine" on a club card filters the table to all its dates', `club jump: ${await evaluate('location.hash')}`);
 
   // --- 7b. the map: venues with their dates, tiles only once it is open
   check(requests.filter(isTile).length === 0, 'no map tile is requested before the Karte tab opens', `tiles before the map: ${requests.filter(isTile).length}`);
@@ -494,7 +540,7 @@ try {
     'a right drag and a move after the capture is lost leave the map; the box itself never scrolls', `pointer guards: marker ${mx0}→${mx1}→${mx2}, released ${released}, scroll ${JSON.stringify(scrolled)}`);
   await evaluate(`document.querySelector('.map-panel-where [data-club]').click(), true`);
   await settle();
-  check(await evaluate(`location.hash`) === '#art=alle&ort=alle&verein=bsv-roleber' && await rows() === expectRows({ verein: 'bsv-roleber', art: [], ort: 'alle' }), 'the club in the panel opens all its dates in the table', `map club jump: ${await evaluate('location.hash')}`);
+  check(await evaluate(`location.hash`) === '#art=alle&ort=alle&verein=bsv-roleber&zeit=alle' && await rows() === expectRows({ verein: 'bsv-roleber', art: [], ort: 'alle', zeit: 'alle' }), 'the club in the panel opens all its dates in the table', `map club jump: ${await evaluate('location.hash')}`);
   await open('#ansicht=karte&sport=rugby&ort=auswaerts');
   const rugbyAway = await evaluate(`[...document.querySelectorAll('#map .map-marker')].map((b) => [b.dataset.marker, b.textContent])`);
   check(JSON.stringify(rugbyAway) === JSON.stringify([['rc-bonn-rhein-sieg/0', '']]), 'the filters narrow the map (rugby, away: the venue without dates)', `rugby away: ${JSON.stringify(rugbyAway)}`);

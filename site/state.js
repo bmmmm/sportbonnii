@@ -7,7 +7,8 @@
 //
 // Defaults are left out, unknown values dropped, so every link stays valid
 // when the registry changes. The page opens on games (`art` = spiel) without
-// the recognised away games (`ort` = heim); `art=alle` lifts the kind filter.
+// the recognised away games (`ort` = heim) of this week (`zeit` = woche);
+// `art=alle` lifts the kind filter, `zeit=alle` the range.
 import { overlaps, rangeFor } from './dates.js';
 import { KIND_IDS } from './kinds.js';
 
@@ -19,7 +20,7 @@ const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
 const MAX_QUERY = 100;
 
 export function defaultState() {
-  return { ansicht: 'tabelle', sport: [], art: ['spiel'], ort: 'heim', verein: '', q: '', zeit: 'alle', monat: '' };
+  return { ansicht: 'tabelle', sport: [], art: ['spiel'], ort: 'heim', verein: '', q: '', zeit: 'woche', monat: '' };
 }
 
 const decode = (v) => {

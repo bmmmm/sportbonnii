@@ -1,15 +1,16 @@
 #!/usr/bin/env node
 // Gate over the shipped site/ (a port of calqrii's scripts/web-smoke.mjs):
 //
-//  1. forbidden patterns: no storage, no network outside data.js, no address-bar
-//     writes outside state.js, no code from strings, no HTML string sinks, no
-//     external resources
+//  1. forbidden patterns: no storage outside store.js, no network outside
+//     data.js, no address-bar writes outside state.js, no code from strings, no
+//     HTML string sinks, no external resources
 //  2. the meta CSP pinned directive by directive, per page
 //  3. nothing inline (the CSP would block it silently)
 //  4. every src/href relative and present
 //  5. the module graph equals PAGE_GRAPH; site/ holds exactly the shipped files
 //  6. data.js fetches relative data/ URLs only; state.js writes the address bar
-//     in one place, with replaceState (pushState once, for the brand's reset)
+//     in one place, with replaceState (pushState once, for the brand's reset);
+//     store.js keeps one namespaced key and nothing but get/set/remove on it
 //  7. ics.js reproduces the pinned feed
 //  8. data/*.json honour the contract (site/data/ when present, else the
 //     committed snapshot test/fixtures/site-data/), and the feeds exist
@@ -24,7 +25,7 @@ const site = join(root, 'site');
 const PAGES = { 'index.html': 'app.js' };
 // Each page's exact module set. A new import is a one-line change here.
 const PAGE_GRAPH = {
-  'index.html': ['app.js', 'data.js', 'state.js', 'dates.js', 'table.js', 'calendar.js', 'clubs.js', 'map.js', 'ics.js', 'kinds.js', 'venue.js'],
+  'index.html': ['app.js', 'data.js', 'state.js', 'store.js', 'dates.js', 'table.js', 'calendar.js', 'clubs.js', 'map.js', 'ics.js', 'kinds.js', 'venue.js'],
 };
 const MODULES = [...new Set(Object.values(PAGE_GRAPH).flat())];
 // Shipped modules outside every page graph, until a page imports them.
@@ -33,6 +34,7 @@ const STATIC = ['index.html', '404.html', 'style.css', 'archivo.woff2', 'favicon
 const SHIPPED = [...STATIC, ...MODULES, ...OTHER_MODULES];
 const NETWORK_MODULE = 'data.js';
 const ADDRESS_MODULE = 'state.js';
+const STORAGE_MODULE = 'store.js';
 const CSP = {
   'index.html': [
     ['default-src', "'none'"], ['script-src', "'self'"], ['style-src', "'self'"], ['font-src', "'self'"], ['img-src', "'self' data: https://tile.openstreetmap.org"],
@@ -51,7 +53,8 @@ const GAP = String.raw`(?:\s|/\*[\s\S]*?\*/|//[^\n]*\n)*`;
 // --- 1. forbidden patterns
 const textual = SHIPPED.filter((n) => /\.(html|css|js)$/.test(n));
 const forbidden = [
-  [/localStorage|sessionStorage|indexedDB|document\.cookie|cookieStore|serviceWorker|caches\./, 'storage API'],
+  [/sessionStorage|indexedDB|document\.cookie|cookieStore|serviceWorker|caches\./, 'storage API'],
+  [/localStorage/, `localStorage outside ${STORAGE_MODULE}`, (n) => n !== STORAGE_MODULE],
   [/history\.(go|back|forward)\b/, 'history navigation'],
   [/history\.(replaceState|pushState)|history\s*\[/, `address-bar write outside ${ADDRESS_MODULE}`, (n) => n !== ADDRESS_MODULE],
   [/location\.(hash|href|search|pathname)\s*=(?!=)/, 'address bar assignment'],
@@ -69,7 +72,7 @@ for (const name of textual) {
   const hits = forbidden.filter(([re, , applies = () => true]) => applies(name) && re.test(src)).map(([, what]) => what);
   if (hits.length) fail(`${name}: ${hits.join(', ')}`);
 }
-if (!failures) ok(`${textual.length} shipped text files: no storage, foreign network, address-bar write, HTML sink or external resource`);
+if (!failures) ok(`${textual.length} shipped text files: no stray storage, foreign network, address-bar write, HTML sink or external resource`);
 
 // --- 2. CSP, parsed the way a browser reads it
 for (const [page, required] of Object.entries(CSP)) {
@@ -169,6 +172,13 @@ for (const [page, entry] of Object.entries(PAGES)) {
   const dynamic = (state.match(/history\s*\[/g) || []).length;
   if (writes !== 1 || pushes !== 1 || dynamic) fail(`${ADDRESS_MODULE}: history.replaceState and history.pushState must appear exactly once each, never history[…] (found ${writes}, ${pushes}, ${dynamic})`);
   else ok(`${ADDRESS_MODULE} is the single address-bar writer`);
+  const store = read(STORAGE_MODULE);
+  const keys = [...store.matchAll(/\bconst KEY = '(sportbonnii:[a-z-]+)';/g)];
+  const uses = [...store.matchAll(/localStorage(?!\.(?:getItem|setItem|removeItem)\(KEY\b)/g)];
+  const storeCalls = (name) => (store.match(new RegExp(String.raw`localStorage\.${name}\(KEY\b`, 'g')) || []).length;
+  if (keys.length !== 1 || uses.length || storeCalls('getItem') !== 1 || storeCalls('setItem') !== 1 || storeCalls('removeItem') !== 1) {
+    fail(`${STORAGE_MODULE}: exactly one \`const KEY = 'sportbonnii:…'\` and localStorage only as getItem(KEY), setItem(KEY, …), removeItem(KEY) once each (found ${keys.length} keys, ${uses.length} other uses)`);
+  } else ok(`${STORAGE_MODULE} keeps one namespaced key (${keys[0][1]}) with getItem, setItem and removeItem on it`);
 }
 
 // --- 7. the feed writer reproduces the pinned feed

@@ -1,8 +1,9 @@
 // sportbonnii page: loads the generated data, keeps one filter state (mirrored
-// in the address hash by state.js), renders the views. DOM via createElement /
-// textContent only.
+// in the address hash by state.js; the visitor's filter choices also in store.js),
+// renders the views. DOM via createElement / textContent only.
 import { loadData } from './data.js';
 import { parseHash, formatHash, writeAddress, applyFilters, chipCounts, kindCounts, defaultState, fold, subscription } from './state.js';
+import { loadChoices, remember } from './store.js';
 import { berlinToday, formatCheckedAt, monthOf, addDays, formatMonth } from './dates.js';
 import { renderTable, el, PAGE } from './table.js';
 import { renderCalendar, eventsInMonth } from './calendar.js';
@@ -35,6 +36,12 @@ function update(patch, { push = false } = {}) {
   state = next;
   writeAddress(state, { push });
   render();
+}
+
+/** A filter the visitor chose (not a shortcut such as a club link): applied, and kept for the next visit. */
+function choose(patch) {
+  update(patch);
+  remember(patch);
 }
 
 // --- header ------------------------------------------------------------------
@@ -314,7 +321,7 @@ function saveFeed(events, name, file) {
 
 function renderClubsView() {
   const upcoming = new Map();
-  for (const e of applyFilters(data.events, { ...defaultState(), art: [], ort: 'alle' }, ctx)) if (e.club) upcoming.set(e.club, (upcoming.get(e.club) ?? 0) + 1);
+  for (const e of applyFilters(data.events, { ...defaultState(), art: [], ort: 'alle', zeit: 'alle' }, ctx)) if (e.club) upcoming.set(e.club, (upcoming.get(e.club) ?? 0) + 1);
   // Counts of upcoming dates, like the cards ("kommende Termine"); the hidden range, kind and home/away do not apply.
   renderChips(chipCounts(data.events, { ...state, zeit: 'alle', art: [], ort: 'alle' }, ctx));
   const shown = renderClubs($('clubs'), {
@@ -414,7 +421,7 @@ function showPlace(id) {
 
 function resetFilters() {
   const d = defaultState();
-  update({ sport: d.sport, art: d.art, ort: d.ort, verein: d.verein, q: d.q, zeit: d.zeit });
+  choose({ sport: d.sport, art: d.art, ort: d.ort, verein: d.verein, q: d.q, zeit: d.zeit });
   $('f-q').value = '';
 }
 
@@ -426,16 +433,16 @@ function bind() {
     const b = e.target.closest('[data-sport]');
     if (!b) return;
     const id = b.dataset.sport;
-    update({ sport: state.sport.includes(id) ? state.sport.filter((s) => s !== id) : [...state.sport, id] });
+    choose({ sport: state.sport.includes(id) ? state.sport.filter((s) => s !== id) : [...state.sport, id] });
   });
-  $('sport-clear').addEventListener('click', () => update({ sport: [] }));
+  $('sport-clear').addEventListener('click', () => choose({ sport: [] }));
   $('kind-chips').addEventListener('click', (e) => {
     const b = e.target.closest('[data-kind]');
     if (!b) return;
     const id = b.dataset.kind;
-    update({ art: state.art.includes(id) ? state.art.filter((k) => k !== id) : [...state.art, id] });
+    choose({ art: state.art.includes(id) ? state.art.filter((k) => k !== id) : [...state.art, id] });
   });
-  $('kind-clear').addEventListener('click', () => update({ art: [] }));
+  $('kind-clear').addEventListener('click', () => choose({ art: [] }));
 
   const club = $('f-club');
   const byName = () => new Map(data.clubs.map((c) => [clubLabel(c).toLowerCase(), c.id]));
@@ -458,11 +465,11 @@ function bind() {
 
   $('f-zeit').addEventListener('click', (e) => {
     const b = e.target.closest('[data-zeit]');
-    if (b) update({ zeit: b.dataset.zeit });
+    if (b) choose({ zeit: b.dataset.zeit });
   });
   $('f-ort').addEventListener('click', (e) => {
     const b = e.target.closest('[data-ort]');
-    if (b) update({ ort: b.dataset.ort });
+    if (b) choose({ ort: b.dataset.ort });
   });
   $('reset').addEventListener('click', resetFilters);
   $('download').addEventListener('click', download);
@@ -498,6 +505,7 @@ function bind() {
     $('subscribe').open = false;
     $('impressum').open = false;
     update(defaultState(), { push: true });
+    remember(defaultState()); // the way back to the default also forgets the saved choices
     $('f-q').value = '';
     window.scrollTo(0, 0);
   });
@@ -534,7 +542,9 @@ async function main() {
     return o;
   }));
   state = parseHash(location.hash, known());
-  writeAddress(state); // normalise a hand-edited or outdated link
+  // A link decides what it shows; only a bare address opens on what the visitor chose last time.
+  if (!location.hash.replace(/^#/, '')) state = { ...state, ...loadChoices(known()) };
+  writeAddress(state); // normalise a hand-edited or outdated link, and spell out the saved choices
   $('f-q').value = state.q;
   renderHeader();
   bind();

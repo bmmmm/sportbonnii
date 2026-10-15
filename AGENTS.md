@@ -32,8 +32,8 @@ store index — run installs unsandboxed.
 - `pipeline/registry.mjs` — `readRegistry`, validator, canonical form,
   department guard (`nameKey`, `sameSite`, `departmentConflict`), `--fmt`
   (zero dependencies: the intake bot skips `pnpm install`).
-- `pipeline/overview.mjs` → `docs/vereine.md` — the generated club overview
-  (one row per club); a test pins it to the registry.
+- `pipeline/overview.mjs` → `docs/vereine.md` — the generated club overview;
+  a test pins it to the registry.
 - `pipeline/net.mjs` — the only network door: private-address check on every
   redirect hop, robots.txt for crawl requests (a source's own subscription
   feed is fetched like a calendar client — `get(url, { robots: false })`),
@@ -65,7 +65,7 @@ store index — run installs unsandboxed.
   conditional requests, outputs. The first request of a source carries the
   previous validators only when `$BUILD_ID` (pages.yml: `github.sha`) equals
   the previous build and the window is unchanged; a 304 keeps
-  its events. Locally `BUILD_ID` is unset, so every run fetches in full.
+  its events. Locally (no `BUILD_ID`) every run fetches in full.
   A previous state from another build (or none known) is classified again
   (`refreshEvent`, see Known limits), so kept events follow today's rules.
 - `pipeline/contract.mjs` — the exact text form of `site/data/*.json` and
@@ -73,8 +73,8 @@ store index — run installs unsandboxed.
   `pipeline/detect.mjs` — detection ladder + CLI.
 - `site/` — shipped byte for byte: `index.html`, `404.html`, `style.css`,
   `app.js` (wiring), `data.js` (the only `fetch`), `state.js` (hash codec,
-  filters, chip counts, sole `history` writer), `dates.js`
-  (string-part dates), `table.js` (rows, cards, a detail row with a
+  filters, chip counts, sole `history` writer), `store.js` (kept filter
+  choices), `dates.js`, `table.js` (rows, cards, a detail row with a
   one-event .ics; a venue place opens the Karte), `calendar.js` (calqrii's `monthGrid`),
   `clubs.js`, `ics.js` (feed writer shared with the pipeline), `kinds.js`
   (event kinds and venue uses, shared with the pipeline), `venue.js`
@@ -82,9 +82,8 @@ store index — run installs unsandboxed.
   `map.js` (the Karte: its own slippy map on OSM tiles, venue
   markers, `mapPlaces`), `archivo.woff2` (the typeface, OFL: NOTICE), favicon,
   robots, sitemap. `site/data/` is generated and gitignored.
-- `scripts/web-smoke.mjs` — static gate; `PAGE_GRAPH` pins the module set
-  (a new import is a one-line change there). `scripts/browser-gate/run.mjs` —
-  the browser gate (frozen clock 2026-10-14, browser in America/New_York).
+- `scripts/web-smoke.mjs` — static gate; `PAGE_GRAPH` pins the module set.
+  `scripts/browser-gate/run.mjs` — the browser gate (frozen clock 2026-10-14, browser in America/New_York).
 - `.github/scripts/club-intake.mjs` + `.github/workflows/club-intake.yml` +
   `.github/ISSUE_TEMPLATE/verein-hinzufuegen.yml` — issue form → PR with the
   club file and the regenerated overview (path allowlist in `publishableFiles`).
@@ -102,10 +101,9 @@ store index — run installs unsandboxed.
   good state back from the live site, so a failing source keeps its dates.
 - Output is deterministic: events.json, status.json and the ICS feeds carry
   no run timestamp (DTSTAMP = window start); meta.json is the only file with
-  one. Two fetches on unchanged sources are byte-identical except meta.json.
-  status.json's `changed`, `etag` and `lastModified` describe the source, not
-  the run: `lastModified` is the server's validator echoed verbatim, and all
-  three move only when the source does.
+  one. status.json's `changed`, `etag` and `lastModified` describe the source,
+  not the run: `lastModified` is the server's validator echoed verbatim, and
+  all three move only when the source does.
 - Only sources with news are re-read: a 304 is honoured only against a state
   the same build produced for the same window, only for single-request
   adapters (`CONDITIONAL = true`: ical, gancio, jsonld — a 304 on TEC page 1
@@ -130,20 +128,22 @@ store index — run installs unsandboxed.
   (the snapshot's 00:30 night run is the day-mapping probe).
 - A TZID without VTIMEZONE, a Windows TZID or a floating time is Berlin wall
   clock, never UTC (ical.js would read it as UTC).
-- The page opens on games without the recognised away games (`art=spiel`,
-  `ort=heim`; a game whose side is unknown counts as home); `art=alle`
-  lifts the kind filter. Home/away only ever touches games. Old links without
-  `art` open on home games too (accepted).
+- The page opens on this week's home games (`art=spiel`, `ort=heim`,
+  `zeit=woche`; an unknown side counts as home); `art=alle` and `zeit=alle`
+  lift a filter. Home/away only ever touches games. Old links without them
+  open so too (accepted).
 - A club's whole calendar is always one click away: every club link
   (directory, table, calendar, map panel) opens it unfiltered
-  (`art=alle&ort=alle`, no sport, search or range), and an empty view says
+  (`art=alle&ort=alle&zeit=alle`, no sport or search), and an empty view says
   how many dates the filters hide and offers them.
 - The page: no external resources except OpenStreetMap tiles in the Karte
   view (`img-src` admits `https://tile.openstreetmap.org` only; no tile before
-  the tab opens; no `referrer` meta — the tile policy needs the Referer; the
-  browser gate answers tiles locally), the meta CSP pinned per directive,
-  `createElement`/`textContent` only, sport colours via `style.setProperty`,
-  no storage. Foreign text is always text.
+  the tab opens; no `referrer` meta — the tile policy needs the Referer), the
+  meta CSP pinned per directive, `createElement`/`textContent` only, sport
+  colours via `style.setProperty`. Foreign text is always text.
+- Storage: `store.js` only, one key: sport, kind, side, range (no club,
+  search, month, view). A bare address opens on it, a link decides alone,
+  reset and the brand forget; index.html's privacy note says so.
 - Changing the data contract means changing `pipeline/contract.mjs`, the
   snapshot under `test/fixtures/site-data/` and the pinned feed together.
 - The issue-form sport options equal the taxonomy labels (test-pinned); a
