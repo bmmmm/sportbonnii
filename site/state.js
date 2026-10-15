@@ -1,6 +1,7 @@
 // Filter state: the hash codec, the filters, the chip counts. Pure apart from
 // writeAddress — the one place on the page that touches the address bar
-// (history.replaceState, so filtering never floods the back button).
+// (history.replaceState, so filtering never floods the back button; only the
+// brand's reset pushes, so Back returns to the view it left, as after a reload).
 //
 //   #ansicht=kalender&sport=fussball,tennis&art=spiel,training&ort=alle&verein=bsv-roleber&q=camp&zeit=woche&monat=2026-11
 //
@@ -146,9 +147,11 @@ export function subscription(state, ctx) {
   return null;
 }
 
-/** The single address-bar writer. */
-export function writeAddress(state) {
+/** The single address-bar writer; `push` adds a history entry instead of replacing this one. */
+export function writeAddress(state, { push = false } = {}) {
   const hash = formatHash(state);
   const url = `${location.pathname}${location.search}${hash}`;
-  if (`${location.pathname}${location.search}${location.hash}` !== url) history.replaceState(null, '', url);
+  if (`${location.pathname}${location.search}${location.hash}` === url) return;
+  if (push) history.pushState(null, '', url);
+  else history.replaceState(null, '', url);
 }

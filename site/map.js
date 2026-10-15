@@ -79,7 +79,7 @@ export function zoomView(view, z, px, py, { width, height }) {
 
 // --- the slippy map ----------------------------------------------------------------
 
-const translate = (node, x, y) => node.style.setProperty('transform', `translate(${Math.round(x)}px, ${Math.round(y)}px)`);
+const translate = (node, x, y, k = 1) => node.style.setProperty('transform', `translate(${Math.round(x)}px, ${Math.round(y)}px)${k === 1 ? '' : ` scale(${k})`}`);
 
 /**
  * A map in `box`: { setMarkers(markers, { fit }), view() }. markers:
@@ -112,13 +112,18 @@ export function createMap(box, { onSelect }) {
   let fitPending = true;
   let markers = [];
   const imgs = new Map();
+  const ready = new WeakSet(); // tiles loaded and decoded
+  const backdrop = new Map(); // img → its zoom
   const size = () => ({ width: root.clientWidth, height: root.clientHeight });
 
   function draw() {
     const s = size();
     if (!s.width || !s.height) return;
     if (fitPending || !view) { view = fitView(markers, s); fitPending = false; }
+    const left = view.cx - s.width / 2;
+    const top = view.cy - s.height / 2;
     const want = new Set();
+    let loading = false;
     for (const t of visibleTiles(view, s)) {
       const key = `${t.z}/${t.x}/${t.y}`;
       want.add(key);
@@ -129,14 +134,32 @@ export function createMap(box, { onSelect }) {
         img.draggable = false;
         img.decoding = 'async';
         img.src = `${TILE_URL}${key}.png`;
+        img.decode().catch(() => {}).then(() => { ready.add(img); redraw(); });
         imgs.set(key, img);
         tiles.append(img);
       }
+      if (backdrop.delete(img)) tiles.append(img); // back on top of any backdrop
       translate(img, t.left, t.top);
+      if (!ready.has(img)) loading = true;
     }
-    for (const [key, img] of imgs) if (!want.has(key)) { img.remove(); imgs.delete(key); }
-    const left = view.cx - s.width / 2;
-    const top = view.cy - s.height / 2;
+    // A zoom never shows an empty map: the loaded tiles of the zooms before stay
+    // underneath, scaled to this one, until this zoom's own tiles are in.
+    let restack = false;
+    for (const [key, img] of imgs) {
+      if (want.has(key)) continue;
+      const [z, x, y] = key.split('/').map(Number);
+      const k = 2 ** (view.z - z);
+      const tl = x * TILE * k - left;
+      const tt = y * TILE * k - top;
+      const onScreen = tl < s.width && tt < s.height && tl + TILE * k > 0 && tt + TILE * k > 0;
+      if (loading && z !== view.z && ready.has(img) && onScreen) {
+        if (!backdrop.has(img)) { backdrop.set(img, z); restack = true; }
+        translate(img, tl, tt, k);
+      } else { img.remove(); imgs.delete(key); backdrop.delete(img); }
+    }
+    // Under the current tiles; of the backdrop the zoom nearest the view lies on top.
+    const near = (img) => -Math.abs(backdrop.get(img) - view.z);
+    if (restack) tiles.prepend(...[...backdrop.keys()].sort((a, b) => near(a) - near(b)));
     for (const m of markers) {
       const p = project(m.lat, m.lon, view.z);
       translate(m.node, p.x - left, p.y - top);

@@ -73,7 +73,7 @@ store index — run installs unsandboxed.
   `pipeline/detect.mjs` — detection ladder + CLI.
 - `site/` — shipped byte for byte: `index.html`, `404.html`, `style.css`,
   `app.js` (wiring), `data.js` (the only `fetch`), `state.js` (hash codec,
-  filters, chip counts, the only `history.replaceState`), `dates.js`
+  filters, chip counts, sole `history` writer), `dates.js`
   (string-part dates), `table.js` (rows, cards, a detail row with a
   one-event .ics per title; a venue place opens the Karte), `calendar.js` (calqrii's `monthGrid`),
   `clubs.js`, `ics.js` (feed writer shared with the pipeline), `kinds.js`

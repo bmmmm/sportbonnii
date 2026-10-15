@@ -9,7 +9,7 @@
 //  4. every src/href relative and present
 //  5. the module graph equals PAGE_GRAPH; site/ holds exactly the shipped files
 //  6. data.js fetches relative data/ URLs only; state.js writes the address bar
-//     exactly once, with replaceState
+//     in one place, with replaceState (pushState once, for the brand's reset)
 //  7. ics.js reproduces the pinned feed
 //  8. data/*.json honour the contract (site/data/ when present, else the
 //     committed snapshot test/fixtures/site-data/), and the feeds exist
@@ -52,8 +52,8 @@ const GAP = String.raw`(?:\s|/\*[\s\S]*?\*/|//[^\n]*\n)*`;
 const textual = SHIPPED.filter((n) => /\.(html|css|js)$/.test(n));
 const forbidden = [
   [/localStorage|sessionStorage|indexedDB|document\.cookie|cookieStore|serviceWorker|caches\./, 'storage API'],
-  [/history\.(pushState|go|back|forward)\b/, 'history navigation'],
-  [/history\.replaceState/, `address-bar write outside ${ADDRESS_MODULE}`, (n) => n !== ADDRESS_MODULE],
+  [/history\.(go|back|forward)\b/, 'history navigation'],
+  [/history\.(replaceState|pushState)|history\s*\[/, `address-bar write outside ${ADDRESS_MODULE}`, (n) => n !== ADDRESS_MODULE],
   [/location\.(hash|href|search|pathname)\s*=(?!=)/, 'address bar assignment'],
   [/location\.(assign|replace|reload)\s*\(/, 'navigation call'],
   [new RegExp(String.raw`\bimport${GAP}\(|XMLHttpRequest|WebSocket|EventSource|sendBeacon`), 'network or dynamic import'],
@@ -165,7 +165,9 @@ for (const [page, entry] of Object.entries(PAGES)) {
   else ok(`${NETWORK_MODULE} fetches relative data/ URLs only`);
   const state = read(ADDRESS_MODULE);
   const writes = (state.match(/history\.replaceState\s*\(/g) || []).length;
-  if (writes !== 1) fail(`${ADDRESS_MODULE}: history.replaceState must appear exactly once (found ${writes})`);
+  const pushes = (state.match(/history\.pushState\s*\(/g) || []).length;
+  const dynamic = (state.match(/history\s*\[/g) || []).length;
+  if (writes !== 1 || pushes !== 1 || dynamic) fail(`${ADDRESS_MODULE}: history.replaceState and history.pushState must appear exactly once each, never history[…] (found ${writes}, ${pushes}, ${dynamic})`);
   else ok(`${ADDRESS_MODULE} is the single address-bar writer`);
 }
 

@@ -18,21 +18,22 @@ const $ = (id) => document.getElementById(id);
 let data = null;
 let ctx = null;
 let state = defaultState();
-const ui = { sort: { key: 'datum', dir: 1 }, limit: PAGE, allChips: false, day: null, focusDay: null, place: null, detail: null };
+const freshUi = () => ({ sort: { key: 'datum', dir: 1 }, limit: PAGE, allChips: false, day: null, focusDay: null, place: null, detail: null });
+const ui = freshUi();
 const VIEW_IDS = ['tabelle', 'kalender', 'karte', 'vereine'];
 
 function known() {
   return { sportIds: new Set(data.sports.map((s) => s.id)), clubIds: new Set(data.clubs.map((c) => c.id)) };
 }
 
-/** Apply a change, mirror it in the address bar, render. */
-function update(patch) {
+/** Apply a change, mirror it in the address bar (`push`: as a new history entry), render. */
+function update(patch, { push = false } = {}) {
   const next = { ...state, ...patch };
   next.q = next.q.slice(0, MAX_QUERY); // the hash keeps no more, so neither may the view
   if (patch.sport || patch.art || patch.ort || patch.verein !== undefined || patch.q !== undefined || patch.zeit) ui.limit = PAGE;
   if (patch.monat !== undefined && patch.monat !== state.monat) ui.day = null;
   state = next;
-  writeAddress(state);
+  writeAddress(state, { push });
   render();
 }
 
@@ -485,6 +486,18 @@ function bind() {
     const next = VIEW_IDS[Math.max(0, Math.min(VIEW_IDS.length - 1, Number.isFinite(step) ? (i + step + VIEW_IDS.length) % VIEW_IDS.length : step < 0 ? 0 : VIEW_IDS.length - 1))];
     update({ ansicht: next });
     $(`tab-${next}`).focus();
+  });
+
+  // The brand resets the page in place: a reload would load all data again and rebuild the page from blank.
+  document.querySelector('.brand').addEventListener('click', (e) => {
+    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    Object.assign(ui, freshUi());
+    $('subscribe').open = false;
+    $('impressum').open = false;
+    update(defaultState(), { push: true });
+    $('f-q').value = '';
+    window.scrollTo(0, 0);
   });
 
   window.addEventListener('hashchange', () => {

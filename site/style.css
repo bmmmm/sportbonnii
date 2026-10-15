@@ -613,7 +613,7 @@ table.sources .num { text-align: right; }
 .map:active { cursor: grabbing; }
 .map:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .map-tiles, .map-markers { position: absolute; inset: 0; }
-.map-tile { position: absolute; left: 0; top: 0; width: 256px; height: 256px; max-width: none; pointer-events: none; }
+.map-tile { position: absolute; left: 0; top: 0; width: 256px; height: 256px; max-width: none; pointer-events: none; transform-origin: 0 0; }
 .map-marker {
   --sport: var(--accent);
   position: absolute; left: 0; top: 0; width: 30px; height: 30px; margin: -15px 0 0 -15px; padding: 0;
