@@ -85,6 +85,9 @@ test('Markdown characters in foreign text are escaped, one line per cell', () =>
   assert.equal(escapeMarkdown('Infos: www.tv-x.de, WWW.Y.DE'), 'Infos: www\\.tv-x.de, WWW\\.Y.DE');
   assert.equal(escapeMarkdown('siehe https://x.de/a und http://y.de'), 'siehe https\\://x.de/a und http\\://y.de');
   assert.equal(escapeMarkdown('awww.x.de 10:30'), 'awww.x.de 10:30', 'no autolink, no escape');
+  // An e-mail address is autolinked whatever is escaped; a code span keeps it plain and copies clean.
+  assert.equal(escapeMarkdown('Kontakt: info@tv-x.de, a.b_c@x-y.example.org | *x*'), 'Kontakt: `info@tv-x.de`, `a.b_c@x-y.example.org` \\| \\*x\\*');
+  assert.equal(escapeMarkdown('Treff @ Halle, x@y'), 'Treff @ Halle, x@y', 'no address, no code');
   const text = renderOverview({
     clubs: [club({ name: 'A | B *x*', venues: [{ name: 'Halle [1]', lat: 50.7, lon: 7.1 }], website: 'https://x.example/a)b c' })],
     sports,

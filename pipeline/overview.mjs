@@ -14,13 +14,20 @@ const USE_PREFIX = { spiel: 'Spiele: ', training: 'Training: ' };
 const NONE = '–';
 const MAX_VENUES = 3;
 
+// An e-mail address: GitHub autolinks it whatever is escaped (a word joiner stops it but travels
+// along when copied); a code span does not, and copies clean.
+const EMAIL = /([\w.+-]+@[\w-]+(?:\.[\w-]+)+)/;
+
 /**
- * Text safe inside a Markdown table cell: one line, markup characters escaped, and GitHub's
- * www./scheme:// autolinks broken by a backslash (checked against GitHub's own GFM render).
+ * Text safe inside a Markdown table cell: one line, markup characters escaped, GitHub's
+ * www./scheme:// autolinks broken by a backslash and an e-mail address set as code
+ * (checked against GitHub's own GFM render).
  */
 export function escapeMarkdown(text) {
-  return String(text ?? '').replace(/\s+/g, ' ').trim().replace(/[\\|[\]*_<>`]/g, '\\$&')
-    .replace(/\b(www)\./gi, '$1\\.').replace(/([a-z]):\/\//gi, '$1\\://');
+  return String(text ?? '').replace(/\s+/g, ' ').trim().split(EMAIL)
+    .map((part, i) => (i % 2 ? `\`${part}\`` : part.replace(/[\\|[\]*_<>`]/g, '\\$&')
+      .replace(/\b(www)\./gi, '$1\\.').replace(/([a-z]):\/\//gi, '$1\\://')))
+    .join('');
 }
 
 /** A Markdown link whose target cannot end early; plain escaped text when `url` is not an absolute URL. */
