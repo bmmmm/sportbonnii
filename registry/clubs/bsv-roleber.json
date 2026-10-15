@@ -1,7 +1,8 @@
 {
   "active": true,
   "aliases": [
-    "BSV Roleber"
+    "BSV Roleber",
+    "Bonner SV Roleber"
   ],
   "district": "Beuel",
   "id": "bsv-roleber",
@@ -15,6 +16,36 @@
       ],
       "type": "tec",
       "url": "https://bsvroleber.de/wp-json/tribe/events/v1/events"
+    },
+    {
+      "id": "spiele-fussball",
+      "kind": "spiel",
+      "note": "FuPa calendar subscription (the webcal button on the team page; api.fupa.net robots allows *.ics) — fussball.de has no ICS export. The slug carries the season: renew it each summer. 1. Herren (Kreisliga A Bonn, Kreispokal)",
+      "sports": [
+        "fussball"
+      ],
+      "type": "ical",
+      "url": "https://api.fupa.net/v1/teams/bonner-sv-roleber-m1-2026-27/matches.ics"
+    },
+    {
+      "id": "spiele-basketball",
+      "kind": "spiel",
+      "note": "DBB iCalendar export of the league schedule (the iCalender link on index.jsp?Action=101), filtered to Herren 1 (Landesliga); liga_id/ms_liga_id change each season, spt=-1 = all match days",
+      "sports": [
+        "basketball"
+      ],
+      "type": "ical",
+      "url": "https://www.basketball-bund.net/servlet/KalenderDienst?typ=2&liga_id=54579&ms_liga_id=451261&spt=-1"
+    },
+    {
+      "id": "spiele-tischtennis",
+      "kind": "spiel",
+      "note": "myTischtennis calendar export (its webcal button), Erwachsene I+II; at most 2 teamIds per URL, the ids change each season (click-TT has no ICS)",
+      "sports": [
+        "tischtennis"
+      ],
+      "type": "ical",
+      "url": "https://www.mytischtennis.de/community/exportICSCalendar?teamIds=3105822,3108025"
     }
   ],
   "sports": [

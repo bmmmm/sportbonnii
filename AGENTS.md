@@ -50,7 +50,8 @@ store index — run installs unsandboxed.
   keywords → club), club from aliases, ids. `eventKind`: training >
   celebration veto > spiel from title/tags, else the source's `kind`, else
   veranstaltung. `status` cancelled also from an un-negated cancel word in
-  the title. `homeGame` (games only): the title's marker, then the place
+  the title. `homeGame` (games only): the title's marker, then a pairing
+  „A - B" / „A vs. B" naming the club on one side (host first), then the place
   (club venue via `venueIndex` or Bonn postcode home, other postcode away,
   the word Bonn home), then „… in <Ort>" (a Bonn Ortsteil home — a shared
   one like Gronau only when the club's venue or district names it —, another

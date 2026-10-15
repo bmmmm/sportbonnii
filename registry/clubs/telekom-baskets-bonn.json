@@ -9,11 +9,11 @@
   "name": "Telekom Baskets Bonn",
   "sources": [
     {
-      "enabled": false,
       "id": "spielplan",
-      "note": "calovo issues per-subscriber ICS urls (a token per subscriber, commercial feed); disabled. v2: BBL adapter",
+      "kind": "spiel",
+      "note": "the club's public Google Calendar (webcal link on /team/spielplan): BBL, Champions League and Pokal with addresses. Fallback: api.basketball-bundesliga.de/calendar/ical/games/BON (BBL only, no postcodes)",
       "type": "ical",
-      "url": "https://calovo.de/f/telekom-baskets-bonn/spielplan"
+      "url": "https://calendar.google.com/calendar/ical/4uhevpalgjlrql674cdkdjupoo%40group.calendar.google.com/public/basic.ics"
     }
   ],
   "sports": [

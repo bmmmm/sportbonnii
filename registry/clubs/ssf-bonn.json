@@ -8,7 +8,18 @@
   "district": "Bonn",
   "id": "ssf-bonn",
   "name": "SSF Bonn",
-  "sources": [],
+  "sources": [
+    {
+      "id": "spiele-tischtennis",
+      "kind": "spiel",
+      "note": "myTischtennis calendar export (its webcal button), Erwachsene I+II; team ids from /api/ttr/teams?clubNumber=22106&organization=WTTV — at most 2 per URL, they change each season",
+      "sports": [
+        "tischtennis"
+      ],
+      "type": "ical",
+      "url": "https://www.mytischtennis.de/community/exportICSCalendar?teamIds=3105722,3105272"
+    }
+  ],
   "sports": [
     "schwimmen",
     "triathlon",

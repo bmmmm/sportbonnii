@@ -124,10 +124,35 @@ export function eventKind(title, tags = [], source = null) {
   return source?.kind ?? 'veranstaltung';
 }
 
+// A pairing "Home - Away" / "Home vs. Away" / "Home : Away"; league feeds write the host first.
+const PAIR_SEP = /\s(?:[-–—:]|vs\.?)\s/g;
+const BARE_HYPHEN = /(?<=[\p{L}\p{N}.])-(?=\p{L})/gu;
+
+/**
+ * The club's side in a pairing title: true when only the part before a
+ * separator names the club (its name or an alias), false when only the part
+ * after it does, null when no split decides. Spaced separators are tried
+ * first; without one, a bare hyphen between two names ("Bonner SV
+ * Roleber-Telekom Baskets Bonn 5"), so "Blau-Weiss Bonn" is split in vain.
+ */
+function pairingSide(title, club) {
+  const names = [club?.name, ...(club?.aliases ?? [])].filter(Boolean).map(fold);
+  if (!names.length) return null;
+  const t = fold(title);
+  const named = (s) => names.some((n) => hasWhole(s, n));
+  const spaced = [...t.matchAll(PAIR_SEP)];
+  for (const m of spaced.length ? spaced : [...t.matchAll(BARE_HYPHEN)]) {
+    const before = named(t.slice(0, m.index));
+    if (before !== named(t.slice(m.index + m[0].length))) return before;
+  }
+  return null;
+}
+
 /**
  * Whether a match is a home game: true, false, or null when nothing says.
  * Only games have one. The title's own word wins ("(auswärts)" in a Bonn hall
- * is still away), then the place: one of the club's venues or a Bonn postcode
+ * is still away), then a pairing that names the club ("SV Ennert - Bonner SV
+ * Roleber" in Bonn is away), then the place: one of the club's venues or a Bonn postcode
  * is home, another postcode is away, else the word Bonn is home; last, a title
  * "… in <Ort>" (an Ortsteil another town shares counts only when the club's
  * venue or district names it).
@@ -137,6 +162,8 @@ export function homeGame(title, location, club, kind) {
   const t = fold(title);
   if (hasWordStart(t, 'auswarts') || hasWhole(t, 'away') || hasWhole(t, 'gast bei')) return false;
   if (hasWhole(t, 'heim') || hasWhole(t, 'home') || hasWordStart(t, 'heimspiel') || hasWordStart(t, 'heimturnier')) return true;
+  const side = pairingSide(title, club);
+  if (side !== null) return side;
   if (location) {
     if (venueIndex(location, club?.venues) >= 0) return true;
     const l = fold(location);

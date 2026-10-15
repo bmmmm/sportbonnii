@@ -9,11 +9,18 @@
   "name": "Bonner SC",
   "sources": [
     {
-      "enabled": false,
-      "id": "spieltage",
-      "note": "calovo issues per-subscriber ICS urls (a token per subscriber, commercial feed); disabled. v2: fussball.de adapter",
+      "id": "spiele-herren",
+      "kind": "spiel",
+      "note": "FuPa calendar subscription (the webcal button on the team page; api.fupa.net robots allows *.ics) — fussball.de has no ICS export. The slug carries the season: renew it each summer. 1. Herren (Regionalliga West, Mittelrheinpokal)",
       "type": "ical",
-      "url": "https://calovo.de/f/bonner-sc/spieltage"
+      "url": "https://api.fupa.net/v1/teams/bonner-sc-m1-2026-27/matches.ics"
+    },
+    {
+      "id": "spiele-frauen",
+      "kind": "spiel",
+      "note": "FuPa calendar subscription (the webcal button on the team page; api.fupa.net robots allows *.ics) — fussball.de has no ICS export. The slug carries the season: renew it each summer. 1. Frauen",
+      "type": "ical",
+      "url": "https://api.fupa.net/v1/teams/bonner-sc-w1-2026-27/matches.ics"
     }
   ],
   "sports": [

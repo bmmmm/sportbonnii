@@ -119,7 +119,7 @@ test('kind: from title and tags, else the source kind, else an event', () => {
   assert.equal(asPlatform({ title: 'Lauftreff am Rhein' }).kind, 'training');
 });
 
-test('home: the title marker, then the club venue, Bonn, another postcode, a title place', () => {
+test('home: the title marker, then a pairing, the club venue, Bonn, another postcode, a title place', () => {
   const rc = { venues: [{ name: 'Rugbyplatz Rheinaue', address: 'Martin-Luther-King-Str. 22, 53175 Bonn' }] };
   const spiel = (title, location = null, c = rc) => homeGame(title, location, c, 'spiel');
   assert.equal(homeGame('Training', 'Sportplatz, Bonn', rc, 'training'), null, 'only games have one');
@@ -132,17 +132,30 @@ test('home: the title marker, then the club venue, Bonn, another postcode, a tit
   assert.equal(spiel('U16W Home Game vs. St. Pauli'), true);
   assert.equal(spiel('Heimspiel gegen RK Heusenstamm'), true);
   assert.equal(spiel('Heimturnier U12', 'Sportplatz Rheinbach, 53359 Rheinbach'), true, 'a home word beats the place');
-  // 2. one of the club's venues, even without the city
+  // 2. a pairing that names the club: the host comes first, whatever the place says
+  const roleber = { name: 'BSV Roleber', aliases: ['Bonner SV Roleber'], venues: [{ name: 'Sportplatz Roleber', address: 'Siebengebirgsstraße 181, 53229 Bonn' }] };
+  assert.equal(spiel('⚽️ SV Ennert 1911 - Bonner SV Roleber', 'Steinbruchweg, 53227 Bonn', roleber), false, 'a derby in Bonn is away');
+  assert.equal(spiel('⚽️ Bonner SV Roleber - SC Rheinbach II', 'Siebengebirgsstr. 181, 53229 Bonn', roleber), true);
+  assert.equal(spiel('TTV Viktoria Bonn vs BSV Roleber', 'Halle, 53119 Bonn', roleber), false);
+  assert.equal(spiel('BSV Roleber II vs TSV Bonn rrh.', null, roleber), true, 'a team number after the name');
+  assert.equal(spiel('Bonner SV Roleber-Telekom Baskets Bonn 5, 107B611 (SpNr. 3)', null, roleber), true, 'a bare hyphen when nothing is spaced');
+  assert.equal(spiel('TuS Zülpich-Bonner SV Roleber, 106B501', 'Blayer Straße, 53909, Zülpich', roleber), false);
+  const baskets = { name: 'Telekom Baskets Bonn', aliases: ['Telekom Baskets Bonn'] };
+  assert.equal(spiel('EWE Baskets Oldenburg vs. Telekom Baskets Bonn - NETTO BBL Pokal', null, baskets), false, 'the first deciding separator');
+  assert.equal(spiel('Telekom Baskets Bonn vs. Bnei Herzliya - Basketball Champions League', null, baskets), true);
+  assert.equal(spiel('Bonner SV Roleber - Bonner SV Roleber II', 'Halle, 53229 Bonn', roleber), true, 'both sides name it: the place decides');
+  assert.equal(spiel('Blau-Weiss Bonn-TV Beuel', null, { name: 'Blau-Weiss Bonn' }), true, 'a hyphen inside the name splits in vain');
+  // 3. one of the club's venues, even without the city
   assert.equal(spiel('Liga: Herren vs. Köln', 'Martin-Luther-King-Straße 22'), true);
   assert.equal(spiel('Liga: Herren vs. Köln', 'Martin-Luther-King-Straße 22', null), null, 'without the club nothing says');
-  // 3. anywhere in Bonn
+  // 4. anywhere in Bonn
   assert.equal(spiel('BONNER JSG vs. BTB AACHEN', 'SPORTHALLE PENNENFELD, BONN'), true);
   assert.equal(spiel('Liga vs. Köln', 'Halle Ost, 53229'), true, 'a Bonn postcode');
-  // 4. another postcode
+  // 5. another postcode
   assert.equal(spiel('Touch Rugby German Championship', 'Oeserstraße 84, 65934 Frankfurt am Main'), false);
   assert.equal(spiel('Liga', 'Rugby Club Bonn-Rhein-Sieg e.V., Oeserstraße 84, 65934 Frankfurt'), false, 'a postcode beats the word Bonn');
   assert.equal(spiel('Liga', 'Sportpark Bonn-Rhein-Sieg, 53229 Bonn'), true, 'a Bonn postcode with the word');
-  // 5. a place in the title
+  // 6. a place in the title
   assert.equal(spiel("Women's Bundesliga 7s Tourney in Darmstadt"), false);
   assert.equal(spiel('Deutsche Mehrkampfmeisterschaften in Heide', 'Heide'), false);
   assert.equal(spiel('E-team in Bonn - Freundschaftsspiele', 'Sportplatz Schulzentrum Tannenbusch'), true);

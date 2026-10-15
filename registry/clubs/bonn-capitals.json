@@ -8,7 +8,16 @@
   "district": "Bad Godesberg",
   "id": "bonn-capitals",
   "name": "Bonn Capitals",
-  "sources": [],
+  "sources": [
+    {
+      "expectEmpty": true,
+      "id": "spielplan",
+      "kind": "spiel",
+      "note": "BSM (the DBV match system) club calendar, every Capitals team, served by the BWBSV WordPress plugin (robots allows admin-ajax.php); the DBV site link returns 404 and BSM's own .ics needs an API key. Also carries some games without Bonn (umpire assignments); empty in the winter break",
+      "type": "ical",
+      "url": "https://www.bwbsv.de/wp-admin/admin-ajax.php?action=bsm_show_resource&bsm_resource=MatchCalendar&bsm_data=club&bsm_club=BON"
+    }
+  ],
   "sports": [
     "baseball"
   ],

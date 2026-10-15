@@ -2,7 +2,7 @@
 
 Generiert von `pnpm run registry:fmt` – nicht von Hand ändern.
 
-24 Vereine · 8 mit Online-Kalender · 24 Sportarten
+24 Vereine · 12 mit Online-Kalender · 24 Sportarten
 
 Abteilungen stehen beim Verein, nie als eigener Eintrag. Neuer Verein? Erst hier nachsehen, dann [registry/README.md](../registry/README.md) lesen.
 
@@ -10,15 +10,15 @@ Abteilungen stehen beim Verein, nie als eigener Eintrag. Neuer Verein? Erst hier
 | --- | --- | --- | --- | --- | --- |
 | **Artemis Bonn**<br>`artemis-bonn` | Bogenschießen | Bonn | Training: [Außengelände Sportpark Nord (Sommer)](https://www.openstreetmap.org/?mlat=50.75414&mlon=7.08317#map=18/50.75414/7.08317)<br>Training: [Josef-Strunck-Halle (Winter)](https://www.openstreetmap.org/?mlat=50.72304&mlon=7.07351#map=18/50.72304/7.07351) | iCal | [artemis-bonn.de](https://artemis-bonn.de/artemis_webseite/) |
 | **Beueler Judo-Club**<br>`beueler-judo-club` | Kampfsport | Beuel | Training: [Dojo Oberkassel](https://www.openstreetmap.org/node/10832365855)<br>Training: [Hardtberghalle](https://www.openstreetmap.org/way/24815531) | – | [beueler-judo-club.de](https://beueler-judo-club.de/) |
-| **Bonn Capitals**<br>`bonn-capitals` | Baseball & Softball | Bad Godesberg | [Baseballstadion Rheinaue](https://www.openstreetmap.org/way/1246087726) | – | [capitals.de](https://www.capitals.de/) |
+| **Bonn Capitals**<br>`bonn-capitals` | Baseball & Softball | Bad Godesberg | [Baseballstadion Rheinaue](https://www.openstreetmap.org/way/1246087726) | iCal | [capitals.de](https://www.capitals.de/) |
 | **Bonn Fire**<br>`bonn-fire` | Hockey | Bonn | [Bertolt-Brecht-Sportanlage](https://www.openstreetmap.org/relation/1851114) | – | [bonnfire.de](https://bonnfire.de/) |
 | **Bonn Gamecocks**<br>`bonn-gamecocks` | American Football | Bad Godesberg | Spiele: [Sportpark Pennenfeld](https://www.openstreetmap.org/way/26839678)<br>Training: [Sportplatz Brüser Berg](https://www.openstreetmap.org/?mlat=50.7029&mlon=7.04837#map=18/50.7029/7.04837) | – | [gamecocks.de](https://gamecocks.de/) |
 | **Bonn Rugby Union Club**<br>`bonn-rugby-union-club` | Rugby | Bonn | [Wasserland-Stadion (Sportpark Wasserland)](https://www.openstreetmap.org/?mlat=50.70765&mlon=7.12122#map=18/50.70765/7.12122) | – | [rugby-bonn.de](https://www.rugby-bonn.de/start) |
 | **Bonner Bogenschützenclub 1965**<br>`bonner-bogenschuetzen` | Bogenschießen | Bonn | Training: [Josef-Strunck-Halle](https://www.openstreetmap.org/?mlat=50.72304&mlon=7.07351#map=18/50.72304/7.07351) | iCal | [bonnerbogensport.de](https://bonnerbogensport.de/) |
-| **Bonner SC**<br>`bonner-sc` | Fußball | Bonn | [Sportpark Nord](https://www.openstreetmap.org/way/49707892) | iCal (aus) | [bonner-sc.de](https://www.bonner-sc.de/) |
+| **Bonner SC**<br>`bonner-sc` | Fußball | Bonn | [Sportpark Nord](https://www.openstreetmap.org/way/49707892) | iCal ×2 | [bonner-sc.de](https://www.bonner-sc.de/) |
 | **Bonner THV**<br>`bonner-thv` | Hockey, Tennis | Bonn | [BTHV-Anlage](https://www.openstreetmap.org/way/128941575) | TEC | [bthv.de](https://www.bthv.de/) |
 | **Bonnsai**<br>`bonnsai` | Frisbeesport | Bonn | Training: [BTHV-Anlage (Naturrasen)](https://www.openstreetmap.org/way/128941575)<br>Training: [Franz-Elbern-Stadion](https://www.openstreetmap.org/relation/1460995) | – | [bonnsai.org](https://www.bonnsai.org/) |
-| **BSV Roleber**<br>`bsv-roleber` | Fußball, Basketball, Tischtennis, Turnen & Gymnastik | Beuel | [Sportplatz Roleber](https://www.openstreetmap.org/way/50752096) | TEC | [bsvroleber.de](https://bsvroleber.de/) |
+| **BSV Roleber**<br>`bsv-roleber` | Fußball, Basketball, Tischtennis, Turnen & Gymnastik | Beuel | [Sportplatz Roleber](https://www.openstreetmap.org/way/50752096) | TEC, iCal ×3 | [bsvroleber.de](https://bsvroleber.de/) |
 | **Bonner Turnverein 1860**<br>`btv-1860` | Volleyball, Turnen & Gymnastik | Bonn | Training: [Turnhalle Münsterschule](https://www.openstreetmap.org/way/106549267) | TEC | [btv1860.de](https://www.btv1860.de/) |
 | **Blau-Weiss Bonn Kanu**<br>`bwb-kanu` | Kanu | Bonn | [Bootshaus](https://www.openstreetmap.org/?mlat=50.76212&mlon=7.08222#map=18/50.76212/7.08222) | – | [bwb-kanu.de](https://bwb-kanu.de/) |
 | **DAV Sektion Bonn**<br>`dav-bonn` | Klettern | – | – | – | [dav-bonn.de](https://dav-bonn.de/) |
@@ -30,8 +30,8 @@ Abteilungen stehen beim Verein, nie als eigener Eintrag. Neuer Verein? Erst hier
 | **Rugby Club Bonn-Rhein-Sieg**<br>`rc-bonn-rhein-sieg` | Rugby | Bad Godesberg | [Rugbyplatz Rheinaue](https://www.openstreetmap.org/way/123977272) | iCal | [rcbrs.de](https://rcbrs.de/) |
 | **Rheinos Bonn**<br>`rheinos-bonn` | Quadball | Bonn | Training: [BTHV-Anlage](https://www.openstreetmap.org/way/128941575) | iCal | [rheinos-bonn.de](https://rheinos-bonn.de/) |
 | **Segel-Club Bonn**<br>`segel-club-bonn` | Sonstiges | – | – | – | [segel-club-bonn.de](https://www.segel-club-bonn.de/) |
-| **SSF Bonn**<br>`ssf-bonn` | Floorball, Tischtennis, Schwimmen, Triathlon, Leichtathletik & Laufen | Bonn | [Sportpark Nord](https://www.openstreetmap.org/way/49707892) | – | [ssfbonn.de](https://ssfbonn.de/) |
-| **Telekom Baskets Bonn**<br>`telekom-baskets-bonn` | Basketball | Hardtberg | Spiele: [Telekom Dome](https://www.openstreetmap.org/way/1273941076) | iCal (aus) | [telekom-baskets-bonn.de](https://www.telekom-baskets-bonn.de/) |
+| **SSF Bonn**<br>`ssf-bonn` | Floorball, Tischtennis, Schwimmen, Triathlon, Leichtathletik & Laufen | Bonn | [Sportpark Nord](https://www.openstreetmap.org/way/49707892) | iCal | [ssfbonn.de](https://ssfbonn.de/) |
+| **Telekom Baskets Bonn**<br>`telekom-baskets-bonn` | Basketball | Hardtberg | Spiele: [Telekom Dome](https://www.openstreetmap.org/way/1273941076) | iCal | [telekom-baskets-bonn.de](https://www.telekom-baskets-bonn.de/) |
 
 ## Plattformen
 
