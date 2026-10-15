@@ -197,6 +197,7 @@ test('refresh: a previous event is classified again under today\'s rules, title 
   const club = [...clubsById.values()].find((c) => c.venues?.length);
   assert.equal(at({ title: 'Liga', kind: 'spiel', home: null, club: club.id, location: club.venues[0].name }).home, true, 'the club venue counts');
   assert.equal(at({ title: 'Training fällt aus' }).status, 'cancelled', 'a cancel word cancels');
-  assert.equal(at({ title: 'Training entfällt nicht', status: 'cancelled' }).status, 'confirmed', 'a cancel word that no longer counts is lifted');
+  assert.equal(at({ title: 'Training entfällt nicht', status: 'cancelled' }).status, 'cancelled', 'a cancellation is never lifted (the feed may have set it)');
+  assert.equal(at({ title: 'Training entfällt nicht' }).status, 'confirmed', 'a negated cancel word cancels nothing');
   assert.equal(at({ title: 'Training', status: 'cancelled' }).status, 'cancelled', 'a cancelled status from the feed stays');
 });

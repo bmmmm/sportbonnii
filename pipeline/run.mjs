@@ -74,15 +74,14 @@ const KIND_RANK = { spiel: 1, veranstaltung: 2, training: 3 };
  * replaces the old one only where it ranks higher, so under unchanged rules
  * nothing moves (known limit: a rule that lowers a kind waits for the
  * source to answer);
- * a raw cancelled status stays unless the title has a cancel word that no
- * longer counts.
+ * a cancellation is only ever added: events.json cannot tell the feed's
+ * from the title's, so a rule that narrows cancel words waits for the source.
  */
 export function refreshEvent(e, clubsById = new Map()) {
   const byTitle = eventKind(e.title, [], { kind: KEEP });
   const kind = byTitle === KEEP || KIND_RANK[e.kind] > KIND_RANK[byTitle] ? e.kind : byTitle;
   const home = homeGame(e.title, e.location, clubsById.get(e.club) ?? null, kind);
-  const { cancels, mentions } = titleCancels(e.title);
-  const status = cancels || (e.status === 'cancelled' && !mentions) ? 'cancelled' : 'confirmed';
+  const status = e.status === 'cancelled' || titleCancels(e.title) ? 'cancelled' : 'confirmed';
   if (kind === e.kind && home === e.home && status === e.status) return e;
   return { ...e, kind, home, status };
 }

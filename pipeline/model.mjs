@@ -229,10 +229,9 @@ const calledOff = (t) => {
   return CANCELLED.some((w) => hasWhole(u, w));
 };
 
-/** Whether a title calls its date off, and whether it uses a cancel word at all (even negated). */
+/** Whether a title calls its date off. */
 export function titleCancels(title) {
-  const t = fold(title);
-  return { cancels: calledOff(t), mentions: CANCELLED.some((w) => hasWhole(t, w)) };
+  return calledOff(fold(title));
 }
 
 /**
