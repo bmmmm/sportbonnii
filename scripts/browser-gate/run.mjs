@@ -19,12 +19,14 @@
 // answered inside the browser with a 1×1 PNG, so the gate stays offline).
 //
 // Needs Chrome and Node ≥ 22, outside a command sandbox (loopback server).
-// Usage: node scripts/browser-gate/run.mjs [--keep]    CHROME=<path> overrides the binary.
+// Usage: node scripts/browser-gate/run.mjs [--keep]    CHROME=<path> overrides the binary
+// (else the macOS app, a Chrome/Chromium on PATH, or the headless shell T3 Code installs).
 import { spawn } from 'node:child_process';
-import { cp, mkdtemp, readFile, rm, mkdir, writeFile } from 'node:fs/promises';
+import { constants } from 'node:fs';
+import { access, cp, mkdtemp, readdir, readFile, rm, mkdir, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { homedir, tmpdir } from 'node:os';
+import { delimiter, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { openTarget } from './cdp.mjs';
 import { applyFilters, defaultState } from '../../site/state.js';
@@ -33,7 +35,6 @@ import { KIND_IDS } from '../../site/kinds.js';
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
 const KEEP = process.argv.includes('--keep');
-const CHROME = process.env.CHROME || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const NOW = Date.parse('2026-10-14T12:00:00Z'); // 14:00 in Bonn
 const TODAY = '2026-10-14';
 
@@ -58,6 +59,19 @@ async function waitHttp(url, ms) {
     await sleep(100);
   }
   throw new Error(`not reachable within ${ms} ms: ${url}`);
+}
+
+/** CHROME=<path>, else the first usable browser: the macOS app, a binary on PATH, the newest headless shell under ~/.t3/tools. */
+async function findChrome() {
+  if (process.env.CHROME) return process.env.CHROME;
+  const ls = (dir) => readdir(dir).catch(() => []);
+  const newestFirst = (names) => names.sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
+  const names = ['google-chrome', 'google-chrome-stable', 'chromium', 'chromium-browser', 'chrome-headless-shell'];
+  const candidates = ['/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', ...(process.env.PATH ?? '').split(delimiter).flatMap((d) => names.map((n) => join(d, n)))];
+  const shells = join(homedir(), '.t3/tools/chrome-headless-shell');
+  for (const platform of await ls(shells)) for (const version of newestFirst(await ls(join(shells, platform)))) candidates.push(join(shells, platform, version, 'chrome-headless-shell'));
+  for (const path of candidates) if (await access(path, constants.X_OK).then(() => true, () => false)) return path;
+  throw new Error('no Chrome found: install one or set CHROME=<path>');
 }
 
 const children = [];
@@ -113,7 +127,7 @@ try {
   await waitHttp(`${BASE}index.html`, 5000);
   const profile = await mkdtemp(join(tmpdir(), 'sportbonnii-gate-chrome-'));
   temp.push(profile);
-  start(CHROME, ['--headless=new', `--remote-debugging-port=${cdpPort}`, `--user-data-dir=${profile}`, '--no-first-run', '--disable-background-networking', 'about:blank'], 'chrome');
+  start(await findChrome(), ['--headless=new', `--remote-debugging-port=${cdpPort}`, `--user-data-dir=${profile}`, '--no-first-run', '--disable-background-networking', 'about:blank'], 'chrome');
   await waitHttp(`http://127.0.0.1:${cdpPort}/json/version`, 10000);
 
   const t = await openTarget(cdpPort);
