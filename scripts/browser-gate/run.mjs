@@ -227,21 +227,25 @@ try {
   check((await ortInfo()).hidden, 'the home/away switch hides while games are not among the kinds', 'ort field shown for trainings only');
   // --- 2c. a club's whole calendar is never out of reach
   // The Gamecocks publish one training: the default view (home games) shows nothing, and says how to see it.
-  await open('#verein=bonn-gamecocks');
+  // With a range chosen, the all-dates button stands alone: it lifts the range too.
+  await open('#verein=bonn-gamecocks&zeit=woche');
   const gcAll = expectRows({ verein: 'bonn-gamecocks', art: [], ort: 'alle' });
-  const gcEmpty = await evaluate(`({ rows: document.querySelectorAll('#table tbody tr').length, hidden: document.querySelector('#table .empty-hidden')?.textContent, button: document.querySelector('#table [data-unfiltered]')?.textContent })`);
-  check(gcAll === 1 && gcEmpty.rows === 0 && gcEmpty.hidden === '1 Termin ist durch Filter ausgeblendet.' && gcEmpty.button === '1 Termin von Bonn Gamecocks zeigen',
-    'a club view the filters empty says how many dates they hide and offers them', `empty club view: ${JSON.stringify({ gcEmpty, gcAll })}`);
+  const gcEmpty = await evaluate(`({ rows: document.querySelectorAll('#table tbody tr').length, hidden: document.querySelector('#table .empty-hidden')?.textContent, button: document.querySelector('#table [data-unfiltered]')?.textContent, actions: [...document.querySelectorAll('#table .empty-actions button')].map((b) => b.textContent) })`);
+  check(gcAll === 1 && gcEmpty.rows === 0 && gcEmpty.hidden === '1 Termin ist durch Filter ausgeblendet.' && gcEmpty.button === '1 Termin von Bonn Gamecocks zeigen'
+    && !gcEmpty.actions.includes('Zeitraum „Alle“ zeigen'),
+    'a club view the filters empty says how many dates they hide and offers them (no separate range button)', `empty club view: ${JSON.stringify({ gcEmpty, gcAll })}`);
   await evaluate(`document.querySelector('#table [data-unfiltered]').click(), true`);
   await settle();
-  check(await evaluate('location.hash') === '#art=alle&ort=alle&verein=bonn-gamecocks' && await rows() === gcAll, 'its button shows the club\'s whole calendar (#art=alle&ort=alle)', `unfiltered: ${await evaluate('location.hash')} / ${await rows()}`);
+  check(await evaluate('location.hash') === '#art=alle&ort=alle&verein=bonn-gamecocks' && await rows() === gcAll && await evaluate(`document.activeElement?.id`) === 'result',
+    'its button shows the club\'s whole calendar (#art=alle&ort=alle), focus on the count', `unfiltered: ${await evaluate('location.hash')} / ${await rows()} / ${await evaluate('document.activeElement?.id')}`);
   // A club name in the table opens all of that club's dates, whatever the filters were.
   await open('#sport=rugby&q=heim&zeit=woche');
   await evaluate(`document.querySelector('#table tbody [data-club="rc-bonn-rhein-sieg"]').click(), true`);
   await settle();
   const rcAll = expectRows({ verein: 'rc-bonn-rhein-sieg', art: [], ort: 'alle' });
-  check(await evaluate('location.hash') === '#art=alle&ort=alle&verein=rc-bonn-rhein-sieg' && await rows() === rcAll && rcAll > expectRows({ verein: 'rc-bonn-rhein-sieg' }) && await evaluate(`document.getElementById('f-q').value`) === '',
-    `a club name in the table opens all ${rcAll} of its dates (sport, search and range cleared)`, `club button: ${await evaluate('location.hash')} / ${await rows()}`);
+  check(await evaluate('location.hash') === '#art=alle&ort=alle&verein=rc-bonn-rhein-sieg' && await rows() === rcAll && rcAll > expectRows({ verein: 'rc-bonn-rhein-sieg' }) && await evaluate(`document.getElementById('f-q').value`) === ''
+    && await evaluate(`document.activeElement?.id`) === 'result',
+    `a club name in the table opens all ${rcAll} of its dates (sport, search and range cleared, focus on the count)`, `club button: ${await evaluate('location.hash')} / ${await rows()}`);
 
   // --- 2d. every title opens its detail; a place at a club venue opens the map there
   await open();

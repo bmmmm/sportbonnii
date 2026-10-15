@@ -156,7 +156,8 @@ function showUnfiltered(verein = state.verein) {
   const switching = ansicht !== state.ansicht;
   update({ ...UNFILTERED, verein, ansicht });
   $('f-q').value = '';
-  if (switching) $(`tab-${ansicht}`).focus();
+  // The view is rebuilt under the clicked button: focus lands on the tab, or on the count that now heads it.
+  $(switching ? `tab-${ansicht}` : 'result').focus();
 }
 
 function emptyState(message) {
@@ -175,7 +176,8 @@ function emptyState(message) {
     b.addEventListener('click', () => showUnfiltered());
     hints.append(b);
   }
-  if (state.zeit !== 'alle') {
+  // The all-dates button already lifts the range.
+  if (!all && state.zeit !== 'alle') {
     const b = el('button', 'button', 'Zeitraum „Alle“ zeigen');
     b.type = 'button';
     b.addEventListener('click', () => update({ zeit: 'alle' }));
