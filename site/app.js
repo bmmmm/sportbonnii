@@ -18,7 +18,7 @@ const $ = (id) => document.getElementById(id);
 let data = null;
 let ctx = null;
 let state = defaultState();
-const ui = { sort: { key: 'datum', dir: 1 }, limit: PAGE, allChips: false, day: null, focusDay: null, place: null };
+const ui = { sort: { key: 'datum', dir: 1 }, limit: PAGE, allChips: false, day: null, focusDay: null, place: null, detail: null };
 const VIEW_IDS = ['tabelle', 'kalender', 'karte', 'vereine'];
 
 function known() {
@@ -147,10 +147,34 @@ function isFiltered() {
 
 // --- views ---------------------------------------------------------------------
 
+/** No filter but the club: every kind, both sides, no sport, search or range. */
+const UNFILTERED = { sport: [], art: [], ort: 'alle', q: '', zeit: 'alle' };
+
+/** Every date of a club (or, without one, of all clubs), whatever the filters said; from the directory or the map in the table. */
+function showUnfiltered(verein = state.verein) {
+  const ansicht = state.ansicht === 'kalender' ? 'kalender' : 'tabelle';
+  const switching = ansicht !== state.ansicht;
+  update({ ...UNFILTERED, verein, ansicht });
+  $('f-q').value = '';
+  if (switching) $(`tab-${ansicht}`).focus();
+}
+
 function emptyState(message) {
   const box = el('div', 'empty');
   box.append(el('p', 'empty-icon', '🏟️'), el('p', 'empty-title', message));
+  // A feed nothing of which fits the filters (or which they misjudge) is never hidden without a word and a way back.
+  const all = applyFilters(data.events, { ...defaultState(), ...UNFILTERED, verein: state.verein }, ctx).length;
+  if (all) box.append(el('p', 'empty-hidden', all === 1 ? '1 Termin ist durch Filter ausgeblendet.' : `${all} Termine sind durch Filter ausgeblendet.`));
   const hints = el('p', 'empty-actions');
+  if (all) {
+    const name = state.verein ? ctx.clubsById.get(state.verein)?.name : null;
+    const what = all === 1 ? '1 Termin' : `Alle ${all} Termine`;
+    const b = el('button', 'button', name ? `${what} von ${name} zeigen` : `${what} zeigen`);
+    b.type = 'button';
+    b.dataset.unfiltered = '1';
+    b.addEventListener('click', () => showUnfiltered());
+    hints.append(b);
+  }
   if (state.zeit !== 'alle') {
     const b = el('button', 'button', 'Zeitraum „Alle“ zeigen');
     b.type = 'button';
@@ -264,6 +288,16 @@ function download() {
     state.ansicht === 'kalender' ? formatMonth(shownMonth()) : null,
   ].filter(Boolean);
   const name = `Sport in Bonn${parts.length ? ` – ${parts.join(', ')}` : ''}`;
+  saveFeed(events, name, `sportbonnii-${slug(parts.join(' ') || 'alle-termine')}.ics`);
+}
+
+/** One date as its own .ics („In meinen Kalender“). */
+function downloadOne(id) {
+  const e = data.events.find((x) => x.id === id);
+  if (e) saveFeed([e], e.title, `sportbonnii-${slug(e.title)}.ics`);
+}
+
+function saveFeed(events, name, file) {
   const text = serializeFeed(events, {
     name,
     windowFrom: data.window.from,
@@ -273,7 +307,7 @@ function download() {
   const url = URL.createObjectURL(new Blob([text], { type: 'text/calendar;charset=utf-8' }));
   const a = el('a');
   a.href = url;
-  a.download = `sportbonnii-${slug(parts.join(' ') || 'alle-termine')}.ics`;
+  a.download = file;
   document.body.append(a);
   a.click();
   a.remove();
@@ -293,11 +327,7 @@ function renderClubsView() {
     upcomingByClub: upcoming,
     state,
     feedUrl,
-    onShowClub(id) {
-      update({ verein: id, ansicht: 'tabelle', sport: [], art: [], ort: 'alle', q: '' });
-      $('f-q').value = '';
-      $('tab-tabelle').focus();
-    },
+    onShowClub(id) { showUnfiltered(id); },
   });
   const box = $('result');
   box.replaceChildren(el('b', null, String(shown)), document.createTextNode(shown === 1 ? ' Verein' : ' Vereine'));
@@ -319,7 +349,11 @@ function renderTableView() {
       render();
       document.querySelector(`#table [data-sort="${key}"]`)?.focus();
     },
-    onClub(id) { update({ verein: id }); },
+    detail: ui.detail,
+    onClub(id) { showUnfiltered(id); },
+    onDetail(id) { ui.detail = ui.detail === id ? null : id; render(); },
+    onIcs(id) { downloadOne(id); },
+    onPlace: showPlace,
     onMore() { ui.limit += PAGE; render(); },
   });
 }
@@ -336,7 +370,7 @@ function renderMap() {
     refYear: Number(ctx.today.slice(0, 4)),
     selected: ui.place,
     onSelect(id) { ui.place = id; render(); },
-    onClub(id) { update({ verein: id, ansicht: 'tabelle' }); $('tab-tabelle').focus(); },
+    onClub(id) { showUnfiltered(id); },
   });
   renderResult(located, ' auf der Karte');
 }
@@ -367,8 +401,17 @@ function renderCalendarView() {
       ui.focusDay = date;
       render();
     },
-    onClub(id) { update({ verein: id }); },
+    onClub(id) { showUnfiltered(id); },
   });
+}
+
+/** A place in the table opens the map at that venue, its marker focused. */
+function showPlace(id) {
+  const club = ctx.clubsById.get(id.split('/')[0]);
+  ui.place = id;
+  // The map shows a club only under a sport it has; a platform date may carry another.
+  update({ ansicht: 'karte', ...(state.sport.length && !club.sports.some((s) => state.sport.includes(s)) ? { sport: [] } : {}) });
+  $('map').querySelector(`[data-marker="${id}"]`)?.focus();
 }
 
 function resetFilters() {
@@ -472,6 +515,7 @@ async function main() {
     today: berlinToday(),
     clubsById: new Map(data.clubs.map((c) => [c.id, c])),
     sportsById: new Map(data.sports.map((s) => [s.id, s])),
+    platformsById: new Map(data.platforms.map((p) => [p.id, p])),
   };
   const list = $('club-list');
   list.replaceChildren(...data.clubs.filter((c) => c.active !== false).sort((a, b) => a.name.localeCompare(b.name, 'de')).map((c) => {

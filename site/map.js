@@ -5,7 +5,9 @@
 // third-party request, and none is made before the map is on screen.
 import { el, card, relativeDay } from './table.js';
 import { eventDays, formatLongDate } from './dates.js';
-import { osmUrl, venueIndex } from './venue.js';
+import { osmUrl, eventVenue } from './venue.js';
+
+export { eventVenue };
 
 const TILE = 256;
 export const TILE_URL = 'https://tile.openstreetmap.org/';
@@ -242,20 +244,6 @@ export function createMap(box, { onSelect }) {
 }
 
 // --- the view: venues, their dates, the panel --------------------------------------
-
-/**
- * The venue an event takes place at, as an index into its club's venues, or
- * -1: the venue its location names; without a location, the club's only venue
- * for that kind of date — unless it is an away game.
- */
-export function eventVenue(e, club) {
-  const venues = club?.venues ?? [];
-  if (!venues.length) return -1;
-  if (e.location) return venueIndex(e.location, venues);
-  if (e.home === false) return -1;
-  const fits = venues.map((v, i) => [v, i]).filter(([v]) => !v.use || v.use === e.kind);
-  return fits.length === 1 ? fits[0][1] : -1;
-}
 
 /**
  * The places the map shows: every venue of the clubs the sport and club

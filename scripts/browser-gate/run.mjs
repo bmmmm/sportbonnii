@@ -5,7 +5,9 @@
 //
 // Checks: rows per sport chip and per kind chip equal what state.js computes
 // in Node, with the kind badges; the page opens on home games and "Auswärts"
-// shows the away games; the hash restores a view after a reload; the
+// shows the away games; a club the filters empty offers its whole calendar,
+// a club link opens it unfiltered; a title opens its detail with a one-event
+// .ics, a place at a club venue opens the map there; the hash restores a view after a reload; the
 // weekly training after the DST end lands on Tuesday 19:00; 390 px shows
 // cards and the agenda; an <img onerror> title stays text; the .ics download
 // carries exactly the shown dates; the stale banner appears after 48 h; the
@@ -24,7 +26,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { openTarget } from './cdp.mjs';
 import { applyFilters, defaultState } from '../../site/state.js';
-import { mapPlaces, TILE_URL } from '../../site/map.js';
+import { mapPlaces, eventVenue, TILE_URL } from '../../site/map.js';
 import { KIND_IDS } from '../../site/kinds.js';
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
@@ -223,6 +225,62 @@ try {
   check((await ortInfo()).hash === '', '"Filter zurücksetzen" returns to the default (games, home)', `reset: ${(await ortInfo()).hash}`);
   await open('#art=training');
   check((await ortInfo()).hidden, 'the home/away switch hides while games are not among the kinds', 'ort field shown for trainings only');
+  // --- 2c. a club's whole calendar is never out of reach
+  // The Gamecocks publish one training: the default view (home games) shows nothing, and says how to see it.
+  await open('#verein=bonn-gamecocks');
+  const gcAll = expectRows({ verein: 'bonn-gamecocks', art: [], ort: 'alle' });
+  const gcEmpty = await evaluate(`({ rows: document.querySelectorAll('#table tbody tr').length, hidden: document.querySelector('#table .empty-hidden')?.textContent, button: document.querySelector('#table [data-unfiltered]')?.textContent })`);
+  check(gcAll === 1 && gcEmpty.rows === 0 && gcEmpty.hidden === '1 Termin ist durch Filter ausgeblendet.' && gcEmpty.button === '1 Termin von Bonn Gamecocks zeigen',
+    'a club view the filters empty says how many dates they hide and offers them', `empty club view: ${JSON.stringify({ gcEmpty, gcAll })}`);
+  await evaluate(`document.querySelector('#table [data-unfiltered]').click(), true`);
+  await settle();
+  check(await evaluate('location.hash') === '#art=alle&ort=alle&verein=bonn-gamecocks' && await rows() === gcAll, 'its button shows the club\'s whole calendar (#art=alle&ort=alle)', `unfiltered: ${await evaluate('location.hash')} / ${await rows()}`);
+  // A club name in the table opens all of that club's dates, whatever the filters were.
+  await open('#sport=rugby&q=heim&zeit=woche');
+  await evaluate(`document.querySelector('#table tbody [data-club="rc-bonn-rhein-sieg"]').click(), true`);
+  await settle();
+  const rcAll = expectRows({ verein: 'rc-bonn-rhein-sieg', art: [], ort: 'alle' });
+  check(await evaluate('location.hash') === '#art=alle&ort=alle&verein=rc-bonn-rhein-sieg' && await rows() === rcAll && rcAll > expectRows({ verein: 'rc-bonn-rhein-sieg' }) && await evaluate(`document.getElementById('f-q').value`) === '',
+    `a club name in the table opens all ${rcAll} of its dates (sport, search and range cleared)`, `club button: ${await evaluate('location.hash')} / ${await rows()}`);
+
+  // --- 2d. every title opens its detail; a place at a club venue opens the map there
+  await open();
+  const game = 'Heimspiel gegen RK Heusenstamm';
+  const detailInfo = () => evaluate(`(() => {
+    const row = [...document.querySelectorAll('#table tbody tr:not(.detail-row)')].find((r) => r.querySelector('.col-titel .title')?.textContent === ${JSON.stringify(game)});
+    const toggle = row.querySelector('.col-titel [data-detail]');
+    const next = row.nextElementSibling;
+    const open = next?.classList.contains('detail-row') ? next : null;
+    return { tag: toggle?.tagName, expanded: toggle?.getAttribute('aria-expanded'), focused: document.activeElement === toggle,
+      text: open?.textContent ?? null, ics: Boolean(open?.querySelector('[data-ics]')),
+      linked: [...document.querySelectorAll('#table tbody tr:not(.detail-row)')].filter((r) => r.querySelector('a.title')).every((r) => r.querySelector('.detail-toggle')?.textContent === 'Details') };
+  })()`);
+  const closed = await detailInfo();
+  await evaluate(`[...document.querySelectorAll('#table tbody .title-button')].find((b) => b.textContent === ${JSON.stringify(game)}).focus(), true`);
+  await evaluate(`document.activeElement.click(), true`);
+  await settle();
+  const opened = await detailInfo();
+  check(closed.tag === 'BUTTON' && closed.expanded === 'false' && closed.text === null && closed.linked
+    && opened.expanded === 'true' && opened.focused && opened.ics && ['Regionalliga West. Eintritt frei', 'Rugbyplatz Rheinaue', 'Rugby Club Bonn-Rhein-Sieg', 'Samstag, 17. Oktober 2026, 15:00–17:00'].every((x) => opened.text.includes(x)),
+    'a title without link is a button that opens its detail (time, place, club, description), focus kept; a linked title has "Details"', `detail: ${JSON.stringify({ closed, opened })}`);
+  const one = await evaluate(`(async () => {
+    let blob = null, name = null;
+    const create = URL.createObjectURL;
+    URL.createObjectURL = (b) => { blob = b; return create.call(URL, b); };
+    const click = HTMLAnchorElement.prototype.click;
+    HTMLAnchorElement.prototype.click = function () { name = this.download; };
+    document.querySelector('#table .detail-row [data-ics]').click();
+    HTMLAnchorElement.prototype.click = click;
+    URL.createObjectURL = create;
+    const text = blob ? await blob.text() : '';
+    return { name, vevents: (text.match(/BEGIN:VEVENT/g) || []).length, summary: text.includes('SUMMARY:Heimspiel gegen RK Heusenstamm') };
+  })()`);
+  check(one.vevents === 1 && one.summary && one.name === 'sportbonnii-heimspiel-gegen-rk-heusenstamm.ics', '"In meinen Kalender" saves exactly that one date', `one-event ics: ${JSON.stringify(one)}`);
+  // A place that is no club venue stays text; one that is opens the Karte with that venue selected.
+  const places2 = await evaluate(`[...document.querySelectorAll('#table tbody tr:not(.detail-row) .col-ort')].map((td) => [td.textContent, td.querySelector('[data-place]')?.dataset.place ?? null])`);
+  const wantPlaces = applyFilters(events, defaultState(), ctx).map((e) => [e.location, eventVenue(e, ctx.clubsById.get(e.club)) === -1 ? null : `${e.club}/${eventVenue(e, ctx.clubsById.get(e.club))}`]);
+  check(JSON.stringify(places2.map(([, id]) => id).sort()) === JSON.stringify(wantPlaces.map(([, id]) => id).sort()) && places2.some(([, id]) => id === null) && places2.some(([, id]) => id),
+    'a place is a map button exactly where map.js finds a club venue', `places: ${JSON.stringify({ places2, wantPlaces })}`);
   await open();
   await evaluate(`document.getElementById('kind-clear').click(), true`);
   await settle();
@@ -342,6 +400,13 @@ try {
 
   // --- 7b. the map: venues with their dates, tiles only once it is open
   check(requests.filter(isTile).length === 0, 'no map tile is requested before the Karte tab opens', `tiles before the map: ${requests.filter(isTile).length}`);
+  // A place in the table that is a club venue opens the Karte there.
+  await open();
+  await evaluate(`document.querySelector('#table tbody .col-ort [data-place="rc-bonn-rhein-sieg/0"]').click(), true`);
+  await settle();
+  const atPlace = await evaluate(`({ hash: location.hash, tab: document.querySelector('[role=tab][aria-selected=true]').dataset.view, pressed: document.querySelector('#map [data-marker="rc-bonn-rhein-sieg/0"]')?.getAttribute('aria-pressed'), focused: document.activeElement?.dataset?.marker, title: document.querySelector('.map-panel-title')?.textContent })`);
+  check(atPlace.hash === '#ansicht=karte' && atPlace.tab === 'karte' && atPlace.pressed === 'true' && atPlace.focused === 'rc-bonn-rhein-sieg/0' && atPlace.title === 'Rugbyplatz Rheinaue',
+    'a place opens the Karte at its venue, the marker pressed and focused', `place → map: ${JSON.stringify(atPlace)}`);
   await open('#ansicht=karte');
   await waitFor(`document.querySelectorAll('#map .map-tile').length > 0 && [...document.querySelectorAll('#map .map-tile')].every((i) => i.complete)`, 6000);
   const every = { ...defaultState() };
@@ -424,7 +489,7 @@ try {
     'a right drag and a move after the capture is lost leave the map; the box itself never scrolls', `pointer guards: marker ${mx0}→${mx1}→${mx2}, released ${released}, scroll ${JSON.stringify(scrolled)}`);
   await evaluate(`document.querySelector('.map-panel-where [data-club]').click(), true`);
   await settle();
-  check(await evaluate(`location.hash`) === '#verein=bsv-roleber' && await rows() === expectRows({ verein: 'bsv-roleber' }), 'the club in the panel opens its dates in the table', `map club jump: ${await evaluate('location.hash')}`);
+  check(await evaluate(`location.hash`) === '#art=alle&ort=alle&verein=bsv-roleber' && await rows() === expectRows({ verein: 'bsv-roleber', art: [], ort: 'alle' }), 'the club in the panel opens all its dates in the table', `map club jump: ${await evaluate('location.hash')}`);
   await open('#ansicht=karte&sport=rugby&ort=auswaerts');
   const rugbyAway = await evaluate(`[...document.querySelectorAll('#map .map-marker')].map((b) => [b.dataset.marker, b.textContent])`);
   check(JSON.stringify(rugbyAway) === JSON.stringify([['rc-bonn-rhein-sieg/0', '']]), 'the filters narrow the map (rugby, away: the venue without dates)', `rugby away: ${JSON.stringify(rugbyAway)}`);

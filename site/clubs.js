@@ -76,10 +76,12 @@ function clubCard(club, { ctx, status, upcoming, feedUrl, selected, colour }) {
 
   const actions = el('div', 'club-actions');
   if (upcoming > 0) {
-    const show = el('button', 'button', 'Termine');
+    // The way to the club's whole calendar: every kind, both sides, no other filter.
+    const n = upcoming === 1 ? '1 Termin' : `${upcoming} Termine`;
+    const show = el('button', 'button', `${n} ansehen`);
     show.type = 'button';
     show.dataset.showClub = club.id;
-    show.setAttribute('aria-label', `Termine von ${club.name} anzeigen`);
+    show.setAttribute('aria-label', `${n} von ${club.name} ansehen`);
     actions.append(show);
     const sub = el('a', 'button button-quiet', 'Abonnieren');
     sub.href = feedUrl(`verein-${club.id}.ics`, 'webcal');

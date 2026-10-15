@@ -35,3 +35,17 @@ export function venueIndex(location, venues = []) {
     return /\d/.test(street) && hay.includes(words(street));
   });
 }
+
+/**
+ * The venue an event takes place at, as an index into its club's venues, or
+ * -1: the venue its location names; without a location, the club's only venue
+ * for that kind of date — unless it is an away game.
+ */
+export function eventVenue(e, club) {
+  const venues = club?.venues ?? [];
+  if (!venues.length) return -1;
+  if (e.location) return venueIndex(e.location, venues);
+  if (e.home === false) return -1;
+  const fits = venues.map((v, i) => [v, i]).filter(([v]) => !v.use || v.use === e.kind);
+  return fits.length === 1 ? fits[0][1] : -1;
+}

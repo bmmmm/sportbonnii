@@ -79,12 +79,14 @@ store index — run installs unsandboxed.
 - `site/` — shipped byte for byte: `index.html`, `404.html`, `style.css`,
   `app.js` (wiring), `data.js` (the only `fetch`), `state.js` (hash codec,
   filters, chip counts, the only `history.replaceState`), `dates.js`
-  (string-part dates), `table.js`, `calendar.js` (calqrii's `monthGrid`),
+  (string-part dates), `table.js` (rows and cards; every title opens a
+  detail row with a one-event .ics, a place at a club venue opens the
+  Karte there), `calendar.js` (calqrii's `monthGrid`),
   `clubs.js`, `ics.js` (feed writer shared with the pipeline), `kinds.js`
   (event kinds and venue uses, shared with the pipeline), `venue.js`
-  (OpenStreetMap link, `venueIndex` shared with the pipeline), `map.js`
-  (the Karte view: a slippy map of its own on OSM tiles, venue markers,
-  `eventVenue`/`mapPlaces`), favicon,
+  (OpenStreetMap link, `venueIndex` shared with the pipeline, `eventVenue`),
+  `map.js` (the Karte view: a slippy map of its own on OSM tiles, venue
+  markers, `mapPlaces`), favicon,
   robots, sitemap. `site/data/` is generated and gitignored.
 - `scripts/web-smoke.mjs` — static gate; `PAGE_GRAPH` pins the module set
   (a new import is a one-line change there). `scripts/browser-gate/run.mjs` —
@@ -139,6 +141,10 @@ store index — run installs unsandboxed.
   `ort=heim`; a game whose side is unknown counts as home); `art=alle`
   lifts the kind filter. Home/away only ever touches games. Links from before
   2026-10-15 without `art` now open on home games too (accepted).
+- A club's whole calendar is always one click away: every club link
+  (directory, table, calendar, map panel) opens it unfiltered
+  (`art=alle&ort=alle`, no sport, search or range), and an empty view says
+  how many dates the filters hide and offers them.
 - The page: no external resources except OpenStreetMap tiles in the Karte
   view (`img-src` admits `https://tile.openstreetmap.org` only; no tile before
   the tab opens; no `referrer` meta — the tile policy needs the Referer; the
