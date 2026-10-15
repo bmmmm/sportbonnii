@@ -226,6 +226,12 @@ const calledOff = (t) => {
   return CANCELLED.some((w) => hasWhole(u, w));
 };
 
+/** Whether a title calls its date off, and whether it uses a cancel word at all (even negated). */
+export function titleCancels(title) {
+  const t = fold(title);
+  return { cancels: calledOff(t), mentions: CANCELLED.some((w) => hasWhole(t, w)) };
+}
+
 /**
  * One raw adapter event → an events.json entry, or null when it is dropped
  * (excluded, outside the window, unusable). `owner` is the club or platform,

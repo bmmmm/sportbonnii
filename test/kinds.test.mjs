@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { eventKind } from '../pipeline/model.mjs';
-import { acceptPrevious, upgradeLegacyEvent } from '../pipeline/run.mjs';
+import { acceptPrevious, upgradeLegacyEvent, refreshEvent } from '../pipeline/run.mjs';
 import { checkEvent, checkSiteData, EVENT_KEYS } from '../pipeline/contract.mjs';
 import { veventLines } from '../site/ics.js';
 import { KIND_IDS } from '../site/kinds.js';
@@ -163,4 +163,21 @@ test('feed: CATEGORIES carry the sports, then the kind', () => {
   assert.ok(veventLines(training, opts).includes('CATEGORIES:Rugby,Training'));
   assert.ok(veventLines({ ...training, kind: 'spiel' }, opts).includes('CATEGORIES:Rugby,Spiel'));
   assert.ok(veventLines({ ...training, kind: 'veranstaltung' }, opts).includes('CATEGORIES:Rugby,Veranstaltung'));
+});
+
+test('refresh: a previous event is classified again under today\'s rules, title first', () => {
+  const clubsById = new Map(JSON.parse(fixture('clubs.json')).clubs.map((c) => [c.id, c]));
+  for (const e of snapshot.events) assert.equal(refreshEvent(e, clubsById), e, `${e.title} is as today's rules make it`);
+  const e = snapshot.events.find((x) => x.kind === 'training');
+  const at = (over) => refreshEvent({ ...e, ...over }, clubsById);
+  assert.equal(at({ title: 'Heimspiel gegen X', kind: 'veranstaltung', home: null }).kind, 'spiel', 'a kind the title decides replaces the old one');
+  assert.equal(at({ title: 'Heimspiel gegen X', kind: 'veranstaltung', home: null }).home, true, 'and home follows');
+  assert.equal(at({ title: 'Saisonstart', kind: 'training' }).kind, 'training', 'a title that decides nothing keeps the old kind');
+  assert.equal(at({ title: 'Saisonstart', kind: 'spiel', home: false, location: null }).home, null, 'home is derived again');
+  assert.deepEqual(Object.keys(at({ title: 'Heimspiel gegen X', kind: 'veranstaltung', home: null })), EVENT_KEYS, 'keys stay in contract order');
+  const club = [...clubsById.values()].find((c) => c.venues?.length);
+  assert.equal(at({ title: 'Liga', kind: 'spiel', home: null, club: club.id, location: club.venues[0].name }).home, true, 'the club venue counts');
+  assert.equal(at({ title: 'Training fällt aus' }).status, 'cancelled', 'a cancel word cancels');
+  assert.equal(at({ title: 'Training entfällt nicht', status: 'cancelled' }).status, 'confirmed', 'a cancel word that no longer counts is lifted');
+  assert.equal(at({ title: 'Training', status: 'cancelled' }).status, 'cancelled', 'a cancelled status from the feed stays');
 });

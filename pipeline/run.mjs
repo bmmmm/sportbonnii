@@ -27,7 +27,7 @@ import { fileURLToPath } from 'node:url';
 import { loadRegistry, REGISTRY_DIR } from './registry.mjs';
 import { loadAdapter } from './adapters/index.mjs';
 import { createNet, NetError } from './net.mjs';
-import { buildContext, normalizeEvent, eventKind, homeGame } from './model.mjs';
+import { buildContext, normalizeEvent, eventKind, homeGame, titleCancels } from './model.mjs';
 import { mergeRun } from './merge.mjs';
 import { formatEventsJson, formatJson, checkEvent, EVENT_KEYS, STATES } from './contract.mjs';
 import { addMonths, berlinDate } from './tz.mjs';
@@ -59,6 +59,28 @@ export function upgradeLegacyEvent(e, clubsById = new Map()) {
   const kind = 'kind' in e ? e.kind : eventKind(e.title, [], null);
   const home = homeGame(e.title, e.location, clubsById.get(e.club) ?? null, kind);
   return Object.fromEntries(EVENT_KEYS.map((k) => [k, k === 'kind' ? kind : k === 'home' ? home : e[k]]));
+}
+
+const KEEP = 'keep';
+
+/**
+ * A previous event under today's rules: kind, home and a title's cancellation
+ * are derived again, so a rule change reaches the events a failing source
+ * keeps (and the comparison behind `changed` sees the same rules on both
+ * sides). Only the title is left of the raw event: a kind the title decides
+ * replaces the old one (known limit: a kind the tags or a source's `kind`
+ * made is overruled when the title names another), else the old kind stays;
+ * a raw cancelled status stays unless the title has a cancel word that no
+ * longer counts.
+ */
+export function refreshEvent(e, clubsById = new Map()) {
+  const byTitle = eventKind(e.title, [], { kind: KEEP });
+  const kind = byTitle === KEEP ? e.kind : byTitle;
+  const home = homeGame(e.title, e.location, clubsById.get(e.club) ?? null, kind);
+  const { cancels, mentions } = titleCancels(e.title);
+  const status = cancels || (e.status === 'cancelled' && !mentions) ? 'cancelled' : 'confirmed';
+  if (kind === e.kind && home === e.home && status === e.status) return e;
+  return { ...e, kind, home, status };
 }
 
 /**
@@ -181,6 +203,8 @@ export async function run(opts = {}) {
   const clubsById = new Map(registry.clubs.map((c) => [c.id, c]));
   const previous = await readPrevious({ outDir, previousStateUrl, fetchImpl, log, clubsById });
   log(previous ? `previous state: ${previous.events.length} events from ${previous.from}` : 'previous state: none (first run)');
+  // Another build may have other rules: the previous events are classified again (the same build's are as it left them).
+  if (previous && !(build && previous.build === build)) previous.events = previous.events.map((e) => refreshEvent(e, clubsById));
   // Validators may be reused only against a state the very same build produced for the same window.
   const reusable = Boolean(build && previous && previous.build === build && previous.window
     && previous.window.from === window.from && previous.window.to === window.to);

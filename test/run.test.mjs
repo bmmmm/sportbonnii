@@ -115,6 +115,25 @@ test('a failing source keeps its previous events (local previous state)', async 
   assert.match(second.summary, /\| rc-test\/kalender \| error \| \d+ \| ±0 \|/);
 });
 
+test('a failing source\'s kept events follow today\'s rules, unless the same build made them', async () => {
+  const reg = await tempRegistry(REG);
+  const good = { 'https://rc.example/k.ics': await fixture('ical/edge-cases.ics'), 'https://other.example/z.ics': await fixture('ical/vtimezone.ics') };
+  const broken = { ...good, 'https://rc.example/k.ics': new Error('connect ECONNREFUSED') };
+  const kinds = (events) => events.filter((e) => e.source === 'rc-test/kalender').map((e) => e.kind);
+  for (const [build, next, refreshed] of [[null, null, true], ['abc123', 'abc123', false], ['abc123', 'def456', true]]) {
+    const out = await mkdtemp(join(tmpdir(), 'sb-refresh-'));
+    const first = await run({ ...opts(out, reg, servingFetch(good)), build });
+    // An older rule set left every kept event an event without a side.
+    const doc = JSON.parse(await readFile(join(out, 'events.json'), 'utf8'));
+    for (const e of doc.events) if (e.source === 'rc-test/kalender') Object.assign(e, { kind: 'veranstaltung', home: null });
+    await writeFile(join(out, 'events.json'), JSON.stringify(doc));
+    const second = await run({ ...opts(out, reg, servingFetch(broken)), build: next, now: new Date('2026-10-15T10:00:00Z') });
+    assert.equal(second.status['rc-test/kalender'].state, 'error');
+    assert.ok(kinds(first.events).some((k) => k !== 'veranstaltung'), 'the fixture has more than events');
+    assert.deepEqual(kinds(second.events), refreshed ? kinds(first.events) : kinds(first.events).map(() => 'veranstaltung'), `build ${build} → ${next}`);
+  }
+});
+
 test('previous state from PREVIOUS_STATE_URL, shape-checked', async () => {
   const reg = await tempRegistry(REG);
   const site = await mkdtemp(join(tmpdir(), 'sb-site-'));

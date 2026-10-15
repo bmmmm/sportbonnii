@@ -70,6 +70,9 @@ store index — run installs unsandboxed.
   previous validators only when `$BUILD_ID` (pages.yml: `github.sha`) equals
   the previous build and the window is unchanged; a 304 keeps the source's
   previous events. Locally `BUILD_ID` is unset, so every run fetches in full.
+  A previous state from another build (or none known) is classified again
+  (`refreshEvent`: kind when the title decides it, home, a title's
+  cancellation), so the events a failing source keeps follow today's rules.
 - `pipeline/contract.mjs` — the exact text form of `site/data/*.json` and
   `checkSiteData`; `pipeline/tz.mjs` — Berlin wall clock via Intl;
   `pipeline/detect.mjs` — detection ladder + CLI.
@@ -118,7 +121,10 @@ store index — run installs unsandboxed.
   ETag, and it answers 304 only with fetch's cache mode `no-cache` (net.mjs);
   the content comparison behind `changed` needs no server support.
   Known limits: a server with volatile validators makes status.json move
-  with it, and `changed` also moves when our own normalisation changes.
+  with it, and `changed` also moves when our own normalisation changes
+  (kind, home and a title's cancellation excepted: `refreshEvent` applies
+  today's rules to both sides; a kind the tags or the source's `kind` made
+  and the title contradicts is overruled there until the source answers).
   A previous state without `kind` is upgraded from the titles alone
   (`upgradeLegacyEvent` in run.mjs), so `changed` moves once for a source
   whose kind needs its tags or the source's `kind`; one without `home` gets
