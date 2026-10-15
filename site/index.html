@@ -2,13 +2,14 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data: https://tile.openstreetmap.org; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data: https://tile.openstreetmap.org; connect-src 'self'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
-<meta name="theme-color" content="#f6f5f1" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#e9eeea" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0f1821" media="(prefers-color-scheme: dark)">
 <meta name="description" content="Alle Termine der Bonner Sportvereine an einem Ort: Spiele, Training, Camps und Vereinsfeste – als Tabelle, Kalender, Karte und Vereinsverzeichnis, filterbar nach Sportart.">
 <link rel="icon" href="favicon.ico">
+<link rel="preload" href="archivo.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="style.css">
 <script type="module" src="app.js"></script>
 <title>Sport in Bonn – Termine der Bonner Sportvereine · sportbonnii</title>
@@ -16,9 +17,22 @@
 <body>
 <a class="skip" href="#main">Zum Inhalt springen</a>
 <header class="site-header">
+  <!-- A sports-hall floor, 1 m = 20 units: handball, basketball, volleyball and
+       badminton lines crossing, each in its sport's colour (registry/sports.json). -->
+  <svg class="court" viewBox="0 0 1600 240" preserveAspectRatio="xMaxYMid slice" aria-hidden="true" focusable="false">
+    <path class="ln ln-handball" pathLength="1" d="M780-40V280M1180-40V280M1580-40V280"/>
+    <path class="ln ln-handball" pathLength="1" d="M1580-30A120 120 0 0 0 1460 90V150A120 120 0 0 0 1580 270M780-30A120 120 0 0 1 900 90V150A120 120 0 0 1 780 270M1440 110V130M920 110V130"/>
+    <path class="ln ln-handball ln-dashed" d="M1580-90A180 180 0 0 0 1400 90V150A180 180 0 0 0 1580 330M780-90A180 180 0 0 1 960 90V150A180 180 0 0 1 780 330"/>
+    <path class="ln ln-basketball" pathLength="1" d="M900-40V280M1460-40V280M1460 71H1344V169H1460M900 71H1016V169H900"/>
+    <path class="ln ln-basketball" pathLength="1" d="M1428.5-15A135 135 0 0 0 1428.5 255M931.5-15A135 135 0 0 1 931.5 255"/>
+    <circle class="ln ln-basketball" pathLength="1" cx="1180" cy="120" r="36"/>
+    <circle class="ln ln-basketball" pathLength="1" cx="1344" cy="120" r="36"/>
+    <circle class="ln ln-basketball" pathLength="1" cx="1016" cy="120" r="36"/>
+    <path class="ln ln-volleyball" pathLength="1" d="M1000 30H1360V210H1000ZM1120 30V210M1240 30V210"/>
+    <path class="ln ln-badminton" pathLength="1" d="M1046 59H1314V181H1046ZM1140 59V181M1220 59V181M1046 120H1140M1220 120H1314"/>
+  </svg>
   <div class="wrap header-inner">
     <a class="brand" href="./" aria-label="sportbonnii – Startseite">
-      <span class="brand-mark" aria-hidden="true"></span>
       <span class="brand-name">sport<b>bonnii</b></span>
     </a>
     <p class="tagline">Alle Termine der Bonner Sportvereine – an einem Ort.</p>

@@ -29,16 +29,16 @@ const PAGE_GRAPH = {
 const MODULES = [...new Set(Object.values(PAGE_GRAPH).flat())];
 // Shipped modules outside every page graph, until a page imports them.
 const OTHER_MODULES = [];
-const STATIC = ['index.html', '404.html', 'style.css', 'favicon.ico', 'robots.txt', 'sitemap.xml'];
+const STATIC = ['index.html', '404.html', 'style.css', 'archivo.woff2', 'favicon.ico', 'robots.txt', 'sitemap.xml'];
 const SHIPPED = [...STATIC, ...MODULES, ...OTHER_MODULES];
 const NETWORK_MODULE = 'data.js';
 const ADDRESS_MODULE = 'state.js';
 const CSP = {
   'index.html': [
-    ['default-src', "'none'"], ['script-src', "'self'"], ['style-src', "'self'"], ['img-src', "'self' data: https://tile.openstreetmap.org"],
+    ['default-src', "'none'"], ['script-src', "'self'"], ['style-src', "'self'"], ['font-src', "'self'"], ['img-src', "'self' data: https://tile.openstreetmap.org"],
     ['connect-src', "'self'"], ['base-uri', "'none'"], ['form-action', "'none'"],
   ],
-  '404.html': [['default-src', "'none'"], ['style-src', "'self'"], ['img-src', "'self'"], ['base-uri', "'none'"], ['form-action', "'none'"]],
+  '404.html': [['default-src', "'none'"], ['style-src', "'self'"], ['font-src', "'self'"], ['img-src', "'self'"], ['base-uri', "'none'"], ['form-action', "'none'"]],
 };
 
 let failures = 0;

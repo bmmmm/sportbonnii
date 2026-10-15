@@ -75,12 +75,12 @@ store index — run installs unsandboxed.
   `app.js` (wiring), `data.js` (the only `fetch`), `state.js` (hash codec,
   filters, chip counts, sole `history` writer), `dates.js`
   (string-part dates), `table.js` (rows, cards, a detail row with a
-  one-event .ics per title; a venue place opens the Karte), `calendar.js` (calqrii's `monthGrid`),
+  one-event .ics; a venue place opens the Karte), `calendar.js` (calqrii's `monthGrid`),
   `clubs.js`, `ics.js` (feed writer shared with the pipeline), `kinds.js`
   (event kinds and venue uses, shared with the pipeline), `venue.js`
   (OpenStreetMap link, `venueIndex` shared with the pipeline, `eventVenue`),
-  `map.js` (the Karte view: a slippy map of its own on OSM tiles, venue
-  markers, `mapPlaces`), favicon,
+  `map.js` (the Karte: its own slippy map on OSM tiles, venue
+  markers, `mapPlaces`), `archivo.woff2` (the typeface, OFL: NOTICE), favicon,
   robots, sitemap. `site/data/` is generated and gitignored.
 - `scripts/web-smoke.mjs` — static gate; `PAGE_GRAPH` pins the module set
   (a new import is a one-line change there). `scripts/browser-gate/run.mjs` —

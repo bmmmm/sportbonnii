@@ -46,7 +46,9 @@ function renderHeader() {
   checked.replaceChildren(
     el('span', 'checked-label', 'Zuletzt geprüft: '),
     el('time', null, when),
-    el('span', 'checked-sources', ` · ${meta.sourcesOk} von ${meta.sourcesTotal} Quellen aktuell`),
+    // The visible separator is a CSS rule; screen readers and copy get the comma.
+    el('span', 'visually-hidden', ', '),
+    el('span', 'checked-sources', `${meta.sourcesOk} von ${meta.sourcesTotal} Quellen aktuell`),
   );
   checked.querySelector('time').dateTime = meta.checkedAt;
   const ageHours = (Date.now() - Date.parse(meta.checkedAt)) / 3_600_000;
