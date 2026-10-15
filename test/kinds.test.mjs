@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { eventKind } from '../pipeline/model.mjs';
+import { eventKind, normalizeEvent, buildContext } from '../pipeline/model.mjs';
 import { acceptPrevious, upgradeLegacyEvent, refreshEvent } from '../pipeline/run.mjs';
 import { checkEvent, checkSiteData, EVENT_KEYS } from '../pipeline/contract.mjs';
 import { veventLines } from '../site/ics.js';
@@ -90,6 +90,7 @@ const TITLES = [
   ['Wir feiern 100 Jahre – Jubiläumsspiel', 'spiel'],
   ['Wir feiern mit einem Brettspiel', 'veranstaltung'],
   ['Jubiläumsfeier mit Jubiläumsspiel', 'veranstaltung'],
+  ['Wir feiern mit Spiel und Spaß', 'veranstaltung'],
 ];
 
 test('eventKind: real titles', () => {
@@ -170,8 +171,18 @@ test('refresh: a previous event is classified again under today\'s rules, title 
   for (const e of snapshot.events) assert.equal(refreshEvent(e, clubsById), e, `${e.title} is as today's rules make it`);
   const e = snapshot.events.find((x) => x.kind === 'training');
   const at = (over) => refreshEvent({ ...e, ...over }, clubsById);
-  assert.equal(at({ title: 'Heimspiel gegen X', kind: 'veranstaltung', home: null }).kind, 'spiel', 'a kind the title decides replaces the old one');
-  assert.equal(at({ title: 'Heimspiel gegen X', kind: 'veranstaltung', home: null }).home, true, 'and home follows');
+  assert.equal(at({ title: 'Training Herren', kind: 'spiel', home: true }).kind, 'training', 'a kind the title decides replaces a lower one');
+  assert.equal(at({ title: 'Training Herren', kind: 'spiel', home: true }).home, null, 'and home follows');
+  assert.equal(at({ title: 'Weihnachtsfeier', kind: 'spiel', home: true }).kind, 'veranstaltung');
+  assert.equal(at({ title: 'Heimspiel gegen X', kind: 'training' }).kind, 'training', 'a training tag outranks the title');
+  assert.equal(at({ title: 'Heimspiel gegen X', kind: 'veranstaltung', home: null }).kind, 'veranstaltung', 'so does a celebration tag');
+  assert.equal(at({ title: 'Weihnachtsfeier', kind: 'training' }).kind, 'training');
+  // A tag that decided the kind stays decisive: a fresh run and the refresh agree.
+  const ctx = buildContext({ sports: [{ id: 'rugby', label: 'Rugby' }], clubs: [] });
+  const fresh = normalizeEvent({ uid: 'u', title: 'Heimspiel Vorbereitung', tags: ['Training'], startMs: Date.parse('2026-10-20T17:00:00Z') },
+    { owner: { id: 'c', sports: ['rugby'] }, kind: 'club', source: { id: 's' }, ctx, window: { from: '2026-10-01', to: '2026-11-01' } });
+  assert.equal(fresh.kind, 'training');
+  assert.equal(refreshEvent(fresh), fresh, 'the refresh keeps the tag-made kind');
   assert.equal(at({ title: 'Saisonstart', kind: 'training' }).kind, 'training', 'a title that decides nothing keeps the old kind');
   assert.equal(at({ title: 'Saisonstart', kind: 'spiel', home: false, location: null }).home, null, 'home is derived again');
   assert.deepEqual(Object.keys(at({ title: 'Heimspiel gegen X', kind: 'veranstaltung', home: null })), EVENT_KEYS, 'keys stay in contract order');

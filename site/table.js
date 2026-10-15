@@ -84,7 +84,11 @@ function titleNode(e, detail = null) {
   }
   if (KIND_BADGE.has(e.kind)) wrap.append(el('span', `badge badge-kind badge-${e.kind}`, KIND_BADGE.get(e.kind)));
   if (e.status === 'cancelled') wrap.append(el('span', 'badge badge-cancelled', 'Abgesagt'));
-  if (detail && e.url) wrap.append(detailButton(e, detail.open, 'link-button detail-toggle', 'Details'));
+  if (detail && e.url) {
+    const b = detailButton(e, detail.open, 'link-button detail-toggle', 'Details');
+    b.setAttribute('aria-label', `Details: ${e.title}`);
+    wrap.append(b);
+  }
   return wrap;
 }
 
@@ -280,7 +284,7 @@ function onClick(ev) {
 }
 
 /**
- * opts: { ctx, sort: {key, dir}, limit, refYear, empty: Node, detail: id | null,
+ * opts: { ctx, sort: {key, dir}, limit, refYear, empty: () => Node, detail: id | null,
  *   onSort(key), onClub(id), onDetail(id), onIcs(id), onPlace(placeId), onMore() }
  */
 export function renderTable(container, events, opts) {
@@ -295,7 +299,7 @@ export function renderTable(container, events, opts) {
   // The toggle a keyboard user just pressed keeps the focus across the rebuild (in the table or the cards, whichever shows).
   const focusDetail = container.contains(document.activeElement) ? document.activeElement.dataset?.detail : undefined;
   if (!events.length) {
-    container.replaceChildren(opts.empty);
+    container.replaceChildren(opts.empty());
     return;
   }
   const sorted = sortEvents(events, sort, ctx);

@@ -62,20 +62,24 @@ export function upgradeLegacyEvent(e, clubsById = new Map()) {
 }
 
 const KEEP = 'keep';
+// eventKind's precedence: a training word beats a celebration, which beats a match word.
+const KIND_RANK = { spiel: 1, veranstaltung: 2, training: 3 };
 
 /**
  * A previous event under today's rules: kind, home and a title's cancellation
  * are derived again, so a rule change reaches the events a failing source
  * keeps (and the comparison behind `changed` sees the same rules on both
- * sides). Only the title is left of the raw event: a kind the title decides
- * replaces the old one (known limit: a kind the tags or a source's `kind`
- * made is overruled when the title names another), else the old kind stays;
+ * sides). Only the title is left of the raw event, and tags only ever raise
+ * the kind (training over a celebration over a match): the title's kind
+ * replaces the old one only where it ranks higher, so under unchanged rules
+ * nothing moves (known limit: a rule that lowers a kind waits for the
+ * source to answer);
  * a raw cancelled status stays unless the title has a cancel word that no
  * longer counts.
  */
 export function refreshEvent(e, clubsById = new Map()) {
   const byTitle = eventKind(e.title, [], { kind: KEEP });
-  const kind = byTitle === KEEP ? e.kind : byTitle;
+  const kind = byTitle === KEEP || KIND_RANK[e.kind] > KIND_RANK[byTitle] ? e.kind : byTitle;
   const home = homeGame(e.title, e.location, clubsById.get(e.club) ?? null, kind);
   const { cancels, mentions } = titleCancels(e.title);
   const status = cancels || (e.status === 'cancelled' && !mentions) ? 'cancelled' : 'confirmed';

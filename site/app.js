@@ -343,7 +343,7 @@ function renderTableView() {
     sort: ui.sort,
     limit: ui.limit,
     refYear: Number(ctx.today.slice(0, 4)),
-    empty: emptyState(state.zeit === 'alle' ? 'Keine kommenden Termine für diese Auswahl.' : 'Keine Termine in diesem Zeitraum.'),
+    empty: () => emptyState(state.zeit === 'alle' ? 'Keine kommenden Termine für diese Auswahl.' : 'Keine Termine in diesem Zeitraum.'),
     onSort(key) {
       ui.sort = ui.sort.key === key ? { key, dir: -ui.sort.dir } : { key, dir: 1 };
       render();

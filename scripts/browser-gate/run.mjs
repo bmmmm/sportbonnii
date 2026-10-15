@@ -253,7 +253,8 @@ try {
     const open = next?.classList.contains('detail-row') ? next : null;
     return { tag: toggle?.tagName, expanded: toggle?.getAttribute('aria-expanded'), focused: document.activeElement === toggle,
       text: open?.textContent ?? null, ics: Boolean(open?.querySelector('[data-ics]')),
-      linked: [...document.querySelectorAll('#table tbody tr:not(.detail-row)')].filter((r) => r.querySelector('a.title')).every((r) => r.querySelector('.detail-toggle')?.textContent === 'Details') };
+      linked: [...document.querySelectorAll('#table tbody tr:not(.detail-row)')].filter((r) => r.querySelector('a.title')).every((r) => r.querySelector('.detail-toggle')?.textContent === 'Details'
+        && r.querySelector('.detail-toggle').getAttribute('aria-label') === 'Details: ' + r.querySelector('a.title').firstChild.textContent) };
   })()`);
   const closed = await detailInfo();
   await evaluate(`[...document.querySelectorAll('#table tbody .title-button')].find((b) => b.textContent === ${JSON.stringify(game)}).focus(), true`);

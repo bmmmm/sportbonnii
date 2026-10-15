@@ -123,14 +123,14 @@ test('a failing source\'s kept events follow today\'s rules, unless the same bui
   for (const [build, next, refreshed] of [[null, null, true], ['abc123', 'abc123', false], ['abc123', 'def456', true]]) {
     const out = await mkdtemp(join(tmpdir(), 'sb-refresh-'));
     const first = await run({ ...opts(out, reg, servingFetch(good)), build });
-    // An older rule set left every kept event an event without a side.
+    // An older rule set read every kept training as a home game.
     const doc = JSON.parse(await readFile(join(out, 'events.json'), 'utf8'));
-    for (const e of doc.events) if (e.source === 'rc-test/kalender') Object.assign(e, { kind: 'veranstaltung', home: null });
+    for (const e of doc.events) if (e.source === 'rc-test/kalender' && e.kind === 'training') Object.assign(e, { kind: 'spiel', home: true });
     await writeFile(join(out, 'events.json'), JSON.stringify(doc));
     const second = await run({ ...opts(out, reg, servingFetch(broken)), build: next, now: new Date('2026-10-15T10:00:00Z') });
     assert.equal(second.status['rc-test/kalender'].state, 'error');
-    assert.ok(kinds(first.events).some((k) => k !== 'veranstaltung'), 'the fixture has more than events');
-    assert.deepEqual(kinds(second.events), refreshed ? kinds(first.events) : kinds(first.events).map(() => 'veranstaltung'), `build ${build} → ${next}`);
+    assert.ok(kinds(first.events).includes('training'), 'the fixture has trainings');
+    assert.deepEqual(kinds(second.events), refreshed ? kinds(first.events) : kinds(first.events).map((k) => (k === 'training' ? 'spiel' : k)), `build ${build} → ${next}`);
   }
 });
 

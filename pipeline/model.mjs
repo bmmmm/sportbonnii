@@ -113,8 +113,8 @@ export function eventKind(title, tags = [], source = null) {
     || (t.match(/\p{L}*treff(?![\p{L}\p{N}])/gu) ?? []).some((w) => !SOCIAL_TREFF.includes(w))
     || hasWordStart(t, 'tryout') || hasWordStart(t, 'try-out')) return 'training';
   // A celebration, a trophy handover or a board game is no match, whatever else the title says
-  // ("Wir feiern … – Jubiläumsspiel" is still one: a -spiel word outweighs the verb).
-  if (hasWordEnd(t, 'feier') || (hasWhole(t, 'feiern') && !hasWordEnd(t, 'spiel')) || ['feierstunde', 'ubergabe', 'brettspiel', 'game night'].some((w) => t.includes(w))) return 'veranstaltung';
+  // ("Wir feiern … – Jubiläumsspiel" is still one: a word ending in -spiel outweighs the verb, a bare "Spiel" not).
+  if (hasWordEnd(t, 'feier') || (hasWhole(t, 'feiern') && !/\p{L}spiel(?![\p{L}\p{N}])/u.test(t)) || ['feierstunde', 'ubergabe', 'brettspiel', 'game night'].some((w) => t.includes(w))) return 'veranstaltung';
   if (hasWordEnd(t, 'spiel') || hasWordEnd(t, 'spiele')
     || ['spieltag', 'turnier', 'tourney', 'meisterschaft', 'championship', 'pokal', 'wettkampf', 'regatta', 'ligatermin'].some((w) => t.includes(w))
     || hasWordEnd(t, 'liga') || hasWordEnd(t, 'finale') || ['vs', 'derby', 'cup', 'game', 'match', 'friendly'].some((w) => hasWhole(t, w))
