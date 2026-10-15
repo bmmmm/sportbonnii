@@ -32,10 +32,9 @@ store index — run installs unsandboxed.
   template.
 - `pipeline/registry.mjs` — `readRegistry`, validator, canonical form,
   department guard (`nameKey`, `sameSite`, `departmentConflict`), `--fmt`
-  (zero dependencies: the intake bot runs it without install).
+  (zero dependencies: the intake bot runs it uninstalled).
 - `pipeline/overview.mjs` → `docs/vereine.md` — the generated club overview
-  (one row per club: departments, district, venues, calendars, website);
-  a test pins it to the registry.
+  (one row per club); a test pins it to the registry.
 - `pipeline/net.mjs` — the only network door: private-address check on every
   redirect hop, robots.txt for crawl requests (a source's own subscription
   feed is fetched like a calendar client — `get(url, { robots: false })`),
@@ -47,18 +46,16 @@ store index — run installs unsandboxed.
   (`startMs`/`endMs` UTC or `startDate`/`endDate` for all-day), plus
   `CONDITIONAL` (true only when one request stands for the source). A v2
   portal adapter is one file plus one entry in `ADAPTER_TYPES`.
-- `pipeline/model.mjs` — raw → events.json entry (Berlin times, caps,
-  `exclude` (substring, or `=` for a whole title/tag), sports from tagMap →
-  keywords → club, club from aliases, ids, `kind` from
-  `eventKind`: title/tag rules, training > celebration veto > spiel, else the
-  source's `kind`, else veranstaltung; `status` cancelled also from the title
-  („fällt aus", „entfällt", „abgesagt" — not negated, not a replay); `home` from `homeGame` for games only:
-  the title's own marker („auswärts", Away, Gast bei, Heim, Heimspiel,
-  Heimturnier, Home), then the place — a club venue (`venueIndex`) or a Bonn
-  postcode is home, another postcode away, else the word Bonn home —, then a
-  title „… in <Ort>" (a Bonn Ortsteil in that phrase is home — one another
-  town shares, like Gronau or Südstadt, only when the club's venue or
-  district names it —, another capitalised place away), else null).
+- `pipeline/model.mjs` — raw → events.json entry: Berlin times, caps,
+  `exclude` (substring, `=` for a whole title/tag), sports (tagMap →
+  keywords → club), club from aliases, ids. `eventKind`: training >
+  celebration veto > spiel from title/tags, else the source's `kind`, else
+  veranstaltung. `status` cancelled also from an un-negated cancel word in
+  the title. `homeGame` (games only): the title's marker, then the place
+  (club venue via `venueIndex` or Bonn postcode home, other postcode away,
+  the word Bonn home), then „… in <Ort>" (a Bonn Ortsteil home — a shared
+  one like Gronau only when the club's venue or district names it —, another
+  capitalised place away), else null.
 - `pipeline/merge.mjs` — per-source state rules (ok / unchanged on 304 /
   partial / error / blocked / disabled, 7-day retention, drop-to-zero,
   all-failed), `changed` = the last run with a new or modified event (a
@@ -68,21 +65,18 @@ store index — run installs unsandboxed.
   previous state (local or `$PREVIOUS_STATE_URL`, with meta.json's `build`),
   conditional requests, outputs. The first request of a source carries the
   previous validators only when `$BUILD_ID` (pages.yml: `github.sha`) equals
-  the previous build and the window is unchanged; a 304 keeps the source's
+  the previous build and the window is unchanged; a 304 keeps its
   previous events. Locally `BUILD_ID` is unset, so every run fetches in full.
   A previous state from another build (or none known) is classified again
-  (`refreshEvent`: the title's kind where it outranks the stored one —
-  tags only ever raise a kind —, home, a title's cancellation), so the
-  events a failing source keeps follow today's rules.
+  (`refreshEvent`, see Known limits), so kept events follow today's rules.
 - `pipeline/contract.mjs` — the exact text form of `site/data/*.json` and
   `checkSiteData`; `pipeline/tz.mjs` — Berlin wall clock via Intl;
   `pipeline/detect.mjs` — detection ladder + CLI.
 - `site/` — shipped byte for byte: `index.html`, `404.html`, `style.css`,
   `app.js` (wiring), `data.js` (the only `fetch`), `state.js` (hash codec,
   filters, chip counts, the only `history.replaceState`), `dates.js`
-  (string-part dates), `table.js` (rows and cards; every title opens a
-  detail row with a one-event .ics, a place at a club venue opens the
-  Karte there), `calendar.js` (calqrii's `monthGrid`),
+  (string-part dates), `table.js` (rows, cards, a detail row with a
+  one-event .ics per title), `calendar.js` (calqrii's `monthGrid`),
   `clubs.js`, `ics.js` (feed writer shared with the pipeline), `kinds.js`
   (event kinds and venue uses, shared with the pipeline), `venue.js`
   (OpenStreetMap link, `venueIndex` shared with the pipeline, `eventVenue`),
@@ -96,10 +90,9 @@ store index — run installs unsandboxed.
   `.github/ISSUE_TEMPLATE/verein-hinzufuegen.yml` — issue form → PR with the
   club file and the regenerated overview (path allowlist in `publishableFiles`).
   Live on GitHub (`INTAKE_ENABLED=true`, Actions may create PRs, labels
-  `verein-vorschlag` / `needs-info`). A bot PR's tests/Security runs wait for
-  approval (GitHub's guard for Actions-made PRs) — merge locally like
-  dependabot-adopt: fetch the PR head from `github`, merge, `pnpm test`,
-  push both remotes.
+  `verein-vorschlag` / `needs-info`). A bot PR's CI waits for approval —
+  merge locally: fetch the PR head from `github`, merge, `pnpm test`, push
+  both remotes.
 - `test/` — `node:test`; captured live payloads under `test/fixtures/<adapter>/`,
   the page snapshot under `test/fixtures/site-data/`, the pinned feed
   `test/fixtures/ics/alle.ics`.
@@ -120,18 +113,18 @@ store index — run installs unsandboxed.
   or an RSS feed would hide changes behind it), and only when events.json
   holds the source's whole delivery (a dedup loser is read in full). A push
   (new commit) refetches everything; so does a manual run with `full`.
-  Measured 2026-10-14: of the four live sources only bonn.jetzt sends an
-  ETag, and it answers 304 only with fetch's cache mode `no-cache` (net.mjs);
-  the content comparison behind `changed` needs no server support.
+  bonn.jetzt (the only live ETag, 2026-10-14) answers 304 only with fetch's
+  `no-cache` mode (net.mjs); `changed` compares content, no server needed.
   Known limits: a server with volatile validators makes status.json move
   with it, and `changed` also moves when our own normalisation changes
-  (kind, home and a title's cancellation excepted: `refreshEvent` applies
-  today's rules to both sides; a rule that lowers a kind reaches kept
-  events only when their source answers again).
+  (kind, home and cancellation excepted: `refreshEvent` re-derives them on
+  both sides — the title's kind only where it outranks the stored one, a
+  cancellation only ever added —; a rule that lowers a kind or narrows
+  cancel words reaches kept events only when their source answers again).
   A previous state without `kind` is upgraded from the titles alone
   (`upgradeLegacyEvent` in run.mjs), so `changed` moves once for a source
   whose kind needs its tags or the source's `kind`; one without `home` gets
-  it from `homeGame` with the club's venues (the same rule as a fresh run).
+  it from `homeGame` as in a fresh run.
 - Times in events.json are Europe/Berlin wall clock with offset; all-day
   events are dates with an exclusive end. The page slices strings and never
   does timezone maths — the browser gate runs it in New York to prove it
@@ -140,8 +133,8 @@ store index — run installs unsandboxed.
   clock, never UTC (ical.js would read it as UTC).
 - The page opens on games without the recognised away games (`art=spiel`,
   `ort=heim`; a game whose side is unknown counts as home); `art=alle`
-  lifts the kind filter. Home/away only ever touches games. Links from before
-  2026-10-15 without `art` now open on home games too (accepted).
+  lifts the kind filter. Home/away only ever touches games. Old links without
+  `art` open on home games too (accepted).
 - A club's whole calendar is always one click away: every club link
   (directory, table, calendar, map panel) opens it unfiltered
   (`art=alle&ort=alle`, no sport, search or range), and an empty view says
