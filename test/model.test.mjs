@@ -149,7 +149,13 @@ test('home: the title marker, then the club venue, Bonn, another postcode, a tit
   assert.equal(spiel('Turnier in Bad Godesberg'), true);
   assert.equal(spiel('Turnier in Bad Honnef'), false);
   assert.equal(spiel('Turnier in Sporthalle Beuel'), true, 'a Bonn place anywhere in the phrase');
-  assert.equal(spiel('Turnier in Lessenich'), true);
+  assert.equal(spiel('Turnier in Lessenich'), null, 'an Ortsteil another town shares says nothing alone');
+  assert.equal(spiel('Turnier in Gronau'), null);
+  assert.equal(spiel('Turnier in Gronau', null, { venues: [{ name: 'Sporthalle Gronau', address: 'Kurt-Schumacher-Str. 1, 53113 Bonn' }] }), true, 'the club venue names it');
+  assert.equal(spiel('Turnier in Südstadt', null, { district: 'Südstadt' }), true, 'the club district names it');
+  assert.equal(spiel('Turnier in Bonn-Gronau'), true, 'with Bonn it is ours');
+  assert.equal(spiel('Spiel in Grafschaft'), false, 'Grafschaft is a place, no abstract noun');
+  assert.equal(spiel('Spiel in Partnerschaft mit X'), null);
   assert.equal(spiel('Spieltag in Schwarzrheindorf'), true);
   assert.equal(spiel('Spiel in Köln - Bonn Gamecocks'), false, 'the phrase ends at a dash');
   assert.equal(spiel('Spiel in Köln, Bonn II'), false, 'at a comma');

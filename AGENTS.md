@@ -56,8 +56,9 @@ store index — run installs unsandboxed.
   the title's own marker („auswärts", Away, Gast bei, Heim, Heimspiel,
   Heimturnier, Home), then the place — a club venue (`venueIndex`) or a Bonn
   postcode is home, another postcode away, else the word Bonn home —, then a
-  title „… in <Ort>" (a Bonn Ortsteil in that phrase is home, another
-  capitalised place away), else null).
+  title „… in <Ort>" (a Bonn Ortsteil in that phrase is home — one another
+  town shares, like Gronau or Südstadt, only when the club's venue or
+  district names it —, another capitalised place away), else null).
 - `pipeline/merge.mjs` — per-source state rules (ok / unchanged on 304 /
   partial / error / blocked / disabled, 7-day retention, drop-to-zero,
   all-failed), `changed` = the last run with a new or modified event (a

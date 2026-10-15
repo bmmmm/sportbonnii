@@ -76,6 +76,20 @@ const TITLES = [
   ['Halbfinale Kreispokal', 'spiel'],
   ['Finale', 'spiel'],
   ['Team Practice', 'training'],
+  // review of b343c19: a time without "Uhr", a club after a hyphen, a club name that is a noun, feiern vs -spiel
+  ['Treffen gegen 18:30, danach Grillen', 'veranstaltung'],
+  ['Abfahrt gegen 18.30h', 'veranstaltung'],
+  ['Herren gegen TuS-Pützchen', 'spiel'],
+  ['Abschluss gegen TuS-Pützchen', 'spiel'],
+  ['Demo gegen FC-Fans', 'veranstaltung'],
+  ['Demo gegen die Union', 'veranstaltung'],
+  ['Kampf gegen Eintracht?', 'veranstaltung'],
+  ['Abschluss gegen Union Berlin', 'spiel'],
+  ['Protest gegen Union und SPD', 'veranstaltung'],
+  ['Protest gegen Unionspolitik', 'veranstaltung'],
+  ['Wir feiern 100 Jahre – Jubiläumsspiel', 'spiel'],
+  ['Wir feiern mit einem Brettspiel', 'veranstaltung'],
+  ['Jubiläumsfeier mit Jubiläumsspiel', 'veranstaltung'],
 ];
 
 test('eventKind: real titles', () => {

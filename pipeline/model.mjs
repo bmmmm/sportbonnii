@@ -61,11 +61,38 @@ function hasWordEnd(hay, needle) {
   return false;
 }
 
+// Bonn's postcodes, and the city with the districts a title may name ("Turnier in Beuel").
+const BONN_POSTCODE = /\b(5311[13579]|5312[13579]|5317[3579]|5322[579])\b/;
+const POSTCODE = /\b\d{5}\b/;
+const FILLER = /^(der|die|das|dem|den|am|an|im|beim)$/i;
+// "in Kooperation mit …", "in Zusammenarbeit …": an abstract noun names no place (Grafschaft is one).
+const ABSTRACT = /(ung|heit|keit|(?<!graf)schaft|arbeit|tion)$/;
+const VENUE_WORD = /(halle|platz|park|stadion|zentrum|schule|arena|hallenbad|freibad|schwimmbad)$/;
+const BONN_PLACES = ['Bonn', 'Bad Godesberg', 'Godesberg', 'Beuel', 'Hardtberg', 'Duisdorf', 'Tannenbusch',
+  'Rheinaue', 'Oberkassel', 'Geislar', 'Kessenich', 'Endenich', 'Poppelsdorf', 'Mehlem', 'Plittersdorf',
+  'Friesdorf', 'Dottendorf', 'Lengsdorf', 'Ippendorf', 'Röttgen', 'Venusberg', 'Holzlar', 'Pützchen', 'Vilich',
+  'Ramersdorf', 'Limperich', 'Küdinghoven', 'Lannesdorf', 'Muffendorf', 'Pennenfeld', 'Brüser Berg', 'Auerberg',
+  'Graurheindorf', 'Buschdorf', 'Dransdorf', 'Medinghoven',
+  // the rest of Bonn's 51 Ortsteile (Hauptsatzung § 3, as listed by LVR KuLaDig), and the Ennert
+  'Heiderhof', 'Hochkreuz', 'Rüngsdorf', 'Schweinheim', 'Hoholz', 'Holtorf', 'Bechlinghoven', 'Schwarzrheindorf',
+  'Vilich-Rheindorf', 'Castell', 'Gronau', 'Lessenich', 'Meßdorf', 'Nordstadt', 'Südstadt', 'Weststadt', 'Ückesdorf',
+  'Hardthöhe', 'Ennert'].map(fold);
+// Ortsteile whose name another town has too (Gronau in Westfalen, Schweinheim near Euskirchen, every
+// city's Südstadt): home only when the club's own venue or district names it.
+const AMBIGUOUS_PLACES = ['Gronau', 'Schweinheim', 'Lessenich', 'Nordstadt', 'Südstadt', 'Weststadt'].map(fold);
+const clubNames = (club, p) => [club?.district, ...(club?.venues ?? []).flatMap((v) => [v.name, v.address])]
+  .some((s) => s && hasWhole(fold(s), p));
+
 // "gegen" makes a match only next to a team — after a team word ("Herren gegen …") or before a
 // number or a club abbreviation within two words ("gegen den 1. FC", "gegen Bonner SC");
 // "Yoga gegen Rückenschmerzen" is none.
-// A number is no team when it is a time ("gegen 19 Uhr"); an abbreviation is none inside a word ("TV-Spot").
-const GEGEN_TEAM = /(?:^|\s)gegen\s+(?:\S+\s+)?(?:\d(?!\d*(?:[.:]\d+)?\s*uhr)|(?:tus|tsv|tv|sv|fc|vfl|vfb|vfr|sc|sg|hsg|jsg|bsv|btv|esv|ssv|fsv|djk|spvgg|ttc|ttv|rk|rc|thc|hc|bc|mtv|blau-weiss|rot-weiss|grun-weiss|schwarz-weiss|eintracht|borussia|fortuna|union|viktoria|germania|alemannia|concordia)(?![\p{L}\p{N}-]))/u;
+// A number is no team when it is a time ("gegen 19 Uhr", "gegen 18:30"); an abbreviation is none inside a word
+// ("TV-Spot") unless a Bonn place follows the hyphen ("TuS-Pützchen"); a club name that is also a noun
+// needs a word after it that is no article ("gegen Eintracht Bonn", not "Demo gegen die Union").
+const GEGEN_TEAM = new RegExp('(?:^|\\s)gegen\\s+(?:\\S+\\s+)?(?:\\d(?!\\d*(?:(?:[.:]\\d+)?\\s*uhr|[.:]\\d{2}))'
+  + '|(?:tus|tsv|tv|sv|fc|vfl|vfb|vfr|sc|sg|hsg|jsg|bsv|btv|esv|ssv|fsv|djk|spvgg|ttc|ttv|rk|rc|thc|hc|bc|mtv|blau-weiss|rot-weiss|grun-weiss|schwarz-weiss)'
+  + `(?:(?![\\p{L}\\p{N}-])|-(?:${BONN_PLACES.join('|')})(?![\\p{L}\\p{N}]))`
+  + '|(?:eintracht|borussia|fortuna|union|viktoria|germania|alemannia|concordia)\\s+(?!(?:der|die|das|des|dem|den|und|in|im|am)(?![\\p{L}\\p{N}]))[\\p{L}\\p{N}])', 'u');
 const TEAM_GEGEN = /(?:^|\s)(?:herren|damen|frauen|manner|jugend|mannschaft|team|senioren|u\d{1,2}[mwx]?)\s+gegen\s/;
 
 // A meeting place for a group is a social date, not a training ("Lauftreff" is one).
@@ -85,8 +112,9 @@ export function eventKind(title, tags = [], source = null) {
   if (t.includes('training') || t.includes('practice') || ['gym', 'activate', 'sportshall'].some((w) => hasWhole(t, w))
     || (t.match(/\p{L}*treff(?![\p{L}\p{N}])/gu) ?? []).some((w) => !SOCIAL_TREFF.includes(w))
     || hasWordStart(t, 'tryout') || hasWordStart(t, 'try-out')) return 'training';
-  // A celebration, a trophy handover or a board game is no match, whatever else the title says.
-  if (hasWordEnd(t, 'feier') || hasWhole(t, 'feiern') || ['feierstunde', 'ubergabe', 'brettspiel', 'game night'].some((w) => t.includes(w))) return 'veranstaltung';
+  // A celebration, a trophy handover or a board game is no match, whatever else the title says
+  // ("Wir feiern … – Jubiläumsspiel" is still one: a -spiel word outweighs the verb).
+  if (hasWordEnd(t, 'feier') || (hasWhole(t, 'feiern') && !hasWordEnd(t, 'spiel')) || ['feierstunde', 'ubergabe', 'brettspiel', 'game night'].some((w) => t.includes(w))) return 'veranstaltung';
   if (hasWordEnd(t, 'spiel') || hasWordEnd(t, 'spiele')
     || ['spieltag', 'turnier', 'tourney', 'meisterschaft', 'championship', 'pokal', 'wettkampf', 'regatta', 'ligatermin'].some((w) => t.includes(w))
     || hasWordEnd(t, 'liga') || hasWordEnd(t, 'finale') || ['vs', 'derby', 'cup', 'game', 'match', 'friendly'].some((w) => hasWhole(t, w))
@@ -94,29 +122,13 @@ export function eventKind(title, tags = [], source = null) {
   return source?.kind ?? 'veranstaltung';
 }
 
-// Bonn's postcodes, and the city with the districts a title may name ("Turnier in Beuel").
-const BONN_POSTCODE = /\b(5311[13579]|5312[13579]|5317[3579]|5322[579])\b/;
-const POSTCODE = /\b\d{5}\b/;
-const FILLER = /^(der|die|das|dem|den|am|an|im|beim)$/i;
-// "in Kooperation mit …", "in Zusammenarbeit …": an abstract noun names no place.
-const ABSTRACT = /(ung|heit|keit|schaft|arbeit|tion)$/;
-const VENUE_WORD = /(halle|platz|park|stadion|zentrum|schule|arena|hallenbad|freibad|schwimmbad)$/;
-const BONN_PLACES = ['Bonn', 'Bad Godesberg', 'Godesberg', 'Beuel', 'Hardtberg', 'Duisdorf', 'Tannenbusch',
-  'Rheinaue', 'Oberkassel', 'Geislar', 'Kessenich', 'Endenich', 'Poppelsdorf', 'Mehlem', 'Plittersdorf',
-  'Friesdorf', 'Dottendorf', 'Lengsdorf', 'Ippendorf', 'Röttgen', 'Venusberg', 'Holzlar', 'Pützchen', 'Vilich',
-  'Ramersdorf', 'Limperich', 'Küdinghoven', 'Lannesdorf', 'Muffendorf', 'Pennenfeld', 'Brüser Berg', 'Auerberg',
-  'Graurheindorf', 'Buschdorf', 'Dransdorf', 'Medinghoven',
-  // the rest of Bonn's 51 Ortsteile (Hauptsatzung § 3, as listed by LVR KuLaDig), and the Ennert
-  'Heiderhof', 'Hochkreuz', 'Rüngsdorf', 'Schweinheim', 'Hoholz', 'Holtorf', 'Bechlinghoven', 'Schwarzrheindorf',
-  'Vilich-Rheindorf', 'Castell', 'Gronau', 'Lessenich', 'Meßdorf', 'Nordstadt', 'Südstadt', 'Weststadt', 'Ückesdorf',
-  'Hardthöhe', 'Ennert'].map(fold);
-
 /**
  * Whether a match is a home game: true, false, or null when nothing says.
  * Only games have one. The title's own word wins ("(auswärts)" in a Bonn hall
  * is still away), then the place: one of the club's venues or a Bonn postcode
  * is home, another postcode is away, else the word Bonn is home; last, a title
- * "… in <Ort>"
+ * "… in <Ort>" (an Ortsteil another town shares counts only when the club's
+ * venue or district names it).
  */
 export function homeGame(title, location, club, kind) {
   if (kind !== 'spiel') return null;
@@ -138,7 +150,8 @@ export function homeGame(title, location, club, kind) {
     const ws = phrase.split(/\s+/);
     for (let i = 0; i < ws.length; i++) {
       const rest = `${fold(ws.slice(i).join(' ')).replace(/[^\p{L}\p{N}\s-]/gu, ' ')} `;
-      if (BONN_PLACES.some((p) => rest.startsWith(`${p} `) || rest.startsWith(`${p}-`))) return true;
+      const p = BONN_PLACES.find((q) => rest.startsWith(`${q} `) || rest.startsWith(`${q}-`));
+      if (p) return AMBIGUOUS_PLACES.includes(p) && !clubNames(club, p) ? null : true;
       if (!FILLER.test(ws[i]) && !VENUE_WORD.test(fold(ws[i]))) break;
     }
     if (/^\p{Lu}/u.test(phrase) && !VENUE_WORD.test(fold(ws[0])) && !ABSTRACT.test(fold(ws[0]))) return false;
