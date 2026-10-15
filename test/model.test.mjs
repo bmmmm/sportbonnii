@@ -155,6 +155,8 @@ test('home: the title marker, then the club venue, Bonn, another postcode, a tit
   assert.equal(spiel('Turnier in Südstadt', null, { district: 'Südstadt' }), true, 'the club district names it');
   assert.equal(spiel('Turnier in Bonn-Gronau'), true, 'with Bonn it is ours');
   assert.equal(spiel('Spiel in Gronau-Epe', null, { venues: [{ name: 'Sporthalle Gronau', address: 'Kurt-Schumacher-Str. 1, 53113 Bonn' }] }), false, 'a hyphen makes it the other town');
+  assert.equal(spiel('Spiel in Lessenich-Meßdorf', null, { district: 'Lessenich' }), true, 'unless a Bonn place follows it');
+  assert.equal(spiel('Spiel in Lessenich-Meßdorf'), null, 'which is still a shared name');
   assert.equal(spiel('Spiel in Grafschaft'), false, 'Grafschaft is a place, no abstract noun');
   assert.equal(spiel('Spiel in Partnerschaft mit X'), null);
   assert.equal(spiel('Spieltag in Schwarzrheindorf'), true);

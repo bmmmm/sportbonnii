@@ -28,11 +28,10 @@ store index — run installs unsandboxed.
 - `registry/clubs/<id>.json` (one club each, optional `venues` ≤ 3 with
   OSM ref/coordinates and `use`), `registry/platforms/<id>.json`,
   `registry/sports.json` — the only input; a source may carry a fallback
-  `kind`. `registry/README.md` documents every field and has the fill-in
-  template.
+  `kind`. `registry/README.md`: every field, the fill-in template.
 - `pipeline/registry.mjs` — `readRegistry`, validator, canonical form,
   department guard (`nameKey`, `sameSite`, `departmentConflict`), `--fmt`
-  (zero dependencies: the intake bot runs it uninstalled).
+  (zero dependencies: the intake bot skips `pnpm install`).
 - `pipeline/overview.mjs` → `docs/vereine.md` — the generated club overview
   (one row per club); a test pins it to the registry.
 - `pipeline/net.mjs` — the only network door: private-address check on every
@@ -65,8 +64,8 @@ store index — run installs unsandboxed.
   previous state (local or `$PREVIOUS_STATE_URL`, with meta.json's `build`),
   conditional requests, outputs. The first request of a source carries the
   previous validators only when `$BUILD_ID` (pages.yml: `github.sha`) equals
-  the previous build and the window is unchanged; a 304 keeps its
-  previous events. Locally `BUILD_ID` is unset, so every run fetches in full.
+  the previous build and the window is unchanged; a 304 keeps
+  its events. Locally `BUILD_ID` is unset, so every run fetches in full.
   A previous state from another build (or none known) is classified again
   (`refreshEvent`, see Known limits), so kept events follow today's rules.
 - `pipeline/contract.mjs` — the exact text form of `site/data/*.json` and
@@ -76,7 +75,7 @@ store index — run installs unsandboxed.
   `app.js` (wiring), `data.js` (the only `fetch`), `state.js` (hash codec,
   filters, chip counts, the only `history.replaceState`), `dates.js`
   (string-part dates), `table.js` (rows, cards, a detail row with a
-  one-event .ics per title), `calendar.js` (calqrii's `monthGrid`),
+  one-event .ics per title; a venue place opens the Karte), `calendar.js` (calqrii's `monthGrid`),
   `clubs.js`, `ics.js` (feed writer shared with the pipeline), `kinds.js`
   (event kinds and venue uses, shared with the pipeline), `venue.js`
   (OpenStreetMap link, `venueIndex` shared with the pipeline, `eventVenue`),
@@ -112,7 +111,7 @@ store index — run installs unsandboxed.
   adapters (`CONDITIONAL = true`: ical, gancio, jsonld — a 304 on TEC page 1
   or an RSS feed would hide changes behind it), and only when events.json
   holds the source's whole delivery (a dedup loser is read in full). A push
-  (new commit) refetches everything; so does a manual run with `full`.
+  or a manual run with `full` refetches everything.
   bonn.jetzt (the only live ETag, 2026-10-14) answers 304 only with fetch's
   `no-cache` mode (net.mjs); `changed` compares content, no server needed.
   Known limits: a server with volatile validators makes status.json move
@@ -120,7 +119,7 @@ store index — run installs unsandboxed.
   (kind, home and cancellation excepted: `refreshEvent` re-derives them on
   both sides — the title's kind only where it outranks the stored one, a
   cancellation only ever added —; a rule that lowers a kind or narrows
-  cancel words reaches kept events only when their source answers again).
+  cancel words reaches kept events when their source answers, moving `changed` once).
   A previous state without `kind` is upgraded from the titles alone
   (`upgradeLegacyEvent` in run.mjs), so `changed` moves once for a source
   whose kind needs its tags or the source's `kind`; one without `home` gets

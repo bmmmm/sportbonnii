@@ -227,13 +227,13 @@ try {
   check((await ortInfo()).hidden, 'the home/away switch hides while games are not among the kinds', 'ort field shown for trainings only');
   // --- 2c. a club's whole calendar is never out of reach
   // The Gamecocks publish one training: the default view (home games) shows nothing, and says how to see it.
-  // With a range chosen, the all-dates button stands alone: it lifts the range too.
+  // With a range chosen too, the all-dates button lifts it as well; no button of its own.
   await open('#verein=bonn-gamecocks&zeit=woche');
   const gcAll = expectRows({ verein: 'bonn-gamecocks', art: [], ort: 'alle' });
   const gcEmpty = await evaluate(`({ rows: document.querySelectorAll('#table tbody tr').length, hidden: document.querySelector('#table .empty-hidden')?.textContent, button: document.querySelector('#table [data-unfiltered]')?.textContent, actions: [...document.querySelectorAll('#table .empty-actions button')].map((b) => b.textContent) })`);
   check(gcAll === 1 && gcEmpty.rows === 0 && gcEmpty.hidden === '1 Termin ist durch Filter ausgeblendet.' && gcEmpty.button === '1 Termin von Bonn Gamecocks zeigen'
-    && !gcEmpty.actions.includes('Zeitraum „Alle“ zeigen'),
-    'a club view the filters empty says how many dates they hide and offers them (no separate range button)', `empty club view: ${JSON.stringify({ gcEmpty, gcAll })}`);
+    && gcEmpty.actions.join('|') === '1 Termin von Bonn Gamecocks zeigen|Filter zurücksetzen',
+    'a club view the filters empty says how many dates they hide and offers them (two buttons: all dates, reset)', `empty club view: ${JSON.stringify({ gcEmpty, gcAll })}`);
   await evaluate(`document.querySelector('#table [data-unfiltered]').click(), true`);
   await settle();
   check(await evaluate('location.hash') === '#art=alle&ort=alle&verein=bonn-gamecocks' && await rows() === gcAll && await evaluate(`document.activeElement?.id`) === 'result',

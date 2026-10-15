@@ -176,13 +176,6 @@ function emptyState(message) {
     b.addEventListener('click', () => showUnfiltered());
     hints.append(b);
   }
-  // The all-dates button already lifts the range.
-  if (!all && state.zeit !== 'alle') {
-    const b = el('button', 'button', 'Zeitraum „Alle“ zeigen');
-    b.type = 'button';
-    b.addEventListener('click', () => update({ zeit: 'alle' }));
-    hints.append(b);
-  }
   if (isFiltered()) {
     const b = el('button', 'button button-quiet', 'Filter zurücksetzen');
     b.type = 'button';

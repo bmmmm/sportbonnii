@@ -152,8 +152,9 @@ export function homeGame(title, location, club, kind) {
     const ws = phrase.split(/\s+/);
     for (let i = 0; i < ws.length; i++) {
       const rest = `${fold(ws.slice(i).join(' ')).replace(/[^\p{L}\p{N}\s-]/gu, ' ')} `;
-      // A shared Ortsteil continued by a hyphen is the other town's ("Gronau-Epe").
-      const p = BONN_PLACES.find((q) => rest.startsWith(`${q} `) || (rest.startsWith(`${q}-`) && !AMBIGUOUS_PLACES.includes(q)));
+      // A shared Ortsteil continued by a hyphen is the other town's ("Gronau-Epe"), unless Bonn's ("Lessenich-Meßdorf").
+      const p = BONN_PLACES.find((q) => rest.startsWith(`${q} `) || (rest.startsWith(`${q}-`)
+        && (!AMBIGUOUS_PLACES.includes(q) || BONN_PLACES.some((r) => rest.startsWith(`${q}-${r} `)))));
       if (p) return AMBIGUOUS_PLACES.includes(p) && !clubNames(club, p) ? null : true;
       if (!FILLER.test(ws[i]) && !VENUE_WORD.test(fold(ws[i]))) break;
     }
