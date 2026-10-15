@@ -66,7 +66,7 @@ const BONN_POSTCODE = /\b(5311[13579]|5312[13579]|5317[3579]|5322[579])\b/;
 const POSTCODE = /\b\d{5}\b/;
 const FILLER = /^(der|die|das|dem|den|am|an|im|beim)$/i;
 // "in Kooperation mit …", "in Zusammenarbeit …": an abstract noun names no place (Grafschaft is one).
-const ABSTRACT = /(ung|heit|keit|(?<!graf)schaft|arbeit|tion)$/;
+const ABSTRACT = /(ung|heit|keit|(?<!graf)schaft|arbeit|tion|ment|ismus)$/;
 const VENUE_WORD = /(halle|platz|park|stadion|zentrum|schule|arena|hallenbad|freibad|schwimmbad)$/;
 const BONN_PLACES = ['Bonn', 'Bad Godesberg', 'Godesberg', 'Beuel', 'Hardtberg', 'Duisdorf', 'Tannenbusch',
   'Rheinaue', 'Oberkassel', 'Geislar', 'Kessenich', 'Endenich', 'Poppelsdorf', 'Mehlem', 'Plittersdorf',
@@ -88,11 +88,13 @@ const clubNames = (club, p) => [club?.district, ...(club?.venues ?? []).flatMap(
 // "Yoga gegen Rückenschmerzen" is none.
 // A number is no team when it is a time ("gegen 19 Uhr", "gegen 18:30"); an abbreviation is none inside a word
 // ("TV-Spot") unless a Bonn place follows the hyphen ("TuS-Pützchen"); a club name that is also a noun
-// needs a word after it that is no article ("gegen Eintracht Bonn", not "Demo gegen die Union").
+// needs a word after it that is no article and no abstract noun (ABSTRACT; "gegen Eintracht Bonn", not
+// "Demo gegen die Union" or "Infoabend gegen Union Investment").
 const GEGEN_TEAM = new RegExp('(?:^|\\s)gegen\\s+(?:\\S+\\s+)?(?:\\d(?!\\d*(?:(?:[.:]\\d+)?\\s*uhr|[.:]\\d{2}))'
   + '|(?:tus|tsv|tv|sv|fc|vfl|vfb|vfr|sc|sg|hsg|jsg|bsv|btv|esv|ssv|fsv|djk|spvgg|ttc|ttv|rk|rc|thc|hc|bc|mtv|blau-weiss|rot-weiss|grun-weiss|schwarz-weiss)'
   + `(?:(?![\\p{L}\\p{N}-])|-(?:${BONN_PLACES.join('|')})(?![\\p{L}\\p{N}]))`
-  + '|(?:eintracht|borussia|fortuna|union|viktoria|germania|alemannia|concordia)\\s+(?!(?:der|die|das|des|dem|den|und|in|im|am)(?![\\p{L}\\p{N}]))[\\p{L}\\p{N}])', 'u');
+  + '|(?:eintracht|borussia|fortuna|union|viktoria|germania|alemannia|concordia)\\s+(?!(?:der|die|das|des|dem|den|und|in|im|am)(?![\\p{L}\\p{N}]))'
+  + `(?![\\p{L}\\p{N}-]*${ABSTRACT.source.slice(0, -1)}(?![\\p{L}\\p{N}]))[\\p{L}\\p{N}])`, 'u');
 const TEAM_GEGEN = /(?:^|\s)(?:herren|damen|frauen|manner|jugend|mannschaft|team|senioren|u\d{1,2}[mwx]?)\s+gegen\s/;
 
 // A meeting place for a group is a social date, not a training ("Lauftreff" is one).
@@ -150,7 +152,8 @@ export function homeGame(title, location, club, kind) {
     const ws = phrase.split(/\s+/);
     for (let i = 0; i < ws.length; i++) {
       const rest = `${fold(ws.slice(i).join(' ')).replace(/[^\p{L}\p{N}\s-]/gu, ' ')} `;
-      const p = BONN_PLACES.find((q) => rest.startsWith(`${q} `) || rest.startsWith(`${q}-`));
+      // A shared Ortsteil continued by a hyphen is the other town's ("Gronau-Epe").
+      const p = BONN_PLACES.find((q) => rest.startsWith(`${q} `) || (rest.startsWith(`${q}-`) && !AMBIGUOUS_PLACES.includes(q)));
       if (p) return AMBIGUOUS_PLACES.includes(p) && !clubNames(club, p) ? null : true;
       if (!FILLER.test(ws[i]) && !VENUE_WORD.test(fold(ws[i]))) break;
     }
