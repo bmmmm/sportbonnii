@@ -12,6 +12,7 @@
       "id": "spiele-herren",
       "kind": "spiel",
       "note": "FuPa calendar subscription (the webcal button on the team page; api.fupa.net robots allows *.ics) — fussball.de has no ICS export. The slug carries the season: renew it each summer. 1. Herren (Regionalliga West, Mittelrheinpokal)",
+      "reviewAfter": "2027-06-01",
       "type": "ical",
       "url": "https://api.fupa.net/v1/teams/bonner-sc-m1-2026-27/matches.ics"
     },
@@ -19,6 +20,7 @@
       "id": "spiele-frauen",
       "kind": "spiel",
       "note": "FuPa calendar subscription (the webcal button on the team page; api.fupa.net robots allows *.ics) — fussball.de has no ICS export. The slug carries the season: renew it each summer. 1. Frauen",
+      "reviewAfter": "2027-06-01",
       "type": "ical",
       "url": "https://api.fupa.net/v1/teams/bonner-sc-w1-2026-27/matches.ics"
     }

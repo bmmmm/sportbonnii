@@ -27,9 +27,10 @@ import { fileURLToPath } from 'node:url';
 import { loadRegistry, REGISTRY_DIR } from './registry.mjs';
 import { loadAdapter } from './adapters/index.mjs';
 import { createNet, NetError } from './net.mjs';
-import { buildContext, normalizeEvent, eventKind, homeGame, titleCancels } from './model.mjs';
+import { buildContext, normalizeEvent, eventKind, homeGame, titleCancels, excludedEvent, sourceTiming } from './model.mjs';
+import { sourceWarnings } from './health.mjs';
 import { mergeRun } from './merge.mjs';
-import { formatEventsJson, formatJson, checkEvent, EVENT_KEYS, STATES } from './contract.mjs';
+import { formatEventsJson, formatJson, checkEvent, EVENT_KEYS, eventKeys, STATES } from './contract.mjs';
 import { addMonths, berlinDate } from './tz.mjs';
 import { serializeFeed } from '../site/ics.js';
 
@@ -55,10 +56,10 @@ const LEGACY_SHAPES = [['kind', 'home'], ['home']].map((missing) => EVENT_KEYS.f
  * `clubsById` maps registry club ids to clubs (for their venues).
  */
 export function upgradeLegacyEvent(e, clubsById = new Map()) {
-  if (!e || typeof e !== 'object' || !LEGACY_SHAPES.includes(Object.keys(e).join()) || typeof e.title !== 'string') return e;
+  if (!e || typeof e !== 'object' || !LEGACY_SHAPES.includes(Object.keys(e).filter((k) => k !== 'timeUnknown').join()) || typeof e.title !== 'string') return e;
   const kind = 'kind' in e ? e.kind : eventKind(e.title, [], null);
   const home = homeGame(e.title, e.location, clubsById.get(e.club) ?? null, kind);
-  return Object.fromEntries(EVENT_KEYS.map((k) => [k, k === 'kind' ? kind : k === 'home' ? home : e[k]]));
+  return Object.fromEntries(eventKeys(e).map((k) => [k, k === 'kind' ? kind : k === 'home' ? home : e[k]]));
 }
 
 const KEEP = 'keep';
@@ -204,10 +205,14 @@ export async function run(opts = {}) {
   const net = createNet({ fetchImpl, lookupImpl: opts.lookupImpl, sleep: opts.sleep, minGapMs: opts.minGapMs });
   const ctx = buildContext(registry);
   const clubsById = new Map(registry.clubs.map((c) => [c.id, c]));
+  const sourcesByKey = new Map([...registry.clubs, ...registry.platforms].flatMap((o) => o.sources.map((s) => [`${o.id}/${s.id}`, s])));
   const previous = await readPrevious({ outDir, previousStateUrl, fetchImpl, log, clubsById });
   log(previous ? `previous state: ${previous.events.length} events from ${previous.from}` : 'previous state: none (first run)');
   // Another build may have other rules: the previous events are classified again (the same build's are as it left them).
-  if (previous && !(build && previous.build === build)) previous.events = previous.events.map((e) => refreshEvent(e, clubsById));
+  if (previous && !(build && previous.build === build)) previous.events = previous.events
+    // Retained events have no tags: only title exclusions can safely be replayed.
+    .filter((e) => !excludedEvent(e.title, [], { exclude: sourcesByKey.get(e.source)?.exclude }))
+    .map((e) => sourceTiming(refreshEvent(e, clubsById), sourcesByKey.get(e.source)));
   // Validators may be reused only against a state the very same build produced for the same window.
   const reusable = Boolean(build && previous && previous.build === build && previous.window
     && previous.window.from === window.from && previous.window.to === window.to);
@@ -271,8 +276,10 @@ export async function run(opts = {}) {
   warnings.push(...merged.warnings);
   if (merged.events.length > WARN_ABOVE) warnings.push(`${merged.events.length} events — above ${WARN_ABOVE}, the table starts to get heavy`);
 
-  await writeOutputs({ outDir, registry, window, events: merged.events, status: merged.status, now, build });
-  const summary = summarize({ results, merged, previous, order });
+  const health = sourceWarnings({ registry, events: merged.events, status: merged.status, today });
+  warnings.push(...health.map((w) => `${w.source}: ${w.message}`));
+  await writeOutputs({ outDir, registry, window, events: merged.events, status: merged.status, now, build, health });
+  const summary = summarize({ results, merged, previous, order }) + (health.length ? '\n\n### Kalender prüfen\n\n' + health.map((w) => `- ${w.source}: ${w.message}`).join('\n') : '');
   for (const w of warnings) log(`warning: ${w}`);
   return { events: merged.events, status: merged.status, summary, warnings, window };
 }
@@ -306,7 +313,7 @@ export function publicRegistry(registry) {
   return { clubs: registry.clubs.map(strip), platforms: registry.platforms.map(strip) };
 }
 
-async function writeOutputs({ outDir, registry, window, events, status, now, build }) {
+async function writeOutputs({ outDir, registry, window, events, status, now, build, health }) {
   const icsDir = join(outDir, 'ics');
   await mkdir(icsDir, { recursive: true });
   for (const f of await readdir(icsDir)) if (f.endsWith('.ics')) await rm(join(icsDir, f));
@@ -321,6 +328,7 @@ async function writeOutputs({ outDir, registry, window, events, status, now, bui
       sourcesOk: enabled.filter((s) => s.state === 'ok' || s.state === 'partial').length,
       sourcesTotal: enabled.length,
       ...(build ? { build } : {}),
+      ...(health.length ? { warnings: health } : {}),
     }),
   };
   for (const [name, text] of Object.entries(files)) await writeFile(join(outDir, name), text);

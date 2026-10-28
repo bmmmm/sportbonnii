@@ -7,7 +7,7 @@ import { formatShortDate } from './dates.js';
 import { fold } from './state.js';
 import { osmUrl } from './venue.js';
 
-const TYPE_LABEL = { ical: 'iCalendar', tec: 'The Events Calendar', gancio: 'Gancio', jsonld: 'schema.org', rss: 'RSS + schema.org' };
+const TYPE_LABEL = { ical: 'iCalendar', tec: 'The Events Calendar', gancio: 'Gancio', jsonld: 'schema.org', rss: 'RSS + schema.org', dav: 'DAV-Termine' };
 
 /**
  * The calendar state of an owner from its sources: { kind, text }.
@@ -93,7 +93,7 @@ function clubCard(club, { ctx, status, upcoming, feedUrl, selected, colour }) {
   return card;
 }
 
-function sourcesTable(owners, status, ctx) {
+function sourcesTable(owners, status, ctx, warnings) {
   const table = el('table', 'sources');
   const thead = el('thead');
   const hr = el('tr');
@@ -118,6 +118,7 @@ function sourcesTable(owners, status, ctx) {
       const state = el('td');
       state.append(el('span', `state state-${st?.state === 'blocked' ? 'error' : st?.state ?? 'none'}`, words[st?.state] ?? '–'));
       if (st?.error) state.title = st.error;
+      for (const w of warnings.filter((w) => w.source === `${o.id}/${s.id}`)) state.append(el('p', 'muted', w.message));
       tr.append(name, el('td', 'muted', TYPE_LABEL[s.type] ?? s.type), state,
         el('td', 'muted', st ? formatShortDate(st.since, refYear) : '–'),
         el('td', 'muted', st?.changed ? formatShortDate(st.changed, refYear) : '–'),
@@ -145,7 +146,7 @@ export function renderClubs(container, opts) {
     });
   }
   st.opts = opts;
-  const { clubs, platforms, status, ctx, upcomingByClub, state, feedUrl } = opts;
+  const { clubs, platforms, status, ctx, upcomingByClub, state, feedUrl, warnings = [] } = opts;
   const words = fold(state.q).split(/\s+/).filter(Boolean);
   const visible = clubs.filter((c) => c.active !== false)
     .filter((c) => !state.verein || c.id === state.verein)
@@ -195,7 +196,7 @@ export function renderClubs(container, opts) {
   srcHead.id = 'quellen';
   more.append(srcHead, el('p', 'muted sources-note', 'Jede Quelle wird viermal täglich abgerufen. Fällt eine aus, bleiben ihre letzten Termine bis zu sieben Tage stehen.'));
   const wrap = el('div', 'sources-wrap');
-  wrap.append(sourcesTable([...clubs, ...platforms], status, ctx));
+  wrap.append(sourcesTable([...clubs, ...platforms], status, ctx, warnings));
   more.append(wrap);
   parts.push(more);
   container.replaceChildren(...parts);

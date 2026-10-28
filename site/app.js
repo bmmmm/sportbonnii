@@ -328,6 +328,7 @@ function renderClubsView() {
     clubs: data.clubs,
     platforms: data.platforms,
     status: data.status,
+    warnings: data.meta.warnings ?? [],
     ctx,
     upcomingByClub: upcoming,
     state,

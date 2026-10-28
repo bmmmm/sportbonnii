@@ -22,6 +22,12 @@ const state = (o) => ({ ...defaultState(), ...o });
 const every = (o) => state({ art: [], ort: 'alle', zeit: 'alle', ...o });
 const titles = (list) => list.map((e) => e.title);
 
+test('unknown times are labelled separately from all-day dates and real night events', () => {
+  assert.equal(formatTime(events.find((e) => e.timeUnknown)), 'Uhrzeit noch offen');
+  assert.equal(formatTime(events.find((e) => e.title.startsWith('Mitternachtslauf'))), '00:30–02:00');
+  assert.equal(formatTime(events.find((e) => e.allDay && !e.timeUnknown)), 'ganztägig');
+});
+
 test('hash round trip keeps every field', () => {
   const s = state({ ansicht: 'kalender', sport: ['fussball', 'tennis'], art: ['training', 'spiel'], ort: 'alle', verein: 'bsv-roleber', q: 'Camp & Spiel', zeit: 'monat', monat: '2026-11' });
   const hash = formatHash(s);

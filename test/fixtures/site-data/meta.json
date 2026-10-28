@@ -2,5 +2,12 @@
   "build": "3b840eb0f1a2c3d4e5f60718293a4b5c6d7e8f90",
   "checkedAt": "2026-10-14T10:23:00.000Z",
   "sourcesOk": 3,
-  "sourcesTotal": 3
+  "sourcesTotal": 3,
+  "warnings": [
+    {
+      "code": "ending",
+      "message": "Spielplan reicht nur bis 2026-11-06. Folgetermine oder Saisonwechsel prüfen.",
+      "source": "bsv-roleber/tec"
+    }
+  ]
 }

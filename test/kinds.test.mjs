@@ -152,7 +152,7 @@ test('legacy: a previous state without kind or home is accepted and gets both ba
   assert.ok(ok, 'the previous state survives the upgrade');
   // The snapshot's kinds and home flags were set from titles and places alone, so the upgrade restores it exactly.
   assert.deepEqual(ok.events, snapshot.events);
-  for (const e of ok.events) assert.equal(Object.keys(e).join(), EVENT_KEYS.join());
+  for (const e of ok.events) assert.equal(Object.keys(e).join(), [...EVENT_KEYS, ...(e.timeUnknown ? ['timeUnknown'] : [])].join());
   const withKind = { ...snapshot, events: snapshot.events.map(({ home, ...e }) => e) };
   assert.deepEqual(acceptPrevious(withKind, status, null, clubsById).events, snapshot.events, 'a state with kind but without home gets home');
   assert.equal(acceptPrevious(snapshot, status).events.length, snapshot.events.length, 'a current state passes unchanged');

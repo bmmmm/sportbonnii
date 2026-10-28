@@ -113,6 +113,7 @@ const hm = (value) => value.slice(11, 16);
 
 /** '19:00', '19:00–20:30', 'ganztägig', or for multi-day spans the start time only. */
 export function formatTime(e) {
+  if (e.timeUnknown) return 'Uhrzeit noch offen';
   if (e.allDay) return 'ganztägig';
   const start = hm(e.start);
   if (!e.end) return start;

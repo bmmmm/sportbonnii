@@ -41,12 +41,20 @@ pnpm run fetch          # fetch every enabled source into site/data/
 pnpm run smoke          # static gate over site/ (CSP, no external resources, …)
 pnpm run serve          # http://127.0.0.1:8765/
 pnpm run detect <url>   # find the richest calendar endpoint behind a URL
-pnpm run gate:browser   # headless Chrome on the fixture snapshot (local)
+pnpm run gate:browser   # headless Chrome on the fixture snapshot (also CI)
 ```
 
 `site/data/` is generated and never committed. Without it, `smoke` checks the
 snapshot in `test/fixtures/site-data/`; the browser gate always runs on that
 snapshot, with a frozen clock and the browser set to New York time.
+Both the test workflow and the Pages build run the browser gate with the
+Chrome already installed on GitHub's Ubuntu runner.
+
+Unconfirmed throw-off times are labelled explicitly and exported as
+tentative date entries, without reserving a midnight time slot. Source
+warnings flag empty or ending match schedules and season-specific URLs
+that need review; they appear in the club directory and the build summary.
+The remaining source gaps are recorded in [docs/calendar-sources.md](docs/calendar-sources.md).
 
 ### Add a club
 

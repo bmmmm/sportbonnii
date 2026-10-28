@@ -1,4 +1,4 @@
-// Browser gate (local definition of done, not CI): the shipped page in
+// Browser gate (local and CI): the shipped page in
 // headless Chrome on the committed snapshot test/fixtures/site-data/, with
 // the clock frozen at 2026-10-14 14:00 Berlin and the browser in
 // America/New_York — the page must still show Bonn dates and times.
@@ -438,7 +438,12 @@ try {
   check(clubHint === 'Das Abo enthält alle Termine von Rugby Club Bonn-Rhein-Sieg – Sportart, Art, Spielort, Suche und Zeitraum gelten nur hier auf der Seite.', 'a club feed with a sport chosen says the sport is page-only too', `club sub hint: ${clubHint}`);
 
   // --- 7. clubs
+  await open('#art=alle&ort=alle&zeit=alle&q=Jugendturnier');
+  check(await evaluate(`document.getElementById('table').textContent.includes('Uhrzeit noch offen')`), 'an unknown throw-off time is labelled in the table', 'unknown time label missing from the table');
+  await open('#ansicht=kalender&art=alle&ort=alle&zeit=alle&monat=2026-10&q=Jugendturnier');
+  check(await evaluate(`[...document.querySelectorAll('.cal-ev')].some((c) => c.textContent.includes('Uhrzeit offen'))`), 'the month calendar labels an unknown throw-off time', 'unknown time label missing from the calendar');
   await open('#ansicht=vereine');
+  check(await evaluate(`document.querySelector('table.sources').textContent.includes('Spielplan reicht nur bis 2026-11-06')`), 'source warnings are visible in the club directory', 'source warning missing');
   const dirInfo = await evaluate(`({ result: document.getElementById('result').textContent, cards: document.querySelectorAll('.club').length, sources: document.querySelectorAll('table.sources tbody tr').length, zeit: document.getElementById('zeit-field').hidden, kind: document.getElementById('kind-field').hidden, actions: document.getElementById('view-actions').hidden })`);
   check(dirInfo.result === `${clubs.length} Vereine` && dirInfo.cards >= clubs.length && dirInfo.sources === 5 && dirInfo.zeit && dirInfo.kind && dirInfo.actions, `club directory: ${clubs.length} clubs, 5 sources listed, no range or kind filter`, `clubs: ${JSON.stringify(dirInfo)}`);
   // Venues sit on the club card as OpenStreetMap links: the mapped object when the registry names one, else a marker; the prefix says what the venue is for.

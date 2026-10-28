@@ -110,16 +110,27 @@ Before adding a club:
 | field | required | meaning |
 | --- | --- | --- |
 | `id` | yes | slug, unique within the club |
-| `type` | yes | `ical` (iCalendar / webcal), `tec` (WordPress *The Events Calendar* REST API), `gancio` (Gancio `/api/events`), `jsonld` (a page with schema.org `Event` JSON-LD), `rss` (a feed whose item pages carry JSON-LD) |
+| `type` | yes | `ical` (iCalendar / webcal), `tec` (WordPress *The Events Calendar* REST API), `gancio` (Gancio `/api/events`), `jsonld` (a page with schema.org `Event` JSON-LD), `rss` (a feed whose item pages carry JSON-LD), `dav` (DAV Bonn activity overview; `params.activities` selects activity ids) |
 | `url` | yes | https URL of the feed or endpoint |
 | `enabled` | no | `false` lists the source without fetching it (default `true`) |
 | `note` | no | why the source looks the way it does; never shipped to the page |
 | `sports` | no | narrows the source to some of the club's sports (a department calendar) |
 | `tagMap` | no | `{ "<upstream tag>": "<sport id>" }` — assigns sports from the source's own categories |
 | `exclude` | no | case-insensitive texts; an event whose title or tags contain one is dropped — or, written `=Text`, whose whole title or one whole tag is that text (`=Ferien` drops the category „Ferien", not „Ferienprogramm") |
+| `include` | no | non-empty list of case-insensitive texts; at least one must occur in the title or tags before exclusions are applied. Use this to select the club's fixtures from an official league subscription |
 | `params` | no | free-form settings, reserved for league/portal adapters |
 | `expectEmpty` | no | `true` when the source legitimately has no upcoming dates (the live test then accepts zero events) |
 | `kind` | no | `spiel`, `training` or `veranstaltung` — the kind for the source's dates whose title and tags name none (a calendar that only carries trainings, say) |
+| `midnightTimeUnknown` | no | `true` only after checking that this source uses exactly 00:00 for an unset time. Such events become single date entries with `timeUnknown: true`; genuine night events from other sources remain timed |
+| `reviewAfter` | no | calendar date (`YYYY-MM-DD`) by which a season-specific URL or team id needs review. Warns starting 30 days before it; update the URL/id and the date together |
+
+The pipeline also warns when a match feed has no future dates or its last
+published date is within 30 days, and when an unexpected empty feed succeeds.
+These are advisory checks, not fetch failures: dates are retained normally.
+Warnings are recalculated even on HTTP 304, written only to `meta.json`,
+included in the CI summary and shown beside the source in the club directory.
+Source content, validators and `changed` remain independent of the clock.
+See [calendar source research](../docs/calendar-sources.md) for remaining gaps.
 
 ## Platforms
 

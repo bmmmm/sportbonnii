@@ -17,6 +17,11 @@ const P = 'bonn-jetzt/sport';
 const order = new Map([[A, 0], [B, 1], [P, 2]]);
 const run = (results, previous, today = '2026-10-14') => mergeRun({ results: new Map(results), previous, order, window: WINDOW, today });
 
+test('an uncertainty flag changes the published event and its calendar export', () => {
+  const date = ev(A, 'unknown', { allDay: true, start: '2026-10-25', end: '2026-10-26' });
+  assert.deepEqual(newsOf([{ ...date, timeUnknown: true }], [date]), { added: 0, modified: 1 });
+});
+
 test('ok replaces, disabled is empty, since moves only on transitions', () => {
   const prev = { events: [ev(A, 'old')], status: { [A]: { state: 'ok', since: '2026-10-01', count: 1 } } };
   const r = run([[A, { state: 'ok', events: [ev(A, 'new')] }], [P, { state: 'disabled', events: [] }]], prev);

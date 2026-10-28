@@ -7,7 +7,23 @@
   ],
   "id": "dav-bonn",
   "name": "DAV Sektion Bonn",
-  "sources": [],
+  "sources": [
+    {
+      "id": "klettersteige",
+      "note": "Published overview: Kleine Bergschule and via ferrata activities only. Dates without hours are explicitly marked unknown. Multi-session climbing courses are omitted because their overview date range is not a continuous event.",
+      "params": {
+        "activities": [
+          "10",
+          "11"
+        ]
+      },
+      "sports": [
+        "klettern"
+      ],
+      "type": "dav",
+      "url": "https://dav-bonn.de/termine/"
+    }
+  ],
   "sports": [
     "klettern"
   ],

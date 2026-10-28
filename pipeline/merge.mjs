@@ -23,7 +23,7 @@
 // minute, normalised titles sharing ≥ 50 % of their tokens. The club's own
 // sources beat platforms, earlier sources beat later ones. Never within one
 // source.
-import { compareEvents, EVENT_KEYS, MAX_ETAG, MAX_LAST_MODIFIED } from './contract.mjs';
+import { compareEvents, eventKeys, MAX_ETAG, MAX_LAST_MODIFIED } from './contract.mjs';
 import { fold } from './model.mjs';
 import { instantOf, addDays, berlinDate } from './tz.mjs';
 
@@ -32,7 +32,7 @@ export const DROP_TO_ZERO_FROM = 5;
 const FAILED = new Set(['error', 'blocked']);
 
 /** The published form of an event — what a change between runs is measured on. */
-const publishedLine = (e) => JSON.stringify(Object.fromEntries(EVENT_KEYS.map((k) => [k, e[k]])));
+const publishedLine = (e) => JSON.stringify(Object.fromEntries(eventKeys(e).map((k) => [k, e[k]])));
 
 /**
  * How many of `events` are new or differ from their version in

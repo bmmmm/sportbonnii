@@ -11,6 +11,16 @@ import { FEED_OPTS } from './helpers/feed-opts.mjs';
 
 const doc = JSON.parse(readFileSync(new URL('./fixtures/site-data/events.json', import.meta.url), 'utf8'));
 
+test('an unknown throw-off time exports a tentative, transparent date instead of a midnight appointment', () => {
+  const e = { ...doc.events.find((e) => e.timeUnknown), status: 'confirmed' };
+  const text = serializeFeed([e], FEED_OPTS).replace(/\r\n /g, '');
+  assert.match(text, /DTSTART;VALUE=DATE:20261024/);
+  assert.match(text, /DTEND;VALUE=DATE:20261025/);
+  assert.match(text, /STATUS:TENTATIVE/);
+  assert.match(text, /TRANSP:TRANSPARENT/);
+  assert.match(text, /Uhrzeit noch offen/);
+});
+
 test('escapeText: backslash first, then ; , and newlines; control characters dropped', () => {
   assert.equal(escapeText('a\\b;c,d\ne\r\nf\x07'), 'a\\\\b\\;c\\,d\\ne\\nf');
 });

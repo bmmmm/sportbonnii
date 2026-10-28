@@ -262,6 +262,22 @@ export function titleCancels(title) {
   return calledOff(fold(title));
 }
 
+/** The source's exclusion policy, also applied to retained events after a build change. */
+export function excludedEvent(title, tags, source) {
+  const values = [title, ...tags].map(fold);
+  if (source?.include?.length && !source.include.some((x) => values.some((v) => v.includes(fold(x))))) return true;
+  return (source?.exclude ?? []).some((x) => x.startsWith('=')
+    ? values.includes(fold(x.slice(1).trim()))
+    : values.some((v) => v.includes(fold(x))));
+}
+
+/** Only a source explicitly known to use midnight for an unset time gets date-only placeholders. */
+export function sourceTiming(event, source) {
+  if (!source?.midnightTimeUnknown || event.allDay || event.start.slice(11, 19) !== '00:00:00') return event;
+  const start = event.start.slice(0, 10);
+  return { ...event, start, end: addDays(start, 1), allDay: true, timeUnknown: true };
+}
+
 /**
  * One raw adapter event → an events.json entry, or null when it is dropped
  * (excluded, outside the window, unusable). `owner` is the club or platform,
@@ -273,14 +289,7 @@ export function normalizeEvent(raw, { owner, kind: ownerKind, source, ctx, windo
   if (!title) return null;
   const tags = (raw.tags ?? []).map((t) => String(t).trim()).filter(Boolean);
   const foldedTitle = fold(title);
-  if ((source.exclude ?? []).some((x) => {
-    if (x.startsWith('=')) {
-      const fx = fold(x.slice(1).trim());
-      return foldedTitle === fx || tags.some((t) => fold(t) === fx);
-    }
-    const fx = fold(x);
-    return foldedTitle.includes(fx) || tags.some((t) => fold(t).includes(fx));
-  })) return null;
+  if (excludedEvent(title, tags, source)) return null;
 
   // --- time
   let start;
@@ -324,7 +333,7 @@ export function normalizeEvent(raw, { owner, kind: ownerKind, source, ctx, windo
   }
   const location = tidyLocation(raw.location);
   const kind = eventKind(title, tags, source);
-  return {
+  return sourceTiming({
     id: eventId(sourceKey, String(raw.uid), raw.recurrenceId ?? ''),
     club: club ? club.id : null,
     sports,
@@ -339,7 +348,8 @@ export function normalizeEvent(raw, { owner, kind: ownerKind, source, ctx, windo
     description,
     source: sourceKey,
     status: raw.status === 'cancelled' || calledOff(foldedTitle) ? 'cancelled' : 'confirmed',
-  };
+    ...(raw.timeUnknown === true && raw.allDay && end === addDays(start, 1) ? { timeUnknown: true } : {}),
+  }, source);
 }
 
 /** The UTC window an adapter should fetch for `window` (Berlin dates, `to` exclusive). */

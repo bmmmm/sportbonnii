@@ -183,6 +183,41 @@ test('normalizeAll: an item that throws is skipped with a warning, duplicates co
   assert.match(r.warnings[1], /skipped an event \(b\)/);
 });
 
+test('a new build applies placeholder exclusions and unknown times even when a source fails', async () => {
+  const doc = { clubs: [{ ...REG.clubs[0], sources: [REG.clubs[0].sources[0]] }], platforms: [] };
+  const reg = await tempRegistry(doc);
+  const out = await mkdtemp(join(tmpdir(), 'sb-quality-'));
+  const body = 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\n' + ['Heimspiel', 'Heimspiel gegen PLATZHALTER'].map((title, i) => `BEGIN:VEVENT\r\nUID:quality-${i}\r\nDTSTART;TZID=Europe/Berlin:20261020T000000\r\nDTEND;TZID=Europe/Berlin:20261020T013000\r\nSUMMARY:${title}\r\nEND:VEVENT\r\n`).join('') + 'END:VCALENDAR\r\n';
+  const first = await run({ ...opts(out, reg, servingFetch({ 'https://rc.example/k.ics': body })), build: 'old' });
+  assert.equal(first.events.length, 2);
+  const owner = doc.clubs[0];
+  Object.assign(owner.sources[0], { exclude: ['platzhalter'], midnightTimeUnknown: true });
+  await writeFile(join(reg, 'clubs', `${owner.id}.json`), canonicalJson(owner));
+  const next = await run({ ...opts(out, reg, servingFetch({})), build: 'new' });
+  assert.equal(next.status['rc-test/kalender'].state, 'error');
+  assert.equal(next.events.length, 1);
+  assert.equal(next.events[0].title, 'Heimspiel');
+  assert.equal(next.events[0].timeUnknown, true);
+  assert.equal(next.events[0].start, '2026-10-20');
+  assert.deepEqual(checkSiteData(await readOut(out)), []);
+});
+
+test('a season warning is re-evaluated on a 304 without changing status, events or feeds', async () => {
+  const owner = { ...REG.clubs[0], sources: [{ ...REG.clubs[0].sources[0], reviewAfter: '2026-11-14' }] };
+  const reg = await tempRegistry({ clubs: [owner], platforms: [] });
+  const out = await mkdtemp(join(tmpdir(), 'sb-health-'));
+  const fetchImpl = conditionalFetch({ 'https://rc.example/k.ics': await fixture('ical/edge-cases.ics') });
+  const options = { ...opts(out, reg, fetchImpl), build: 'same' };
+  await run(options);
+  const before = await readOut(out);
+  assert.equal(JSON.parse(before['meta.json']).warnings, undefined);
+  const next = await run({ ...options, now: new Date('2026-10-15T10:23:00Z') });
+  const after = await readOut(out);
+  assert.match(next.summary, /Kalender zum Saisonwechsel prüfen/);
+  assert.equal(JSON.parse(after['meta.json']).warnings[0].code, 'review');
+  for (const file of Object.keys(before).filter((f) => f !== 'meta.json')) assert.equal(after[file], before[file], file);
+});
+
 /** fetch over a url → body table that tags every body with an ETag and answers 304 to a matching If-None-Match. */
 function conditionalFetch(table, log = []) {
   return async (url, init) => {

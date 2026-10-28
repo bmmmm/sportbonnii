@@ -3,6 +3,7 @@
   "aliases": [
     "SSF Bonn",
     "Schwimm- und Sportfreunde Bonn",
+    "SSF Dragons Bonn",
     "SSF Dragons Bonn"
   ],
   "district": "Bonn",
@@ -13,11 +14,54 @@
       "id": "spiele-tischtennis",
       "kind": "spiel",
       "note": "myTischtennis calendar export (its webcal button), Erwachsene I+II; team ids from /api/ttr/teams?clubNumber=22106&organization=WTTV — at most 2 per URL, they change each season",
+      "reviewAfter": "2027-06-01",
       "sports": [
         "tischtennis"
       ],
       "type": "ical",
       "url": "https://www.mytischtennis.de/community/exportICSCalendar?teamIds=3105722,3105272"
+    },
+    {
+      "id": "spiele-floorball-herren",
+      "include": [
+        "SSF Dragons Bonn"
+      ],
+      "kind": "spiel",
+      "note": "Floorball Deutschland official league subscription, 1. FBL Herren 2026/27; only SSF Dragons Bonn fixtures are imported. League id changes each season.",
+      "reviewAfter": "2027-06-01",
+      "sports": [
+        "floorball"
+      ],
+      "type": "ical",
+      "url": "https://saisonmanager.de/api/v2/calendar/leagues/2447.ics"
+    },
+    {
+      "id": "spiele-floorball-damen",
+      "include": [
+        "SSF Dragons Bonn"
+      ],
+      "kind": "spiel",
+      "note": "Floorball Deutschland official league subscription, 1. FBL Damen 2026/27; only SSF Dragons Bonn fixtures are imported. League id changes each season.",
+      "reviewAfter": "2027-06-01",
+      "sports": [
+        "floorball"
+      ],
+      "type": "ical",
+      "url": "https://saisonmanager.de/api/v2/calendar/leagues/2448.ics"
+    },
+    {
+      "id": "spiele-floorball-herren-2",
+      "include": [
+        "SSF Dragons Bonn"
+      ],
+      "kind": "spiel",
+      "note": "Floorball Deutschland official league subscription, 2. FBL Herren Nord/West 2026/27; only SSF Dragons Bonn fixtures are imported. League id changes each season.",
+      "reviewAfter": "2027-06-01",
+      "sports": [
+        "floorball"
+      ],
+      "type": "ical",
+      "url": "https://saisonmanager.de/api/v2/calendar/leagues/2449.ics"
     }
   ],
   "sports": [

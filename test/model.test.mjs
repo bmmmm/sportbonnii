@@ -30,6 +30,14 @@ test('exclude: a text anywhere, or =text for a whole title or tag', () => {
   assert.ok(asClub({ title: 'Camp', tags: ['Ferienprogramm'] }, src(['=Ferien'])), 'not a part of a tag');
 });
 
+test('a league feed only imports pairings that name the club, then applies exclusions', () => {
+  const source = { ...clubSource, include: ['Dragons Bonn'], exclude: ['platzhalter'] };
+  assert.ok(asClub({ title: 'SSF Dragons Bonn II - Frankfurt Falcons' }, source));
+  assert.ok(asClub({ title: 'Spiel', tags: ['SSF Dragons Bonn'] }, source));
+  assert.equal(asClub({ title: 'Leipzig - Berlin' }, source), null);
+  assert.equal(asClub({ title: 'SSF Dragons Bonn - Platzhalter' }, source), null);
+});
+
 test('a title that calls the date off marks it cancelled', () => {
   assert.equal(asClub({ title: 'Training fällt aus' }).status, 'cancelled');
   assert.equal(asClub({ title: 'Jugendtraining entfällt' }).status, 'cancelled');
@@ -53,6 +61,19 @@ test('timed events: Berlin offset, end before start becomes null', () => {
   assert.equal(asClub({ endMs: ms('2026-10-20T16:00:00Z') }).end, null);
   assert.equal(e.id, eventId('bonner-thv/termine', 'u1', ''));
   assert.notEqual(asClub({ recurrenceId: 'x' }).id, e.id);
+});
+
+test('only opted-in midnight placeholders become date-only events with an unknown time', () => {
+  const midnight = { title: 'Heimspiel', startMs: ms('2026-10-24T22:00:00Z'), endMs: ms('2026-10-24T23:30:00Z') };
+  const source = { ...clubSource, midnightTimeUnknown: true };
+  const e = asClub(midnight, source);
+  assert.deepEqual([e.start, e.end, e.allDay, e.timeUnknown], ['2026-10-25', '2026-10-26', true, true], 'the DST day is one calendar day');
+  assert.deepEqual(checkEvent(e), []);
+  assert.equal(asClub(midnight).allDay, false, 'real midnight events stay timed');
+  assert.equal(asClub({ ...midnight, startMs: ms('2026-10-24T22:30:00Z') }, source).timeUnknown, undefined, '00:30 is never inferred to be unknown');
+  assert.equal(asClub({ ...midnight, allDay: true, startDate: '2026-10-25' }, source).timeUnknown, undefined, 'a real all-day event stays all-day');
+  assert.match(checkEvent({ ...e, timeUnknown: false }).join(), /timeUnknown/);
+  assert.match(checkEvent({ ...e, end: '2026-10-27' }).join(), /exactly one day/);
 });
 
 test('instants outside the Date range are dropped, not thrown', () => {

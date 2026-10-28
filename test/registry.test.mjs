@@ -57,6 +57,14 @@ function errorsAfter(mutate) {
   return validateRegistry(d).join('\n');
 }
 
+test('season review dates, time policies and league filters reject malformed settings', () => {
+  for (const reviewAfter of ['2027-02-30', '2027-13-01', '2027-6-01', 2027]) {
+    assert.match(errorsAfter((c) => { c.clubs.find((o) => o.sources.length).sources[0].reviewAfter = reviewAfter; }), /reviewAfter/);
+  }
+  assert.match(errorsAfter((c) => { c.clubs.find((o) => o.sources.length).sources[0].midnightTimeUnknown = 'true'; }), /midnightTimeUnknown/);
+  for (const include of [[], [''], 'Bonn']) assert.match(errorsAfter((c) => { c.clubs.find((o) => o.sources.length).sources[0].include = include; }), /include/);
+});
+
 /** A minimal club for the one-club-one-entry mutants. */
 const club = (id, name, website = `https://${id}.example/`) => ({ id, name, sports: ['tischtennis'], website, sources: [] });
 /** A venue as the registry takes it (Sportpark Pennenfeld, OSM way). */

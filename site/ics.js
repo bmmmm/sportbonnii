@@ -77,14 +77,15 @@ export function veventLines(ev, { dtstamp, labels = {}, clubNames = {} }) {
   if (ev.end) lines.push(timeProp('DTEND', ev.end));
   lines.push(`SUMMARY:${escapeText(ev.title)}`);
   const club = ev.club ? clubNames[ev.club] ?? ev.club : null;
-  const description = [ev.description, club ? `Verein: ${club}` : null].filter(Boolean).join('\n\n');
+  const description = [ev.description, ev.timeUnknown ? 'Uhrzeit noch offen. Bitte beim Verein prüfen.' : null, club ? `Verein: ${club}` : null].filter(Boolean).join('\n\n');
   if (description) lines.push(`DESCRIPTION:${escapeText(description)}`);
   if (ev.location) lines.push(`LOCATION:${escapeText(ev.location)}`);
   const url = ev.url ? urlValue(ev.url) : '';
   if (url) lines.push(`URL:${url}`);
   const cats = [...ev.sports.map((s) => labels[s] ?? s), KIND_SHORT.get(ev.kind)].filter(Boolean);
   if (cats.length) lines.push(`CATEGORIES:${cats.map(escapeText).join(',')}`);
-  lines.push(`STATUS:${ev.status === 'cancelled' ? 'CANCELLED' : 'CONFIRMED'}`);
+  lines.push(`STATUS:${ev.status === 'cancelled' ? 'CANCELLED' : ev.timeUnknown ? 'TENTATIVE' : 'CONFIRMED'}`);
+  if (ev.timeUnknown) lines.push('TRANSP:TRANSPARENT');
   lines.push('END:VEVENT');
   return lines;
 }

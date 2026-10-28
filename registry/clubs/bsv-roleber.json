@@ -21,6 +21,7 @@
       "id": "spiele-fussball",
       "kind": "spiel",
       "note": "FuPa calendar subscription (the webcal button on the team page; api.fupa.net robots allows *.ics) — fussball.de has no ICS export. The slug carries the season: renew it each summer. 1. Herren (Kreisliga A Bonn, Kreispokal)",
+      "reviewAfter": "2027-06-01",
       "sports": [
         "fussball"
       ],
@@ -31,6 +32,7 @@
       "id": "spiele-basketball",
       "kind": "spiel",
       "note": "DBB iCalendar export of the league schedule (the iCalender link on index.jsp?Action=101), filtered to Herren 1 (Landesliga); liga_id/ms_liga_id change each season, spt=-1 = all match days",
+      "reviewAfter": "2027-06-01",
       "sports": [
         "basketball"
       ],
@@ -41,6 +43,7 @@
       "id": "spiele-tischtennis",
       "kind": "spiel",
       "note": "myTischtennis calendar export (its webcal button), Erwachsene I+II; at most 2 teamIds per URL, the ids change each season (click-TT has no ICS)",
+      "reviewAfter": "2027-06-01",
       "sports": [
         "tischtennis"
       ],

@@ -2,7 +2,7 @@
 
 Generiert von `pnpm run registry:fmt` – nicht von Hand ändern.
 
-24 Vereine · 12 mit Online-Kalender · 24 Sportarten
+24 Vereine · 13 mit Online-Kalender · 24 Sportarten
 
 Abteilungen stehen beim Verein, nie als eigener Eintrag. Neuer Verein? Erst hier nachsehen, dann [registry/README.md](../registry/README.md) lesen.
 
@@ -21,7 +21,7 @@ Abteilungen stehen beim Verein, nie als eigener Eintrag. Neuer Verein? Erst hier
 | **BSV Roleber**<br>`bsv-roleber` | Fußball, Basketball, Tischtennis, Turnen & Gymnastik | Beuel | [Sportplatz Roleber](https://www.openstreetmap.org/way/50752096) | TEC, iCal ×3 | [bsvroleber.de](https://bsvroleber.de/) |
 | **Bonner Turnverein 1860**<br>`btv-1860` | Volleyball, Turnen & Gymnastik | Bonn | Training: [Turnhalle Münsterschule](https://www.openstreetmap.org/way/106549267) | TEC | [btv1860.de](https://www.btv1860.de/) |
 | **Blau-Weiss Bonn Kanu**<br>`bwb-kanu` | Kanu | Bonn | [Bootshaus](https://www.openstreetmap.org/?mlat=50.76212&mlon=7.08222#map=18/50.76212/7.08222) | – | [bwb-kanu.de](https://bwb-kanu.de/) |
-| **DAV Sektion Bonn**<br>`dav-bonn` | Klettern | – | – | – | [dav-bonn.de](https://dav-bonn.de/) |
+| **DAV Sektion Bonn**<br>`dav-bonn` | Klettern | – | – | DAV-Termine | [dav-bonn.de](https://dav-bonn.de/) |
 | **Der Fechtverein**<br>`der-fechtverein` | Fechten | Bonn | Training: [Tannenbusch-Gymnasium](https://www.openstreetmap.org/relation/1690058)<br>Training: [Gymnastikhalle Burgschule](https://www.openstreetmap.org/way/183645183)<br>Training: [Sporthalle Realschule Beuel](https://www.openstreetmap.org/way/50854995) | – | [der-fechtverein.de](https://der-fechtverein.de/) |
 | **Golden Star Cricket Club Bonn**<br>`gscc-bonn` | Cricket | Bad Godesberg | [Cricket-Stadion Rheinaue](https://www.openstreetmap.org/?mlat=50.70688&mlon=7.16022#map=18/50.70688/7.16022)<br>Training: [Sporthalle Beethoven-Gymnasium (Winter)](https://www.openstreetmap.org/way/126788841) | – | [gsccbonn.de](https://gsccbonn.de/en/) |
 | **HSG Geislar-Oberkassel**<br>`hsg-geislar-oberkassel` | Handball | Beuel | Spiele: [Sporthalle Beuel-Ost (Gesamtschule)](https://www.openstreetmap.org/way/32321255) | iCal | [hsg-geislar-oberkassel.de](https://www.hsg-geislar-oberkassel.de/) |
@@ -30,7 +30,7 @@ Abteilungen stehen beim Verein, nie als eigener Eintrag. Neuer Verein? Erst hier
 | **Rugby Club Bonn-Rhein-Sieg**<br>`rc-bonn-rhein-sieg` | Rugby | Bad Godesberg | [Rugbyplatz Rheinaue](https://www.openstreetmap.org/way/123977272) | iCal | [rcbrs.de](https://rcbrs.de/) |
 | **Rheinos Bonn**<br>`rheinos-bonn` | Quadball | Bonn | Training: [BTHV-Anlage](https://www.openstreetmap.org/way/128941575) | iCal | [rheinos-bonn.de](https://rheinos-bonn.de/) |
 | **Segel-Club Bonn**<br>`segel-club-bonn` | Sonstiges | – | – | – | [segel-club-bonn.de](https://www.segel-club-bonn.de/) |
-| **SSF Bonn**<br>`ssf-bonn` | Floorball, Tischtennis, Schwimmen, Triathlon, Leichtathletik & Laufen | Bonn | [Sportpark Nord](https://www.openstreetmap.org/way/49707892) | iCal | [ssfbonn.de](https://ssfbonn.de/) |
+| **SSF Bonn**<br>`ssf-bonn` | Floorball, Tischtennis, Schwimmen, Triathlon, Leichtathletik & Laufen | Bonn | [Sportpark Nord](https://www.openstreetmap.org/way/49707892) | iCal ×4 | [ssfbonn.de](https://ssfbonn.de/) |
 | **Telekom Baskets Bonn**<br>`telekom-baskets-bonn` | Basketball | Hardtberg | Spiele: [Telekom Dome](https://www.openstreetmap.org/way/1273941076) | iCal | [telekom-baskets-bonn.de](https://www.telekom-baskets-bonn.de/) |
 
 ## Plattformen

@@ -44,6 +44,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm test
+      - run: pnpm run gate:browser
       - name: Fetch club calendars
         env:
           PREVIOUS_STATE_URL: https://bmmmm.github.io/sportbonnii/data/

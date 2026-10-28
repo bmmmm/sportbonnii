@@ -98,7 +98,7 @@ function chip(e, day, ctx) {
     if (day !== last) c.classList.add('cont-right');
   }
   if (e.status === 'cancelled') c.classList.add('is-cancelled');
-  const time = e.allDay || day !== first ? '' : e.start.slice(11, 16);
+  const time = e.timeUnknown ? 'Uhrzeit offen' : e.allDay || day !== first ? '' : e.start.slice(11, 16);
   if (time) c.append(el('span', 'cal-ev-time', time));
   c.append(el('span', 'cal-ev-title', e.title));
   return c;

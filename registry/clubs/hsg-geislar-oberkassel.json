@@ -10,8 +10,13 @@
   "name": "HSG Geislar-Oberkassel",
   "sources": [
     {
+      "exclude": [
+        "platzhalter"
+      ],
       "id": "spielplan",
-      "note": "club-wide match schedule, linked as webcal on every team page (all teams, Beuel-Ost and others)",
+      "kind": "spiel",
+      "midnightTimeUnknown": true,
+      "note": "club-wide match schedule, linked as webcal on every team page (all teams, Beuel-Ost and others); midnight is an unset throw-off time on the club match pages; placeholder opponents are not scheduled games",
       "type": "ical",
       "url": "https://www.hsg-geislar-oberkassel.de/kalender.ics"
     }

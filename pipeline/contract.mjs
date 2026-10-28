@@ -2,11 +2,13 @@
 // site/data/*.json and a checker for it. The pipeline writes through the
 // formatters below; the tests, the web-smoke gate and the committed
 // snapshot test/fixtures/site-data/ are all judged by checkSiteData.
-import { instantOf } from './tz.mjs';
+import { instantOf, addDays } from './tz.mjs';
 import { KIND_IDS, VENUE_USES } from '../site/kinds.js';
 import { MAX_VENUES, VENUE_BOUNDS, OSM_REF, VENUE_FIELDS } from './registry.mjs';
 
 export const EVENT_KEYS = ['id', 'club', 'sports', 'kind', 'home', 'title', 'start', 'end', 'allDay', 'location', 'url', 'description', 'source', 'status'];
+/** Existing events keep their shape; date-only entries may append this explicit uncertainty flag. */
+export const eventKeys = (e) => 'timeUnknown' in e ? [...EVENT_KEYS, 'timeUnknown'] : EVENT_KEYS;
 export const STATES = ['ok', 'partial', 'error', 'blocked', 'disabled'];
 export const STATUSES = ['confirmed', 'cancelled'];
 export const MAX_TITLE = 200;
@@ -39,7 +41,7 @@ export function formatJson(doc) {
 export function formatEventsJson({ window, events }) {
   const head = `{"version":1,"window":${JSON.stringify({ from: window.from, to: window.to })},"events":[`;
   if (events.length === 0) return `${head}]}\n`;
-  const lines = events.map((e) => JSON.stringify(Object.fromEntries(EVENT_KEYS.map((k) => [k, e[k]]))));
+  const lines = events.map((e) => JSON.stringify(Object.fromEntries(eventKeys(e).map((k) => [k, e[k]]))));
   return `${head}\n${lines.join(',\n')}\n]}\n`;
 }
 
@@ -68,7 +70,9 @@ export function checkEvent(e, { sportIds, clubIds } = {}) {
   const at = `event ${e?.id ?? '?'}`;
   if (!e || typeof e !== 'object') return [`${at}: not an object`];
   const keys = Object.keys(e);
-  if (keys.join() !== EVENT_KEYS.join()) errs.push(`${at}: keys must be exactly ${EVENT_KEYS.join(', ')} in that order, got ${keys.join(', ')}`);
+  const expected = eventKeys(e);
+  if (keys.join() !== expected.join()) errs.push(`${at}: keys must be exactly ${expected.join(', ')} in that order, got ${keys.join(', ')}`);
+  if ('timeUnknown' in e && (e.timeUnknown !== true || !e.allDay)) errs.push(`${at}: timeUnknown must be true on a date-only event`);
   if (!ID.test(e.id)) errs.push(`${at}: id must be 16 hex digits`);
   if (e.club !== null && (typeof e.club !== 'string' || (clubIds && !clubIds.has(e.club)))) errs.push(`${at}: club must be a registry club id or null`);
   if (!Array.isArray(e.sports) || e.sports.length === 0 || new Set(e.sports).size !== e.sports.length) errs.push(`${at}: sports must be a non-empty list without repeats`);
@@ -85,6 +89,7 @@ export function checkEvent(e, { sportIds, clubIds } = {}) {
   } else if (e.end !== null && (typeof e.end !== 'string' || !DATETIME.test(e.end) || instantOf(e.end) < instantOf(e.start))) {
     errs.push(`${at}: end must be null or a datetime not before start`);
   }
+  if (e.timeUnknown && DATE.test(e.start) && e.end !== addDays(e.start, 1)) errs.push(`${at}: an unknown time must cover exactly one day`);
   if (e.location !== null && (typeof e.location !== 'string' || e.location.trim() === '')) errs.push(`${at}: location must be text or null`);
   if (e.url !== null && !isHttp(e.url)) errs.push(`${at}: url must be http(s) or null`);
   if (e.description !== null && (typeof e.description !== 'string' || e.description === '' || e.description.length > MAX_DESCRIPTION)) errs.push(`${at}: description must be null or 1–${MAX_DESCRIPTION} characters`);
@@ -174,6 +179,12 @@ export function checkSiteData(texts) {
   if (typeof meta.checkedAt !== 'string' || Number.isNaN(Date.parse(meta.checkedAt)) || !meta.checkedAt.endsWith('Z')) errs.push('meta.json: checkedAt must be a UTC ISO timestamp');
   if (!Number.isInteger(meta.sourcesOk) || !Number.isInteger(meta.sourcesTotal) || meta.sourcesOk > meta.sourcesTotal) errs.push('meta.json: sourcesOk ≤ sourcesTotal, both integers');
   if ('build' in meta && (typeof meta.build !== 'string' || !/^[A-Za-z0-9._-]{1,64}$/.test(meta.build))) errs.push('meta.json: build must be a short identifier (the commit that produced the data)');
+  if ('warnings' in meta) {
+    if (!Array.isArray(meta.warnings)) errs.push('meta.json: warnings must be a list');
+    else for (const w of meta.warnings) {
+      if (!w || !sourceKeys.has(w.source) || !['review', 'empty', 'ending'].includes(w.code) || !isText(w.message)) errs.push('meta.json: a warning needs a known source, code and message');
+    }
+  }
 
   for (const [name, doc] of [['status.json', status], ['clubs.json', clubs], ['sports.json', sports], ['meta.json', meta]]) {
     if (texts[name] !== formatJson(doc)) errs.push(`${name}: text is not in canonical form (sorted keys, 2-space indent)`);

@@ -31,7 +31,7 @@ export const LUMINANCE = { min: 0.118, max: 0.3 };
 
 const CLUB_FIELDS = new Set(['id', 'name', 'sports', 'district', 'website', 'aliases', 'active', 'sources', 'venues']);
 const PLATFORM_FIELDS = new Set(['id', 'name', 'website', 'sources']);
-const SOURCE_FIELDS = new Set(['id', 'type', 'url', 'enabled', 'note', 'sports', 'tagMap', 'exclude', 'params', 'expectEmpty', 'kind']);
+const SOURCE_FIELDS = new Set(['id', 'type', 'url', 'enabled', 'note', 'sports', 'tagMap', 'exclude', 'include', 'params', 'expectEmpty', 'kind', 'midnightTimeUnknown', 'reviewAfter']);
 const SPORT_FIELDS = new Set(['id', 'label', 'emoji', 'colour', 'keywords']);
 /** The keys a venue may carry — in the registry and in clubs.json alike. */
 export const VENUE_FIELDS = new Set(['name', 'address', 'lat', 'lon', 'osm', 'use']);
@@ -280,10 +280,11 @@ export function validateRegistry({ clubs: clubsDoc, sports: sportsDoc }, { texts
       else sourceIds.add(src.id);
       if (!adapterTypes.includes(src.type)) err(`${sat}: type must be one of ${adapterTypes.join(', ')}`);
       if (!httpUrl(src.url, { httpsOnly: true })) err(`${sat}: url must be an https URL`);
-      for (const flag of ['enabled', 'expectEmpty']) {
+      for (const flag of ['enabled', 'expectEmpty', 'midnightTimeUnknown']) {
         if (src[flag] !== undefined && typeof src[flag] !== 'boolean') err(`${sat}: ${flag} must be true or false`);
       }
       if (src.note !== undefined && !isText(src.note)) err(`${sat}: note must be non-empty text`);
+      if (src.reviewAfter !== undefined && (typeof src.reviewAfter !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(src.reviewAfter) || !Number.isFinite(Date.parse(src.reviewAfter)) || new Date(src.reviewAfter).toISOString().slice(0, 10) !== src.reviewAfter)) err(`${sat}: reviewAfter must be a calendar date (YYYY-MM-DD)`);
       if (src.sports !== undefined) {
         if (!Array.isArray(src.sports) || src.sports.length === 0) err(`${sat}: sports must list at least one sport`);
         else for (const s of src.sports) {
@@ -299,6 +300,7 @@ export function validateRegistry({ clubs: clubsDoc, sports: sportsDoc }, { texts
         }
       }
       if (src.exclude !== undefined && (!Array.isArray(src.exclude) || !src.exclude.every((x) => isText(x) && x.replace(/^=/, '').trim() !== ''))) err(`${sat}: exclude must be a list of non-empty texts`);
+      if (src.include !== undefined && (!Array.isArray(src.include) || src.include.length === 0 || !src.include.every(isText))) err(`${sat}: include must be a non-empty list of non-empty texts`);
       if (src.params !== undefined && !isObject(src.params)) err(`${sat}: params must be an object`);
       if (src.kind !== undefined && !KIND_IDS.includes(src.kind)) err(`${sat}: kind must be one of ${KIND_IDS.join(', ')}`);
     }

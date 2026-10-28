@@ -40,11 +40,13 @@ store index — run installs unsandboxed.
   one request per host ≥ 1 s apart, 20 s / 10 MB / 5 redirects. Every answer
   carries `etag`/`lastModified`; `get(url, { ifNoneMatch, ifModifiedSince })`
   is conditional and resolves to `{ notModified: true }` on 304.
-- `pipeline/adapters/{ical,tec,gancio,jsonld,rss}.mjs` + `index.mjs` —
+- `pipeline/adapters/{ical,tec,gancio,jsonld,rss,dav}.mjs` + `index.mjs` —
   `fetchEvents(source, ctx) → { events, warnings, partial? }` with raw events
   (`startMs`/`endMs` UTC or `startDate`/`endDate` for all-day), plus
   `CONDITIONAL` (true only when one request stands for the source). A v2
   portal adapter is one file plus one entry in `ADAPTER_TYPES`.
+  `dav` reads the DAV Bonn activity overview, restricted to the registry's
+  activity ids; multi-session courses are not treated as continuous tours.
 - `pipeline/model.mjs` — raw → events.json entry: Berlin times, caps,
   `exclude` (substring, `=` for a whole title/tag), sports (tagMap →
   keywords → club), club from aliases, ids. `eventKind`: training >
@@ -72,6 +74,9 @@ store index — run installs unsandboxed.
 - `pipeline/contract.mjs` — the exact text form of `site/data/*.json` and
   `checkSiteData`; `pipeline/tz.mjs` — Berlin wall clock via Intl;
   `pipeline/detect.mjs` — detection ladder + CLI.
+- `pipeline/health.mjs` — advisory empty/ending schedule and `reviewAfter`
+  warnings, recalculated on every run (including 304), in meta.json and the
+  CI summary; the club directory shows them beside the source.
 - `site/` — shipped byte for byte: `index.html`, `404.html`, `style.css`,
   `app.js` (wiring), `data.js` (the only `fetch`), `state.js` (hash codec,
   filters, chip counts, sole `history` writer), `store.js` (kept filter
@@ -84,7 +89,7 @@ store index — run installs unsandboxed.
   markers, `mapPlaces`), `archivo.woff2` (the typeface, OFL: NOTICE), favicon,
   robots, sitemap. `site/data/` is generated and gitignored.
 - `scripts/web-smoke.mjs` — static gate; `PAGE_GRAPH` pins the module set.
-  `scripts/browser-gate/run.mjs` — the browser gate (frozen clock 2026-10-14, browser in America/New_York).
+  `scripts/browser-gate/run.mjs` — the browser gate (frozen clock 2026-10-14, browser in America/New_York), also required by tests.yml and pages.yml.
 - `.github/scripts/club-intake.mjs` + `.github/workflows/club-intake.yml` +
   `.github/ISSUE_TEMPLATE/verein-hinzufuegen.yml` — issue form → PR with the
   club file and the regenerated overview (path allowlist in `publishableFiles`).
@@ -107,7 +112,7 @@ store index — run installs unsandboxed.
   all three move only when the source does.
 - Only sources with news are re-read: a 304 is honoured only against a state
   the same build produced for the same window, only for single-request
-  adapters (`CONDITIONAL = true`: ical, gancio, jsonld — a 304 on TEC page 1
+  adapters (`CONDITIONAL = true`: ical, gancio, jsonld, dav — a 304 on TEC page 1
   or an RSS feed would hide changes behind it), and only when events.json
   holds the source's whole delivery (a dedup loser is read in full). A push
   or a manual run with `full` refetches everything.
@@ -127,6 +132,13 @@ store index — run installs unsandboxed.
   events are dates with an exclusive end. The page slices strings and never
   does timezone maths — the browser gate runs it in New York to prove it
   (the snapshot's 00:30 night run is the day-mapping probe).
+  An optional trailing `timeUnknown: true` distinguishes a date without a
+  confirmed time from a full-day event. Only an explicitly configured
+  source (`midnightTimeUnknown`) turns midnight placeholders into these
+  dates. ICS exports them as tentative, transparent date entries with a
+  note; a cancellation still wins. The event id is unchanged.
+  `include` selects a club's dates from league feeds before `exclude`;
+  retained events can reapply title exclusions, but cannot recover tags.
 - A TZID without VTIMEZONE, a Windows TZID or a floating time is Berlin wall
   clock, never UTC (ical.js would read it as UTC).
 - The page opens on this week's home games (`art=spiel`, `ort=heim`,

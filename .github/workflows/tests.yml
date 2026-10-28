@@ -1,6 +1,6 @@
 name: tests
 
-# Unit tests and the web-smoke gate on every push and pull request. Fixtures
+# Unit tests, web-smoke and the browser gate on every push and pull request. Fixtures
 # only: the live source test (`pnpm run test:live`) is a local, unsandboxed
 # run. The pages workflow repeats these gates before it publishes.
 
@@ -29,3 +29,5 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm test
       - run: pnpm run smoke
+      # GitHub's Ubuntu image includes Chrome; the gate finds it on PATH.
+      - run: pnpm run gate:browser
