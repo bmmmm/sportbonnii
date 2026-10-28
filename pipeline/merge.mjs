@@ -74,6 +74,25 @@ export function tokenOverlap(a, b) {
 
 const daysBetween = (a, b) => Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86_400_000);
 
+/** Explicit pairings outweigh generic shared words such as club, league and matchday. */
+function pairing(title) {
+  const text = fold(title).replace(/^\d+\.\s*spieltag[, :]\s*/, '')
+    .replace(/\s+\(\d+\.\s*fbl\b[^)]*\)$/, '')
+    .replace(/\s+\((?:auswarts|heim|away|home)\)$/, '');
+  const sides = text.split(/\s(?:[-–—:]|vs\.?)\s/);
+  if (sides.length !== 2) return null;
+  return sides.map((s) => s.replace(/[^\p{L}\p{N}]+/gu, ' ').trim());
+}
+
+function compatibleEvents(a, b) {
+  if (!a.sports.some((s) => b.sports.includes(s))) return false;
+  const pa = pairing(a.title);
+  const pb = pairing(b.title);
+  // Be conservative when both sources identify the teams. Numbers and age
+  // groups are significant, even where one name is a subset of the other.
+  return !pa || !pb || pa.join('|') === pb.join('|');
+}
+
 /** Precedence of a source for an event of `club`: lower wins. */
 function rankOf(sourceKey, club, order) {
   const [owner] = sourceKey.split('/');
@@ -107,6 +126,7 @@ export function dedupe(events, order) {
       for (let j = i + 1; j < group.length; j++) {
         const lo = group[j];
         if (drop.has(lo.id) || lo.source === group[i].source) continue;
+        if (!compatibleEvents(group[i], lo)) continue;
         if (tokenOverlap(group[i].title, lo.title) >= 0.5) drop.add(lo.id);
       }
     }

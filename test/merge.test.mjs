@@ -145,6 +145,19 @@ test('dedup needs the same club and start minute', () => {
   assert.equal(dedupe([club, later, noClub], order).dropped, 0);
 });
 
+test('dedup keeps simultaneous departments, opponents and numbered teams separate', () => {
+  const owner = 'ssf-bonn';
+  const match = (source, id, title, sport = 'floorball') => ev(`${owner}/${source}`, id, { club: owner, title, sports: [sport], kind: 'spiel' });
+  const herren = match('herren', 'h', '4. Spieltag, SSF Dragons Bonn - Blau-Weiß 96 Schenefeld (1. FBL Herren, FD)');
+  const damen = match('damen', 'd', '2. Spieltag, Floor Fighters Chemnitz - SSF Dragons Bonn (1. FBL Damen, FD)');
+  const second = match('zweit', 'z', '4. Spieltag, SSF Dragons Bonn II - Blau-Weiß 96 Schenefeld (2. FBL Herren Nord/West, FD)');
+  const tt = match('tt', 't', 'SSF Bonn vs TFG Nippes', 'tischtennis');
+  const otherSport = match('andere', 'a', herren.title, 'handball');
+  assert.equal(dedupe([herren, damen, second, tt, otherSport], new Map()).dropped, 0);
+  const same = match('kopie', 'k', 'SSF Dragons Bonn vs. Blau-Weiss 96 Schenefeld');
+  assert.equal(dedupe([herren, same], new Map()).dropped, 1, 'the same pairing still merges across feed formatting');
+});
+
 test('title tokens: folded, stop words and short tokens out', () => {
   assert.deepEqual([...titleTokens('Das Fußball-Spiel gegen den FC Köln')], ['fussball', 'spiel', 'koln']);
   assert.equal(tokenOverlap('Heimspiel gegen RK Heusenstamm', 'heimspiel – heusenstamm'), 1);

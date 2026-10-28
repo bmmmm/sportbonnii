@@ -62,7 +62,9 @@ store index — run installs unsandboxed.
   partial / error / blocked / disabled, 7-day retention, drop-to-zero,
   all-failed), `changed` = the last run with a new or modified event (a
   removal alone does not count), validators kept for ok answers, and
-  cross-source dedup (own club source > platform, earlier > later).
+  cross-source dedup (own club source > platform, earlier > later). Different
+  sports and different explicit pairings are never collapsed; team numbers
+  remain significant even when the shared club words dominate the titles.
 - `pipeline/run.mjs` — window (1st of last month … 1st of month +13),
   previous state (local or `$PREVIOUS_STATE_URL`, with meta.json's `build`),
   conditional requests, outputs. The first request of a source carries the

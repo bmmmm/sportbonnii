@@ -127,8 +127,10 @@ try {
   await waitHttp(`${BASE}index.html`, 5000);
   const profile = await mkdtemp(join(tmpdir(), 'sportbonnii-gate-chrome-'));
   temp.push(profile);
-  start(await findChrome(), ['--headless=new', `--remote-debugging-port=${cdpPort}`, `--user-data-dir=${profile}`, '--no-first-run', '--disable-background-networking', 'about:blank'], 'chrome');
-  await waitHttp(`http://127.0.0.1:${cdpPort}/json/version`, 10000);
+  start(await findChrome(), ['--headless=new', `--remote-debugging-port=${cdpPort}`, `--user-data-dir=${profile}`, '--no-first-run', '--disable-dev-shm-usage', '--disable-background-networking', 'about:blank'], 'chrome');
+  // Hosted runners can need more than ten seconds to start Chrome. Use disk
+  // instead of their small shared-memory mount; keep the browser sandbox on.
+  await waitHttp(`http://127.0.0.1:${cdpPort}/json/version`, 30000);
 
   const t = await openTarget(cdpPort);
   const requests = [];
