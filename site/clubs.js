@@ -7,7 +7,7 @@ import { formatShortDate } from './dates.js';
 import { fold } from './state.js';
 import { osmUrl } from './venue.js';
 
-const TYPE_LABEL = { ical: 'iCalendar', tec: 'The Events Calendar', gancio: 'Gancio', jsonld: 'schema.org', rss: 'RSS + schema.org', dav: 'DAV-Termine' };
+const TYPE_LABEL = { ical: 'iCalendar', tec: 'The Events Calendar', gancio: 'Gancio', jsonld: 'schema.org', rss: 'RSS + schema.org', dav: 'DAV-Termine', amphicms: 'Vereinskalender (amphicms)' };
 
 /**
  * The calendar state of an owner from its sources: { kind, text }.

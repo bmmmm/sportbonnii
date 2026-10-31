@@ -3,7 +3,7 @@
 // and the intake bot (which run without `pnpm install`) never pull in
 // ical.js through this module.
 
-export const ADAPTER_TYPES = ['ical', 'tec', 'gancio', 'jsonld', 'rss', 'dav'];
+export const ADAPTER_TYPES = ['ical', 'tec', 'gancio', 'jsonld', 'rss', 'dav', 'amphicms'];
 
 /**
  * The adapter module for `type`: `{ fetchEvents(source, ctx) → { events,

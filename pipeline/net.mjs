@@ -9,10 +9,13 @@
 //   gets through. The intake bot feeds anonymous URLs into detect, so it runs
 //   with https/443 only, four lookups (redirects and robots.txt not counted),
 //   10 s and 2 MB each — on a GitHub runner that leaves little worth reaching.
-// - robots.txt is honoured for crawl-type requests (→ NetError kind
-//   "blocked"). A source's own subscription feed is fetched like a calendar
-//   client would, without a robots check: calendar.google.com, for one,
-//   disallows crawlers from the very ICS links it hands out for subscribing.
+// - robots.txt is honoured for discovery only (→ NetError kind "blocked"):
+//   detect's probes and pages reached by following links (RSS item pages).
+//   A URL a person put in the registry — and the API pages derived from it —
+//   is fetched like a browser or calendar client would, once per build,
+//   without a robots check: robots.txt governs crawlers, and CMS defaults
+//   (calendar.google.com's ICS links, amphicms's /ajax-cms) disallow the very
+//   endpoints their own calendar pages load.
 // - One request per host at a time, at least `minGapMs` apart.
 // - Hard caps: timeout over the whole redirect chain, body bytes, redirects.
 import { lookup as dnsLookup } from 'node:dns/promises';

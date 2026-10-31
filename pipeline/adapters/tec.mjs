@@ -127,7 +127,7 @@ export async function fetchEvents(source, ctx) {
   for (let page = 1; ; page++) {
     let body;
     try {
-      body = (await ctx.get(url, { accept: 'application/json' })).body;
+      body = (await ctx.get(url, { accept: 'application/json', robots: false })).body;
     } catch (e) {
       if (page === 1) throw e;
       warnings.push(`pagination stopped after page ${page - 1}: ${e.message}`);

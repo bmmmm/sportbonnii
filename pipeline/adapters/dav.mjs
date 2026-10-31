@@ -46,6 +46,6 @@ export function parseOverview(html, baseUrl, activities) {
 }
 
 export async function fetchEvents(source, { get }) {
-  const response = await get(source.url);
+  const response = await get(source.url, { robots: false });
   return parseOverview(response.body, response.url, source.params?.activities ?? ['10', '11']);
 }

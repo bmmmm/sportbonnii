@@ -9,7 +9,7 @@
 // before the `kind` or `home` field get them first (upgradeLegacyEvent).
 //
 // Only sources with news are re-read in full. A single-request adapter
-// (CONDITIONAL: ical, gancio, jsonld) whose last ok answer carried an ETag or
+// (CONDITIONAL: ical, gancio, jsonld, dav, amphicms) whose last ok answer carried an ETag or
 // Last-Modified is asked conditionally, and a 304 keeps its previous events
 // untouched. That reuse needs a previous state produced by the same build
 // ($BUILD_ID, the commit — set by the Pages workflow, unset locally and on a

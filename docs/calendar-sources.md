@@ -1,9 +1,9 @@
 # Calendar coverage and maintenance
 
 Last checked: 2026-10-28. A homepage RSS feed is not a calendar: enable it
-only after verifying that its item pages deliver dated events. All crawls
-use `pipeline/net.mjs` and honour robots.txt; subscription feeds use the
-calendar-client exception documented in AGENTS.md.
+only after verifying that its item pages deliver dated events. All requests
+use `pipeline/net.mjs`. A URL in the registry is fetched like a browser
+loads it; robots.txt applies to discovery only (AGENTS.md, `net.mjs`).
 
 ## Newly connected sources
 
@@ -13,8 +13,12 @@ calendar-client exception documented in AGENTS.md.
   [2. FBL Herren Nord/West](https://saisonmanager.de/fd/2449-2-fbl-herren-nordwest).
   The published league ICS feeds contain all clubs; `include` selects only
   SSF Dragons Bonn, including the second team. League ids need review each
-  season (`reviewAfter` in the registry). The general SSF website calendar
-  loads through `/ajax-cms`, which its robots.txt disallows for crawlers.
+  season (`reviewAfter` in the registry).
+- **SSF Bonn, club calendar:** the `amphicms` adapter reads the endpoint
+  [the calendar page](https://www.ssfbonn.de/de/termine/) loads (volleyball
+  and youth table-tennis home games, tournaments, club dates). Floorball and
+  the table-tennis 1. Herren are excluded there: the federation feeds above
+  name the opponent.
 - **DAV Bonn:** [the published activity overview](https://dav-bonn.de/termine/)
   provides dates for Kleine Bergschule and via ferrata activities. The `dav`
   adapter selects those activity groups and links to each original event.

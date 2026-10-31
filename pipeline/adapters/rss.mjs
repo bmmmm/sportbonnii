@@ -52,7 +52,7 @@ const sameSite = (a, b) => a.replace(/^www\./i, '').toLowerCase() === b.replace(
 /** Adapter entry point. */
 export async function fetchEvents(source, ctx) {
   const warnings = createWarningSink();
-  const feed = await ctx.get(source.url, { accept: 'application/rss+xml, application/atom+xml, application/xml;q=0.9, */*;q=0.5' });
+  const feed = await ctx.get(source.url, { accept: 'application/rss+xml, application/atom+xml, application/xml;q=0.9, */*;q=0.5', robots: false });
   const feedHost = new URL(feed.url).hostname;
   const links = [];
   for (const it of feedItems(feed.body)) {

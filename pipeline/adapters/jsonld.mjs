@@ -166,7 +166,7 @@ export function extractJsonLdEvents(html, pageUrl) {
 
 /** Adapter entry point: the configured page itself carries the events. */
 export async function fetchEvents(source, ctx) {
-  const res = await ctx.get(source.url, { accept: 'text/html,application/xhtml+xml' });
+  const res = await ctx.get(source.url, { accept: 'text/html,application/xhtml+xml', robots: false });
   return extractJsonLdEvents(res.body, res.url);
 }
 

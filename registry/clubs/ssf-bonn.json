@@ -11,6 +11,17 @@
   "name": "SSF Bonn",
   "sources": [
     {
+      "exclude": [
+        "Heimspiel der 1. Floorball",
+        "Heimspiel der 2. Floorball",
+        "Tischtennis: Heimspiel der 1. Herrenmannschaft"
+      ],
+      "id": "vereinskalender",
+      "note": "The endpoint the club's calendar page https://www.ssfbonn.de/de/termine/ loads (amphicms). Floorball and the table-tennis 1. Herren come from their federation feeds below, which name the opponent.",
+      "type": "amphicms",
+      "url": "https://www.ssfbonn.de/ajax-cms?moduleId=148&request=loadSpecialCalendarSource&loadBy=calendar&calendarId=37"
+    },
+    {
       "id": "spiele-tischtennis",
       "kind": "spiel",
       "note": "myTischtennis calendar export (its webcal button), Erwachsene I+II; team ids from /api/ttr/teams?clubNumber=22106&organization=WTTV — at most 2 per URL, they change each season",
@@ -69,7 +80,8 @@
     "triathlon",
     "leichtathletik",
     "floorball",
-    "tischtennis"
+    "tischtennis",
+    "volleyball"
   ],
   "venues": [
     {

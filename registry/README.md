@@ -110,7 +110,7 @@ Before adding a club:
 | field | required | meaning |
 | --- | --- | --- |
 | `id` | yes | slug, unique within the club |
-| `type` | yes | `ical` (iCalendar / webcal), `tec` (WordPress *The Events Calendar* REST API), `gancio` (Gancio `/api/events`), `jsonld` (a page with schema.org `Event` JSON-LD), `rss` (a feed whose item pages carry JSON-LD), `dav` (DAV Bonn activity overview; `params.activities` selects activity ids) |
+| `type` | yes | `ical` (iCalendar / webcal), `tec` (WordPress *The Events Calendar* REST API), `gancio` (Gancio `/api/events`), `jsonld` (a page with schema.org `Event` JSON-LD), `rss` (a feed whose item pages carry JSON-LD), `dav` (DAV Bonn activity overview; `params.activities` selects activity ids), `amphicms` (the `/ajax-cms?…request=loadSpecialCalendarSource…calendarId=…` endpoint an amphicms calendar page loads; the window's `start`/`end` are set per run) |
 | `url` | yes | https URL of the feed or endpoint |
 | `enabled` | no | `false` lists the source without fetching it (default `true`) |
 | `note` | no | why the source looks the way it does; never shipped to the page |

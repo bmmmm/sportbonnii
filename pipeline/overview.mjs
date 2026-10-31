@@ -9,7 +9,7 @@
 // output depends on the registry alone.
 import { osmUrl } from '../site/venue.js';
 
-const SOURCE_LABELS = { ical: 'iCal', tec: 'TEC', gancio: 'Gancio', jsonld: 'schema.org', rss: 'RSS', dav: 'DAV-Termine' };
+const SOURCE_LABELS = { ical: 'iCal', tec: 'TEC', gancio: 'Gancio', jsonld: 'schema.org', rss: 'RSS', dav: 'DAV-Termine', amphicms: 'Vereinskalender' };
 const USE_PREFIX = { spiel: 'Spiele: ', training: 'Training: ' };
 const NONE = '–';
 const MAX_VENUES = 3;

@@ -35,18 +35,21 @@ store index — run installs unsandboxed.
 - `pipeline/overview.mjs` → `docs/vereine.md` — the generated club overview;
   a test pins it to the registry.
 - `pipeline/net.mjs` — the only network door: private-address check on every
-  redirect hop, robots.txt for crawl requests (a source's own subscription
-  feed is fetched like a calendar client — `get(url, { robots: false })`),
+  redirect hop, robots.txt only for discovery (detect's probes, RSS item
+  pages); a registry URL and the API pages derived from it are fetched like
+  a browser loads them — `get(url, { robots: false })`,
   one request per host ≥ 1 s apart, 20 s / 10 MB / 5 redirects. Every answer
   carries `etag`/`lastModified`; `get(url, { ifNoneMatch, ifModifiedSince })`
   is conditional and resolves to `{ notModified: true }` on 304.
-- `pipeline/adapters/{ical,tec,gancio,jsonld,rss,dav}.mjs` + `index.mjs` —
+- `pipeline/adapters/{ical,tec,gancio,jsonld,rss,dav,amphicms}.mjs` + `index.mjs` —
   `fetchEvents(source, ctx) → { events, warnings, partial? }` with raw events
   (`startMs`/`endMs` UTC or `startDate`/`endDate` for all-day), plus
   `CONDITIONAL` (true only when one request stands for the source). A v2
   portal adapter is one file plus one entry in `ADAPTER_TYPES`.
   `dav` reads the DAV Bonn activity overview, restricted to the registry's
   activity ids; multi-session courses are not treated as continuous tours.
+  `amphicms` reads the endpoint an amphicms calendar page loads
+  (ssfbonn.de); its ids change per request, so the uid is start + title.
 - `pipeline/model.mjs` — raw → events.json entry: Berlin times, caps,
   `exclude` (substring, `=` for a whole title/tag), sports (tagMap →
   keywords → club), club from aliases, ids. `eventKind`: training >
@@ -114,7 +117,7 @@ store index — run installs unsandboxed.
   all three move only when the source does.
 - Only sources with news are re-read: a 304 is honoured only against a state
   the same build produced for the same window, only for single-request
-  adapters (`CONDITIONAL = true`: ical, gancio, jsonld, dav — a 304 on TEC page 1
+  adapters (`CONDITIONAL = true`: ical, gancio, jsonld, dav, amphicms — a 304 on TEC page 1
   or an RSS feed would hide changes behind it), and only when events.json
   holds the source's whole delivery (a dedup loser is read in full). A push
   or a manual run with `full` refetches everything.

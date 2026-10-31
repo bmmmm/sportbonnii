@@ -72,7 +72,7 @@ export function parseGancio(body, origin) {
 
 /** Adapter entry point. */
 export async function fetchEvents(source, ctx) {
-  const res = await ctx.get(requestUrl(source.url, ctx.window), { accept: 'application/json' });
+  const res = await ctx.get(requestUrl(source.url, ctx.window), { accept: 'application/json', robots: false });
   return parseGancio(res.body, new URL(source.url).origin);
 }
 

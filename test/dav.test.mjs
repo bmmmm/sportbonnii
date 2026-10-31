@@ -17,7 +17,7 @@ test('DAV: captured activity cards give the selected climbing dates without inve
   const calls = [];
   const r = await fetchEvents(source, { get: async (...args) => { calls.push(args); return { body: html, url: base }; } });
   assert.equal(CONDITIONAL, true);
-  assert.deepEqual(calls, [[base]], 'one robots-aware request stands for the overview');
+  assert.deepEqual(calls, [[base, { robots: false }]], 'one request, like a browser, stands for the overview');
   assert.equal(r.events.length, 3);
   assert.deepEqual(r.warnings, []);
   assert.equal(r.partial, undefined);
