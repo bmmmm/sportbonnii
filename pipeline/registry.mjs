@@ -36,8 +36,8 @@ const SPORT_FIELDS = new Set(['id', 'label', 'emoji', 'colour', 'keywords']);
 /** The keys a venue may carry — in the registry and in clubs.json alike. */
 export const VENUE_FIELDS = new Set(['name', 'address', 'lat', 'lon', 'osm', 'use']);
 
-/** A club lists at most this many venues; the first is its main one. */
-export const MAX_VENUES = 3;
+/** A club lists at most this many venues (a guard against a runaway file, not a design limit); the first is its main one. */
+export const MAX_VENUES = 10;
 /** Venue coordinates must fall in this box around Bonn — a guard against swapped or mistyped numbers. */
 export const VENUE_BOUNDS = { lat: [50.6, 50.8], lon: [7.0, 7.3] };
 /** An OpenStreetMap object: node/<n>, way/<n> or relation/<n>. */

@@ -17,7 +17,10 @@
         "Tischtennis: Heimspiel der 1. Herrenmannschaft"
       ],
       "id": "vereinskalender",
-      "note": "The endpoint the club's calendar page https://www.ssfbonn.de/de/termine/ loads (amphicms). Floorball and the table-tennis 1. Herren come from their federation feeds below, which name the opponent.",
+      "note": "The endpoint the club's calendar page loads (amphicms). Floorball and the table-tennis 1. Herren come from their federation feeds below, which name the opponent.",
+      "params": {
+        "page": "https://www.ssfbonn.de/de/termine/"
+      },
       "type": "amphicms",
       "url": "https://www.ssfbonn.de/ajax-cms?moduleId=148&request=loadSpecialCalendarSource&loadBy=calendar&calendarId=37"
     },

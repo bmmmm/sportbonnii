@@ -145,6 +145,14 @@ test('dedup needs the same club and start minute', () => {
   assert.equal(dedupe([club, later, noClub], order).dropped, 0);
 });
 
+test('dedup: a club-wide date filed under sonstiges still meets its platform twin', () => {
+  const club = ev(A, 'c', { title: 'Sommerfest', sports: ['sonstiges'] });
+  const plat = ev(P, 'p', { club: 'rc-bonn-rhein-sieg', title: 'RC Bonn Sommerfest', sports: ['rugby', 'tennis'] });
+  const r = dedupe([plat, club], order);
+  assert.deepEqual(r.events.map((e) => e.id), [club.id]);
+  assert.equal(dedupe([club, ev(P, 'q', { club: 'rc-bonn-rhein-sieg', title: 'Heimspiel gegen RK Heusenstamm' })], order).dropped, 0, 'other titles stay apart');
+});
+
 test('dedup keeps simultaneous departments, opponents and numbered teams separate', () => {
   const owner = 'ssf-bonn';
   const match = (source, id, title, sport = 'floorball') => ev(`${owner}/${source}`, id, { club: owner, title, sports: [sport], kind: 'spiel' });

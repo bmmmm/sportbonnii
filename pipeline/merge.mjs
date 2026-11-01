@@ -85,7 +85,10 @@ function pairing(title) {
 }
 
 function compatibleEvents(a, b) {
-  if (!a.sports.some((s) => b.sports.includes(s))) return false;
+  // A club-wide date is sonstiges in the club's own calendar but carries the
+  // club's sports on a platform (model.mjs): within one club, sonstiges fits any sport.
+  const general = a.sports.includes('sonstiges') || b.sports.includes('sonstiges');
+  if (!general && !a.sports.some((s) => b.sports.includes(s))) return false;
   const pa = pairing(a.title);
   const pb = pairing(b.title);
   // Be conservative when both sources identify the teams. Numbers and age

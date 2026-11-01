@@ -93,7 +93,7 @@ Before adding a club:
 | `aliases` | no | names under which the club appears on platforms, departments and teams included; a platform event whose title or place contains one is assigned to the club. Unique across clubs and platforms (see above) |
 | `active` | no | `false` hides the club from the directory (default `true`) |
 | `sources` | yes | the club's calendars, richest first (on a duplicate date the earlier source wins) |
-| `venues` | no | 1 to 3 places where the club plays or trains, the main one first (fields below) |
+| `venues` | no | 1 to 10 places where the club plays or trains, the main one first (fields below) |
 
 ## Venue fields
 
@@ -110,11 +110,11 @@ Before adding a club:
 | field | required | meaning |
 | --- | --- | --- |
 | `id` | yes | slug, unique within the club |
-| `type` | yes | `ical` (iCalendar / webcal), `tec` (WordPress *The Events Calendar* REST API), `gancio` (Gancio `/api/events`), `jsonld` (a page with schema.org `Event` JSON-LD), `rss` (a feed whose item pages carry JSON-LD), `dav` (DAV Bonn activity overview; `params.activities` selects activity ids), `amphicms` (the `/ajax-cms?…request=loadSpecialCalendarSource…calendarId=…` endpoint an amphicms calendar page loads; the window's `start`/`end` are set per run) |
+| `type` | yes | `ical` (iCalendar / webcal), `tec` (WordPress *The Events Calendar* REST API), `gancio` (Gancio `/api/events`), `jsonld` (a page with schema.org `Event` JSON-LD), `rss` (a feed whose item pages carry JSON-LD), `dav` (DAV Bonn activity overview; `params.activities` selects activity ids), `amphicms` (the `/ajax-cms?…request=loadSpecialCalendarSource…calendarId=…` endpoint an amphicms calendar page loads; the window's `start`/`end` are set per run; `params.page`, the calendar page on the same site, becomes every event's link) |
 | `url` | yes | https URL of the feed or endpoint |
 | `enabled` | no | `false` lists the source without fetching it (default `true`) |
 | `note` | no | why the source looks the way it does; never shipped to the page |
-| `sports` | no | narrows the source to some of the club's sports (a department calendar) |
+| `sports` | no | narrows the source to some of the club's sports (a department calendar). With two or more candidates (these, else the club's), a date takes the sports its title names, else those its description names, else `sonstiges` (a club-wide date) |
 | `tagMap` | no | `{ "<upstream tag>": "<sport id>" }` — assigns sports from the source's own categories |
 | `exclude` | no | case-insensitive texts; an event whose title or tags contain one is dropped — or, written `=Text`, whose whole title or one whole tag is that text (`=Ferien` drops the category „Ferien", not „Ferienprogramm") |
 | `include` | no | non-empty list of case-insensitive texts; at least one must occur in the title or tags before exclusions are applied. Use this to select the club's fixtures from an official league subscription |
@@ -145,6 +145,6 @@ the matched club, else `sonstiges`.
 `sports.json` entries: `id` (slug), `label` (German), `emoji`, `colour`
 (`#rrggbb` with a relative luminance between 0.118 and 0.30, so the colour
 bar keeps a 3:1 contrast on light and dark backgrounds), optional `keywords`
-(lowercase word starts that assign a platform event to the sport, e.g.
+(lowercase word starts that assign a platform event, or a multi-sport club calendar's event, to the sport, e.g.
 `"schwimm"` matches *Schwimmfest*). The order is the order of the filter
 chips. `sonstiges` is the catch-all and must stay.

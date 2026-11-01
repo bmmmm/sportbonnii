@@ -5,6 +5,7 @@
 // links and dates are needed.
 import { decodeEntities, createWarningSink } from '../text.mjs';
 import { extractJsonLdEvents } from './jsonld.mjs';
+import { NetError } from '../net.mjs';
 
 export const MAX_ITEMS = 25;
 const ITEM_BUDGET_MS = 120_000;
@@ -74,20 +75,26 @@ export async function fetchEvents(source, ctx) {
   const seen = new Set();
   const deadline = Date.now() + ITEM_BUDGET_MS;
   let pagesWithEvents = 0;
+  let blocked = null; // the last robots refusal, while every page so far was refused
+  let fetched = 0;
   for (const [i, link] of toFetch.entries()) {
     if (Date.now() > deadline) {
       warnings.push(`item budget exhausted, ${toFetch.length - i} item page(s) skipped`);
       partial ??= { reason: 'item-page budget exhausted' };
+      blocked = null; // untried pages: not every page was refused
       break;
     }
     let page;
     try {
       page = await ctx.get(link, { accept: 'text/html,application/xhtml+xml', timeoutMs: 15_000 });
     } catch (e) {
+      if (e instanceof NetError && e.kind === 'blocked' && fetched === 0) blocked = e;
+      else fetched++;
       warnings.push(`${link}: ${e.message}`);
       partial ??= { reason: `item page ${link} could not be fetched` };
       continue;
     }
+    fetched++;
     const r = extractJsonLdEvents(page.body, page.url);
     if (r.events.length) pagesWithEvents++;
     for (const e of r.events) {
@@ -96,6 +103,8 @@ export async function fetchEvents(source, ctx) {
       events.push(e);
     }
   }
+  // robots.txt refusing every item page is a blocked source, not a partial one.
+  if (blocked && fetched === 0) throw new NetError(`every item page refused — ${blocked.message}`, 'blocked');
   if (toFetch.length && !pagesWithEvents) warnings.push(`none of the ${toFetch.length} item pages carries schema.org Event JSON-LD`);
   return { events, warnings: warnings.list(), ...(partial ? { partial } : {}) };
 }

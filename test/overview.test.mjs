@@ -68,7 +68,7 @@ test('calendars: type labels, disabled sources, repeats; the statistic counts en
   assert.match(text, /3 Vereine · 2 mit Online-Kalender/);
 });
 
-test('venues: at most three, use prefix, OpenStreetMap link; none → dash', () => {
+test('venues: three shown, the rest counted, use prefix, OpenStreetMap link; none → dash', () => {
   const v = (name, extra = {}) => ({ name, lat: 50.7, lon: 7.1, ...extra });
   const [row] = rows(renderOverview({
     clubs: [club({ venues: [v('Halle', { use: 'spiel', osm: 'way/12' }), v('Platz', { use: 'training' }), v('Beides'), v('Vierte')] })],
@@ -76,6 +76,7 @@ test('venues: at most three, use prefix, OpenStreetMap link; none → dash', () 
   }));
   assert.ok(row.includes('Spiele: [Halle](https://www.openstreetmap.org/way/12)<br>Training: [Platz](https://www.openstreetmap.org/?mlat=50.7&mlon=7.1#map=18/50.7/7.1)<br>[Beides]('), row);
   assert.ok(!row.includes('Vierte'), 'a fourth venue is not shown');
+  assert.ok(row.includes('<br>+1 weitere'), 'but counted');
 });
 
 test('Markdown characters in foreign text are escaped, one line per cell', () => {

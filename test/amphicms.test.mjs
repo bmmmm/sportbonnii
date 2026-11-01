@@ -25,6 +25,12 @@ test('amphicms: the window becomes start/end in Berlin wall clock; one request, 
   assert.equal(u.searchParams.get('timeZone'), 'Europe/Berlin');
   assert.equal(r.events.length, 63);
   assert.deepEqual(r.warnings, []);
+  assert.ok(r.events.every((e) => e.url === 'https://www.ssfbonn.de/de/termine/'), 'params.page is every event\'s link');
+  const foreign = await fetchEvents({ ...source, params: { page: 'https://evil.example/' } }, { window, get: async () => ({ body }) });
+  assert.ok(foreign.events.every((e) => e.url === null));
+  assert.match(foreign.warnings.join(), /not a page of the calendar's site/);
+  const bare = await fetchEvents({ ...source, params: undefined }, { window, get: async () => ({ body }) });
+  assert.match(bare.warnings.join(), /no params\.page/);
   assert.equal(requestUrl(`${source.url}&start=x`, window).match(/start=/g).length, 1, 'a stale window in the URL is replaced');
 });
 
@@ -52,6 +58,10 @@ test('amphicms: captured SSF dates normalise; federation duplicates are excluded
   assert.equal(triathlon.start, '2027-06-06');
   assert.equal(triathlon.end, '2027-06-07');
   assert.ok(events.some((e) => e.title === 'Tischtennisturnier Bergischer Cup'));
+  const camp = events.find((e) => e.title === 'Feriencamp im Sportpark Nord');
+  assert.deepEqual([camp.allDay, camp.start, camp.end], [true, '2026-10-26', '2026-10-31'], 'daily hours over five days are a date range, not one stretch');
+  assert.deepEqual(events.find((e) => e.title === 'Datenschutzschulung').sports, ['sonstiges'], 'a club-wide date belongs to no single sport');
+  assert.deepEqual(events.find((e) => e.title.startsWith('Rettungsfähigkeit')).sports, ['schwimmen'], 'the description names the sport');
   // The hall comes from the description, so a game away from Sportpark Nord is not placed there.
   assert.equal(first.location, 'Hardtberghalle, Gaußstr. 1 53125 Bonn');
   assert.equal(events.find((e) => e.title.startsWith('Heimspiel der Tischtennis-Jungen')).location, 'Turnhalle Alte Jahnschule, Herseler Straße 3, 53117 Bonn');
@@ -69,4 +79,8 @@ test('amphicms: the uid survives the volatile per-request id; broken items are s
   assert.equal(r.events.length, 0);
   assert.equal(r.warnings.length, 2);
   assert.equal(parseAmphiCalendar(JSON.stringify({ events: [{ title: 'X', start: '2026-13-45T10:00:00' }] })).events.length, 0, 'an impossible date is refused, not rolled over');
+  const [night] = parseAmphiCalendar(JSON.stringify({ events: [{ title: 'Nachtlauf', start: '2026-10-10T19:00:00', end: '2026-10-11T01:00:00' }] })).events;
+  assert.equal(night.allDay, false, 'an overnight range stays timed');
+  const [day] = parseAmphiCalendar(JSON.stringify({ events: [{ title: '24-Stunden-Lauf', start: '2026-10-10T12:00:00', end: '2026-10-11T12:00:00' }] })).events;
+  assert.equal(day.allDay, false, 'the same clock on both days is one continuous stretch');
 });

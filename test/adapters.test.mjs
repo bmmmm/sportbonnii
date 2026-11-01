@@ -8,6 +8,7 @@ import * as gancio from '../pipeline/adapters/gancio.mjs';
 import * as jsonld from '../pipeline/adapters/jsonld.mjs';
 import * as rss from '../pipeline/adapters/rss.mjs';
 import { toBerlinIso } from '../pipeline/tz.mjs';
+import { NetError } from '../pipeline/net.mjs';
 import { normalizeEvent, buildContext } from '../pipeline/model.mjs';
 import { loadRegistry } from '../pipeline/registry.mjs';
 
@@ -191,6 +192,27 @@ test('rss: links of the live Gamecocks feed; item pages without JSON-LD yield no
   assert.equal(r.events.length, 0);
   assert.match(r.warnings.join(), /none of the \d+ item pages carries schema\.org Event JSON-LD/);
   assert.ok(ctx.calls.slice(1).every((c) => c.opts.robots !== false), 'item pages are crawl requests');
+});
+
+test('rss: robots.txt refusing every item page makes the source blocked; one readable page keeps it partial', async () => {
+  const feed = 'https://gamecocks.de/feed/';
+  const refuse = () => new NetError('robots.txt of gamecocks.de disallows /', 'blocked');
+  await assert.rejects(rss.fetchEvents({ url: feed }, ctxFor((url) => (url === feed ? fx('rss/gamecocks.rss') : refuse()))),
+    (e) => e instanceof NetError && e.kind === 'blocked' && /every item page refused/.test(e.message));
+  let first = true;
+  const mixed = await rss.fetchEvents({ url: feed }, ctxFor((url) => {
+    if (url === feed) return fx('rss/gamecocks.rss');
+    if (first) { first = false; return '<html><body>news</body></html>'; }
+    return refuse();
+  }));
+  assert.ok(mixed.partial);
+  let second = false;
+  const reversed = await rss.fetchEvents({ url: feed }, ctxFor((url) => {
+    if (url === feed) return fx('rss/gamecocks.rss');
+    if (!second) { second = true; return refuse(); }
+    return '<html><body>news</body></html>';
+  }));
+  assert.ok(reversed.partial, 'a refused first page, then a readable one, stays partial');
 });
 
 test('rss: item pages with JSON-LD become events; off-host links are skipped; the item cap is partial', async () => {

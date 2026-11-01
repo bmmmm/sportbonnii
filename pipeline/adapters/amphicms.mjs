@@ -8,8 +8,17 @@
 //
 // The event `id` is a fresh uniqid() on every request, so the uid is the
 // start plus the title: a date keeps its id as long as neither moves.
-import { htmlToText, singleLineText, createWarningSink } from '../text.mjs';
-import { zonedToUtc, BERLIN } from '../tz.mjs';
+//
+// A timed range over several days whose end hour is after its start hour
+// ("26.10. 09:00 – 30.10. 16:00", the description says "Montag bis Freitag,
+// 9-16 Uhr") stands for daily hours, not one continuous stretch: it becomes an
+// all-day range. An overnight range (19:00 – 01:00) or one of whole days on
+// the clock (12:00 – 12:00) stays timed.
+//
+// The API has no per-event link; `params.page`, the calendar page on the same
+// site, is every event's link.
+import { htmlToText, safeHttpUrl, singleLineText, createWarningSink } from '../text.mjs';
+import { zonedToUtc, addDays, BERLIN } from '../tz.mjs';
 
 const DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
 const LOCAL = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/;
@@ -53,7 +62,7 @@ export function placeOf(description) {
 }
 
 /** Parse an amphicms loadSpecialCalendarSource answer. */
-export function parseAmphiCalendar(body) {
+export function parseAmphiCalendar(body, pageUrl = null) {
   const warnings = createWarningSink();
   let parsed;
   try {
@@ -69,7 +78,7 @@ export function parseAmphiCalendar(body) {
     const end = typeof item?.end === 'string' ? item.end : '';
     if (!title || !start) { warnings.push('skipped an item without title or start'); continue; }
     const description = descriptionOf(item);
-    const common = { uid: `${start}|${title}`, recurrenceId: '', title, description, location: placeOf(description), url: null, status: 'confirmed', tags: [] };
+    const common = { uid: `${start}|${title}`, recurrenceId: '', title, description, location: placeOf(description), url: pageUrl, status: 'confirmed', tags: [] };
     if (isDate(start)) {
       events.push({ ...common, allDay: true, startDate: start, endDate: isDate(end) && end > start ? end : null });
       continue;
@@ -77,6 +86,10 @@ export function parseAmphiCalendar(body) {
     const startMs = wallMs(start);
     if (startMs === null) { warnings.push(`skipped "${title}": unreadable start ${start}`); continue; }
     const endMs = wallMs(end);
+    if (endMs !== null && end.slice(0, 10) > start.slice(0, 10) && end.slice(11, 16) > start.slice(11, 16)) {
+      events.push({ ...common, allDay: true, startDate: start.slice(0, 10), endDate: addDays(end.slice(0, 10), 1) });
+      continue;
+    }
     events.push({ ...common, allDay: false, startMs, endMs: endMs !== null && endMs > startMs ? endMs : null });
   }
   return { events, warnings: warnings.list() };
@@ -85,7 +98,11 @@ export function parseAmphiCalendar(body) {
 /** Adapter entry point: the endpoint the club's own calendar page loads. */
 export async function fetchEvents(source, ctx) {
   const res = await ctx.get(requestUrl(source.url, ctx.window), { accept: 'application/json', robots: false });
-  return parseAmphiCalendar(res.body);
+  const page = safeHttpUrl(source.params?.page ?? '');
+  const sameSite = page && new URL(page).hostname.replace(/^www\./, '') === new URL(source.url).hostname.replace(/^www\./, '');
+  const r = parseAmphiCalendar(res.body, sameSite ? page : null);
+  if (!sameSite) r.warnings.push(source.params?.page ? `params.page ${source.params.page} is not a page of the calendar's site — events carry no link` : 'no params.page — events carry no link');
+  return r;
 }
 
 /** One request per fetch: a 304 on it means the whole source is unchanged (run.mjs may ask conditionally). */

@@ -45,7 +45,7 @@ test('contract: a nameless venue, an empty address and an unknown field are refu
 });
 
 test('contract: venues must be a list of 1 to MAX_VENUES', () => {
-  assert.match(withClubs((c) => { c.venues = []; }), /must list 1 to 3 venues/);
-  assert.match(withClubs((c) => { c.venues = Array.from({ length: MAX_VENUES + 1 }, () => c.venues[0]); }), /must list 1 to 3 venues/);
+  assert.match(withClubs((c) => { c.venues = []; }), /must list 1 to 10 venues/);
+  assert.match(withClubs((c) => { c.venues = Array.from({ length: MAX_VENUES + 1 }, () => c.venues[0]); }), /must list 1 to 10 venues/);
   assert.match(withClubs((c) => { c.venues = 'Pennenfeld'; }), /venues must be a list/);
 });

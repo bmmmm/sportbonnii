@@ -25,7 +25,7 @@ store index — run installs unsandboxed.
 
 ## Map
 
-- `registry/clubs/<id>.json` (one club each, optional `venues` ≤ 3 with
+- `registry/clubs/<id>.json` (one club each, optional `venues` ≤ 10 with
   OSM ref/coordinates and `use`), `registry/platforms/<id>.json`,
   `registry/sports.json` — the only input; a source may carry a fallback
   `kind`. `registry/README.md`: every field, the fill-in template.
@@ -49,10 +49,13 @@ store index — run installs unsandboxed.
   `dav` reads the DAV Bonn activity overview, restricted to the registry's
   activity ids; multi-session courses are not treated as continuous tours.
   `amphicms` reads the endpoint an amphicms calendar page loads
-  (ssfbonn.de); its ids change per request, so the uid is start + title.
+  (ssfbonn.de); its ids change per request, so the uid is start + title;
+  the place is a description line, `params.page` every event's link, and a
+  multi-day timed range with daily hours becomes an all-day range.
 - `pipeline/model.mjs` — raw → events.json entry: Berlin times, caps,
   `exclude` (substring, `=` for a whole title/tag), sports (tagMap →
-  keywords → club), club from aliases, ids. `eventKind`: training >
+  keywords → club; a multi-sport club source: title, then description,
+  else sonstiges), club from aliases, ids. `eventKind`: training >
   celebration veto > spiel from title/tags, else the source's `kind`, else
   veranstaltung. `status` cancelled also from an un-negated cancel word in
   the title. `homeGame` (games only): the title's marker, then a pairing
@@ -66,7 +69,8 @@ store index — run installs unsandboxed.
   all-failed), `changed` = the last run with a new or modified event (a
   removal alone does not count), validators kept for ok answers, and
   cross-source dedup (own club source > platform, earlier > later). Different
-  sports and different explicit pairings are never collapsed; team numbers
+  sports (sonstiges, a club-wide date, fits any) and different explicit
+  pairings are never collapsed; team numbers
   remain significant even when the shared club words dominate the titles.
 - `pipeline/run.mjs` — window (1st of last month … 1st of month +13),
   previous state (local or `$PREVIOUS_STATE_URL`, with meta.json's `build`),

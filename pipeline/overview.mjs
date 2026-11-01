@@ -12,7 +12,7 @@ import { osmUrl } from '../site/venue.js';
 const SOURCE_LABELS = { ical: 'iCal', tec: 'TEC', gancio: 'Gancio', jsonld: 'schema.org', rss: 'RSS', dav: 'DAV-Termine', amphicms: 'Vereinskalender' };
 const USE_PREFIX = { spiel: 'Spiele: ', training: 'Training: ' };
 const NONE = '–';
-const MAX_VENUES = 3;
+const SHOWN_VENUES = 3; // the cell stays short; the rest is counted
 
 // An e-mail address: GitHub autolinks it whatever is escaped (a word joiner stops it but travels
 // along when copied); a code span does not, and copies clean.
@@ -65,10 +65,12 @@ function calendarCell(sources) {
 
 function venueCell(venues) {
   if (!Array.isArray(venues) || venues.length === 0) return NONE;
-  return venues.slice(0, MAX_VENUES).map((v) => {
+  const shown = venues.slice(0, SHOWN_VENUES).map((v) => {
     const hasPlace = v.osm || (Number.isFinite(v.lat) && Number.isFinite(v.lon));
     return `${USE_PREFIX[v.use] ?? ''}${hasPlace ? link(v.name, osmUrl(v)) : escapeMarkdown(v.name)}`;
-  }).join('<br>');
+  });
+  if (venues.length > SHOWN_VENUES) shown.push(`+${venues.length - SHOWN_VENUES} weitere`);
+  return shown.join('<br>');
 }
 
 const byId = (a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
