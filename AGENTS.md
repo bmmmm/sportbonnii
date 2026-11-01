@@ -54,10 +54,10 @@ store index — run installs unsandboxed.
   multi-day timed range with daily hours becomes an all-day range.
 - `pipeline/model.mjs` — raw → events.json entry: Berlin times, caps,
   `exclude` (substring, `=` for a whole title/tag), sports (tagMap →
-  keywords → club; a multi-sport club source: title, then description,
-  else sonstiges), club from aliases, ids. `eventKind`: training >
-  celebration veto > spiel from title/tags, else the source's `kind`, else
-  veranstaltung. `status` cancelled also from an un-negated cancel word in
+  keywords → club; a multi-sport club source: title or tags, else
+  sonstiges, never the description), club from aliases, ids.
+  `eventKind`: training > celebration veto > spiel from title/tags, else
+  the source's `kind`, else veranstaltung. `status` cancelled also from an un-negated cancel word in
   the title. `homeGame` (games only): the title's marker, then a pairing
   „A - B" / „A vs. B" naming the club on one side (host first), then the place
   (club venue via `venueIndex` or Bonn postcode home, other postcode away,

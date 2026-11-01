@@ -30,7 +30,7 @@ Abteilungen stehen beim Verein, nie als eigener Eintrag. Neuer Verein? Erst hier
 | **Rugby Club Bonn-Rhein-Sieg**<br>`rc-bonn-rhein-sieg` | Rugby | Bad Godesberg | [Rugbyplatz Rheinaue](https://www.openstreetmap.org/way/123977272) | iCal | [rcbrs.de](https://rcbrs.de/) |
 | **Rheinos Bonn**<br>`rheinos-bonn` | Quadball | Bonn | Training: [BTHV-Anlage](https://www.openstreetmap.org/way/128941575) | iCal | [rheinos-bonn.de](https://rheinos-bonn.de/) |
 | **Segel-Club Bonn**<br>`segel-club-bonn` | Sonstiges | – | – | – | [segel-club-bonn.de](https://www.segel-club-bonn.de/) |
-| **SSF Bonn**<br>`ssf-bonn` | Volleyball, Floorball, Tischtennis, Schwimmen, Triathlon, Leichtathletik & Laufen | Bonn | [Sportpark Nord](https://www.openstreetmap.org/way/49707892) | Vereinskalender, iCal ×4 | [ssfbonn.de](https://ssfbonn.de/) |
+| **SSF Bonn**<br>`ssf-bonn` | Volleyball, Floorball, Tischtennis, Schwimmen, Triathlon, Leichtathletik & Laufen | Bonn | [Sportpark Nord](https://www.openstreetmap.org/way/49707892)<br>Spiele: [Hardtberghalle](https://www.openstreetmap.org/way/24815531)<br>Spiele: [Alte Jahnschule (Turnhalle)](https://www.openstreetmap.org/?mlat=50.75433&mlon=7.08687#map=18/50.75433/7.08687) | Vereinskalender, iCal ×4 | [ssfbonn.de](https://ssfbonn.de/) |
 | **Telekom Baskets Bonn**<br>`telekom-baskets-bonn` | Basketball | Hardtberg | Spiele: [Telekom Dome](https://www.openstreetmap.org/way/1273941076) | iCal | [telekom-baskets-bonn.de](https://www.telekom-baskets-bonn.de/) |
 
 ## Plattformen

@@ -5,6 +5,7 @@ import { parseAmphiCalendar, requestUrl, fetchEvents, CONDITIONAL } from '../pip
 import { normalizeEvent, buildContext } from '../pipeline/model.mjs';
 import { loadRegistry } from '../pipeline/registry.mjs';
 import { checkEvent } from '../pipeline/contract.mjs';
+import { venueIndex } from '../site/venue.js';
 
 // Captured live from ssfbonn.de on 2026-10-31 (window 2026-10-01 … 2027-11-01).
 const body = readFileSync(new URL('./fixtures/amphicms/ssfbonn.json', import.meta.url), 'utf8');
@@ -61,12 +62,18 @@ test('amphicms: captured SSF dates normalise; federation duplicates are excluded
   const camp = events.find((e) => e.title === 'Feriencamp im Sportpark Nord');
   assert.deepEqual([camp.allDay, camp.start, camp.end], [true, '2026-10-26', '2026-10-31'], 'daily hours over five days are a date range, not one stretch');
   assert.deepEqual(events.find((e) => e.title === 'Datenschutzschulung').sports, ['sonstiges'], 'a club-wide date belongs to no single sport');
-  assert.deepEqual(events.find((e) => e.title.startsWith('Rettungsfähigkeit')).sports, ['schwimmen'], 'the description names the sport');
+  assert.deepEqual(events.find((e) => e.title.startsWith('Playstations')).sports, ['sonstiges'], '"Schwimmbad" in the description is a place, not the sport');
   // The hall comes from the description, so a game away from Sportpark Nord is not placed there.
   assert.equal(first.location, 'Hardtberghalle, Gaußstr. 1 53125 Bonn');
   assert.equal(events.find((e) => e.title.startsWith('Heimspiel der Tischtennis-Jungen')).location, 'Turnhalle Alte Jahnschule, Herseler Straße 3, 53117 Bonn');
   assert.equal(events.find((e) => e.title.startsWith('Außerordentliche')).location, 'Dreifachhalle im Sportpark Nord');
   assert.equal(events.find((e) => e.title.startsWith('Workshop')).location, null, 'a postcode inside a sentence is no place line');
+  assert.match(events.find((e) => e.title === 'Tischtennisturnier Bergischer Cup').location, /^Turnhalle GGS Am Apfelgarten/, '"Austragungsort:" names the place');
+  // The halls the club calendar names are the club's venues, so these games sit there on the map.
+  const venueOf = (e) => owner.venues[venueIndex(e.location, owner.venues)]?.name;
+  assert.ok(volleyball.every((e) => venueOf(e) === 'Hardtberghalle'));
+  assert.ok(events.filter((e) => e.title.startsWith('Heimspiel der Tischtennis-Jungen')).every((e) => venueOf(e) === 'Alte Jahnschule (Turnhalle)'));
+  assert.equal(venueIndex('Alte Jahnschule, Herseler Str. 3, 53117 Bonn', owner.venues), 2, 'myTischtennis spells it without "Turnhalle"');
 });
 
 test('amphicms: the uid survives the volatile per-request id; broken items are skipped with a warning', () => {

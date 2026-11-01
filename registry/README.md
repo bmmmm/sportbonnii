@@ -114,7 +114,7 @@ Before adding a club:
 | `url` | yes | https URL of the feed or endpoint |
 | `enabled` | no | `false` lists the source without fetching it (default `true`) |
 | `note` | no | why the source looks the way it does; never shipped to the page |
-| `sports` | no | narrows the source to some of the club's sports (a department calendar). With two or more candidates (these, else the club's), a date takes the sports its title names, else those its description names, else `sonstiges` (a club-wide date) |
+| `sports` | no | narrows the source to some of the club's sports (a department calendar). With two or more candidates (these, else the club's), a date takes the sports its title or tags name, else `sonstiges` (a club-wide date); the description is never read for sports |
 | `tagMap` | no | `{ "<upstream tag>": "<sport id>" }` — assigns sports from the source's own categories |
 | `exclude` | no | case-insensitive texts; an event whose title or tags contain one is dropped — or, written `=Text`, whose whole title or one whole tag is that text (`=Ferien` drops the category „Ferien", not „Ferienprogramm") |
 | `include` | no | non-empty list of case-insensitive texts; at least one must occur in the title or tags before exclusions are applied. Use this to select the club's fixtures from an official league subscription |
@@ -145,6 +145,6 @@ the matched club, else `sonstiges`.
 `sports.json` entries: `id` (slug), `label` (German), `emoji`, `colour`
 (`#rrggbb` with a relative luminance between 0.118 and 0.30, so the colour
 bar keeps a 3:1 contrast on light and dark backgrounds), optional `keywords`
-(lowercase word starts that assign a platform event, or a multi-sport club calendar's event, to the sport, e.g.
+(lowercase word starts that assign a platform event, or a multi-sport club calendar's event, by its title or tags, to the sport, e.g.
 `"schwimm"` matches *Schwimmfest*). The order is the order of the filter
 chips. `sonstiges` is the catch-all and must stay.

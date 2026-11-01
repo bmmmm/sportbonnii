@@ -49,8 +49,8 @@ function descriptionOf(item) {
 }
 
 // The CMS has no place field; the description names it on a line of its own,
-// as "Ort: …" or ending in a postcode and town ("Hardtberghalle, Gaußstr. 1 53125 Bonn").
-const PLACE_LINE = /^ort:\s*(.+)$|^(.{3,120}\b\d{5}\s+\p{L}[\p{L} .-]*)$/iu;
+// as "Ort: …" / "Austragungsort: …" or ending in a postcode and town ("Hardtberghalle, Gaußstr. 1 53125 Bonn").
+const PLACE_LINE = /^(?:austragungs)?ort:\s*(.+)$|^(.{3,120}\b\d{5}\s+\p{L}[\p{L} .-]*)$/iu;
 
 /** The place a description names, or null. */
 export function placeOf(description) {

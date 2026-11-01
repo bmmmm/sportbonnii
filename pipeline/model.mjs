@@ -316,10 +316,10 @@ export function normalizeEvent(raw, { owner, kind: ownerKind, source, ctx, windo
     const candidates = source.sports ?? owner.sports;
     if (candidates.length <= 1) sports = candidates;
     else {
-      // A multi-sport club calendar: the title's sports, else the description's;
-      // a club-wide date (a general meeting, a festival) belongs to none of them.
-      const hits = [...sportsByTags(tags, source.tagMap), ...sportsByKeywords(textForSports, ctx.keywords)].filter((s) => candidates.includes(s));
-      sports = hits.length ? hits : sportsByKeywords(fold(String(raw.description ?? '')), ctx.keywords).filter((s) => candidates.includes(s));
+      // A multi-sport club calendar: the sports its title or tags name; a
+      // club-wide date (a general meeting, a festival) belongs to none of them.
+      // Never the description: its place words ("Schwimmbad") are no sport.
+      sports = [...sportsByTags(tags, source.tagMap), ...sportsByKeywords(textForSports, ctx.keywords)].filter((s) => candidates.includes(s));
       if (!sports.length) sports = ['sonstiges'];
     }
   } else {

@@ -93,6 +93,21 @@
       "lon": 7.08455,
       "name": "Sportpark Nord",
       "osm": "way/49707892"
+    },
+    {
+      "address": "Gaußstraße 1, 53125 Bonn",
+      "lat": 50.70276,
+      "lon": 7.05248,
+      "name": "Hardtberghalle",
+      "osm": "way/24815531",
+      "use": "spiel"
+    },
+    {
+      "address": "Herseler Straße 3, 53117 Bonn",
+      "lat": 50.75433,
+      "lon": 7.08687,
+      "name": "Alte Jahnschule (Turnhalle)",
+      "use": "spiel"
     }
   ],
   "website": "https://ssfbonn.de/"

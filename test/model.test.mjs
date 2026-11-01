@@ -110,11 +110,11 @@ test('exclude: case-insensitive against title and tags', () => {
   assert.notEqual(asPlatform({ title: 'Radtour' }), null);
 });
 
-test('club sources: a multi-sport club narrows by the title, then the description, else sonstiges', () => {
+test('club sources: a multi-sport club narrows by the title, else sonstiges — never by the description', () => {
   assert.deepEqual(asClub({ title: 'Hockey: Heimspiel Damen' }).sports, ['hockey']);
   assert.deepEqual(asClub({ title: 'Mitgliederversammlung' }).sports, ['sonstiges'], 'a club-wide date is filed under no single sport');
-  assert.deepEqual(asClub({ title: 'Saisoneröffnung', description: 'Schnuppertraining Tennis für alle' }).sports, ['tennis']);
-  assert.deepEqual(asClub({ title: 'Hockey-Turnier', description: 'mit Tennis-Abteilung' }).sports, ['hockey'], 'the title wins over the description');
+  assert.deepEqual(asClub({ title: 'Spielefest', description: 'auf dem ganzen Gelände: Tennisplätze, Hockeyfeld' }).sports, ['sonstiges'], 'place words in the description are no sport');
+  assert.deepEqual(asClub({ title: 'Hockey-Turnier', description: 'mit Tennis-Abteilung' }).sports, ['hockey']);
   assert.deepEqual(asClub({ title: 'Fußball-Freundschaftsspiel' }).sports, ['sonstiges'], 'keywords outside the club do not apply');
   assert.deepEqual(asClub({ title: 'Saisonstart' }, { ...clubSource, sports: ['tennis'] }).sports, ['tennis']);
   assert.equal(asClub({}).club, 'bonner-thv');
